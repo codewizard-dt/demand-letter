@@ -1,0 +1,65 @@
+---
+id: ROADMAP-001
+title: End-to-End Skeleton
+status: active
+created: 2026-06-22
+updated: 2026-06-22
+owner: David Taylor
+linked_decisions: [DEC-0003]
+tags: [skeleton, infra, bedrock, llm-audit]
+---
+
+# ROADMAP-001: End-to-End Skeleton
+
+A vertically-complete but deliberately minimal system — upload a template DOCX + case PDFs, trigger a naive Claude-on-Bedrock generation, stream the result to the browser, and download as DOCX. Every layer is touched (UI → API → Lambda → Bedrock → PostgreSQL → S3) before any "real" feature is built. The LLM audit trail is wired in from day one so every subsequent roadmap gets cost/usage logging automatically.
+
+---
+
+### Phase 1 — Infrastructure
+
+- [ ] AWS SAM project: TypeScript monorepo with packages `api`, `web`, `db`
+- [ ] PostgreSQL schema bootstrap: `jobs` table (id, status, created_at), `files` table (id, job_id, s3_key, type, name)
+- [ ] RDS instance with KMS CMK encryption enabled at creation (mandatory — cannot retrofit)
+- [ ] S3 bucket for source documents and outputs: SSE-KMS, no public access, versioning on
+- [ ] Bedrock model access: request `anthropic.claude-sonnet-4-6` in the Bedrock console (model access takes effect within minutes)
+- [ ] dotenv / SSM Parameters for all secrets; no secrets in code or env files committed
+- [ ] TypeScript strict mode + ESLint + Prettier; `pnpm typecheck` and `pnpm lint` pass on empty project
+
+---
+
+### Phase 2 — LLM Audit Trail (port from jobfinder)
+
+- [ ] `LlmAuditLog` Prisma model: `userId` (plain String, no FK — survives user deletion), `feature` (`"zone-classification" | "case-extraction" | "medical-narrative" | "refinement" | "skeleton-generation"`), `model`, `provider`, `inputTokens`, `outputTokens`, `estimatedCostUsd`, `durationMs`; indexes on `userId`, `(feature, createdAt)`, `createdAt`
+- [ ] `MODEL_PRICING` + `estimateCostUsd()` in `src/lib/ai.ts`: Sonnet 4.6 = $3.00/$15.00 per MTok input/output; Haiku 4.5 = $0.80/$4.00; update if Bedrock pricing differs
+- [ ] AI provider wrapper `src/lib/ai-provider.ts`: wraps both streaming and non-streaming Bedrock calls; records `durationMs` via `Date.now()` diff; fire-and-forget `prisma.llmAuditLog.create(...).catch(() => {})` after each call (logging errors never break the request)
+- [ ] `GET /admin/llm-costs`: aggregate by feature (calls, inputTokens, outputTokens, totalCostUsd) + last 100 raw rows; configurable `?days=30` lookback
+- [ ] Cost dashboard page `/admin/usage`: per-feature cost table + recent log rows (port `llm-cost-section.tsx` from jobfinder)
+
+---
+
+### Phase 3 — Backend
+
+- [ ] `POST /jobs` — create a generation job record in PostgreSQL; return job id
+- [ ] `POST /jobs/:id/files` — upload DOCX template + PDF case docs to S3; insert rows into `files` table; validate file types
+- [ ] `POST /jobs/:id/generate` — pull files from S3; send to Claude on Bedrock as inline base64 with a zero-shot prompt ("generate a demand letter matching this template using these case documents"); stream Claude response via SSE; log to `LlmAuditLog` via provider wrapper
+- [ ] `GET /jobs/:id/output` — return the streamed output as plain text (naive DOCX wrapping is acceptable at this stage)
+- [ ] Lambda handler wiring: SAM template routes each endpoint to its Lambda function; shared `db` layer as a Lambda layer
+
+---
+
+### Phase 4 — Frontend
+
+- [ ] React + Vite + TypeScript + Tailwind scaffold in `packages/web`
+- [ ] Upload form: template DOCX + case PDFs → `POST /jobs` then `POST /jobs/:id/files`
+- [ ] "Generate" button → `POST /jobs/:id/generate` → SSE stream consumer → live streaming text display
+- [ ] Download button: `GET /jobs/:id/output` → save file
+- [ ] `/admin/usage` cost dashboard page (from Phase 2)
+
+---
+
+### Phase 5 — Verification
+
+- [ ] Smoke test: upload Pat Donahue sample template + case docs → generation streams → output downloadable
+- [ ] First token arrives within 5 seconds (PRD HTTP requirement)
+- [ ] Cost dashboard shows one `LlmAuditLog` row per generation call with correct model, token counts, and USD estimate
+- [ ] `pnpm typecheck` passes
