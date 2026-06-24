@@ -21,14 +21,14 @@ The Python equivalent is **docxtpl** (Jinja2 syntax, `{{ field }}` and `{%p if %
 
 ## Capabilities Relevant to the Fill Engine
 
-| Capability | Detail |
-|------------|--------|
-| **Loops** | `{#specials}{provider} {amount}{/specials}` repeats rows — used for the itemised specials table |
-| **Conditionals** | `{#hasLiens}…{/hasLiens}` (truthy) and `{^hasLiens}…{/hasLiens}` (falsy) — used for optional §7 clauses |
-| **`InspectModule`** | Enumerates **every placeholder in a template before rendering** — doubles as the slot-list for the input-contract sufficiency gate |
-| **`nullGetter`** | Customises missing-value handling — can fail closed or keep `{name}`/render `[Missing: x]` instead of silently emptying |
-| **Structured error schema** | `unopened_tag`, `unclosed_tag`, `duplicate_open_tag`, `multi_error`, … thrown **before** output, preventing a corrupt `.docx` |
-| **Platform** | Runs in Node.js (tested v12–24) and the browser; React/Angular/Vue/Next.js integration guides |
+| Capability                  | Detail                                                                                                                             |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| **Loops**                   | `{#specials}{provider} {amount}{/specials}` repeats rows — used for the itemised specials table                                    |
+| **Conditionals**            | `{#hasLiens}…{/hasLiens}` (truthy) and `{^hasLiens}…{/hasLiens}` (falsy) — used for optional §7 clauses                            |
+| **`InspectModule`**         | Enumerates **every placeholder in a template before rendering** — doubles as the slot-list for the input-contract sufficiency gate |
+| **`nullGetter`**            | Customises missing-value handling — can fail closed or keep `{name}`/render `[Missing: x]` instead of silently emptying            |
+| **Structured error schema** | `unopened_tag`, `unclosed_tag`, `duplicate_open_tag`, `multi_error`, … thrown **before** output, preventing a corrupt `.docx`      |
+| **Platform**                | Runs in Node.js (tested v12–24) and the browser; React/Angular/Vue/Next.js integration guides                                      |
 
 The OSS core covers text, loops, and conditions; advanced features (HTML/image insertion) sit behind paid modules.
 

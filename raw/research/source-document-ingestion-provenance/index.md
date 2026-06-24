@@ -20,7 +20,7 @@ sources: [./sources.md]
 
 No application code exists yet. Relevant context:
 
-- **DEC-0001 / DEC-0002 (accepted)** decided the *template* side: hybrid zone-detection and delimiter-tag persistence. This decision is the **case-record** side — flagged as open in `demand-letter-input-contract.md` ("source-document ingestion + provenance strategy (PDF/.docx/OCR parsing preserving page/paragraph locators)").
+- **DEC-0001 / DEC-0002 (accepted)** decided the _template_ side: hybrid zone-detection and delimiter-tag persistence. This decision is the **case-record** side — flagged as open in `demand-letter-input-contract.md` ("source-document ingestion + provenance strategy (PDF/.docx/OCR parsing preserving page/paragraph locators)").
 - **`demand-letter-input-contract.md`** specifies the ~40-field schema, the three field origins (extracted / boilerplate / attorney-judgment), the **provenance requirement** (every extracted value traceable to source + locator), **grounding-only generation**, and the **sufficiency gate** (gap report on uncovered slots).
 - The PRD fixes the stack as **TypeScript/React/Node.js/AWS Lambda/PostgreSQL** with **Claude** preferred for AI (Anthropic API or AWS Bedrock). The AWS footprint makes **Textract** and **Bedrock** first-class options.
 
@@ -35,7 +35,7 @@ Every Textract operation returns results as **Block objects** (`PAGE` → `LINE`
 Claude accepts PDFs natively as a `document` content block (base64 or via the Files API), **no beta header**; limits are **32 MB / 600 pages** (100 pages on 200K-context models) [S7]. The **Citations feature** (`citations: {enabled: true}` per document, no beta) splits the response into multiple text blocks where cited blocks carry a `citations` array; each citation has `cited_text`, `document_index`, `document_title`, and a **location typed by source**: `page_location` (`start_page_number`/`end_page_number`, 1-indexed) for PDF, `char_location` for plain text [S8]. This gives **grounded, verifiable extraction with page-level provenance out of the box** — but two limits matter here:
 
 - **Provenance is page-level, not bbox-level.** A citation says "page 7," not "the figure at coordinates (x,y) on page 7." For a specials table or a single diagnosis line, that is coarser than Textract.
-- **Citations are incompatible with structured outputs** (`output_config.format`) — the API returns a 400 if both are set [S8]. So you can have *either* cited free-text *or* schema-validated JSON from one call, not both. Populating the canonical field schema **and** carrying citations therefore needs either two passes or a tool-call schema that encodes citations as fields.
+- **Citations are incompatible with structured outputs** (`output_config.format`) — the API returns a 400 if both are set [S8]. So you can have _either_ cited free-text _or_ schema-validated JSON from one call, not both. Populating the canonical field schema **and** carrying citations therefore needs either two passes or a tool-call schema that encodes citations as fields.
 
 ### 3. The Files API — and thus the cleanest PDF-upload path — is unavailable on Amazon Bedrock; PHI/residency pushes toward Bedrock [S10][S11]
 
@@ -47,29 +47,30 @@ Industry IDP guidance positions OCR services like Textract as the **initial extr
 
 ### 5. `.docx` and native PDFs don't need OCR — but the pipeline must branch by document type [S7][S12]
 
-Native `.docx` and text-bearing PDFs already contain extractable text with positional structure; sending them through OCR wastes money and can *lose* fidelity. The ingestion pipeline should **branch**: `.docx` → structured parse (python-docx / docx libraries) preserving paragraph indices; native PDF → text-layer extraction with page/char offsets; **scanned PDF / image → Textract OCR** for the bbox+page locators. Detection (does this PDF have a text layer?) is a cheap up-front gate. Claude can also read native PDFs and `.docx`-converted text directly, but only Textract gives the bbox locators that scanned medical records need.
+Native `.docx` and text-bearing PDFs already contain extractable text with positional structure; sending them through OCR wastes money and can _lose_ fidelity. The ingestion pipeline should **branch**: `.docx` → structured parse (python-docx / docx libraries) preserving paragraph indices; native PDF → text-layer extraction with page/char offsets; **scanned PDF / image → Textract OCR** for the bbox+page locators. Detection (does this PDF have a text layer?) is a cheap up-front gate. Claude can also read native PDFs and `.docx`-converted text directly, but only Textract gives the bbox locators that scanned medical records need.
 
 ## Solution Comparison
 
-| Criteria | 1. AWS Textract | 2. OSS OCR (pdfplumber/unstructured + Tesseract) | 3. LLM-native (Claude PDF + Citations) | 4. Hybrid (Textract → Claude) |
-|----------|-----------------|--------------------------------------------------|----------------------------------------|-------------------------------|
-| **Locator fidelity** | bbox + page + confidence | bbox + page (Tesseract `hOCR`) | **page only** (`page_location`) | **bbox + page + confidence** |
-| **Semantic field extraction** | ❌ (raw blocks / Queries only) | ❌ | ✅ (grounded) | ✅ (grounded, schema-shaped) |
-| **Emits canonical schema** | ❌ | ❌ | ⚠️ not with citations on | ✅ (grounds to Textract IDs) |
-| **Messy scanned medical records** | ✅ strong | ⚠️ Tesseract weaker | ✅ vision is strong | ✅ strongest (OCR + reasoning) |
-| **Native PDF / .docx** | overkill | works | ✅ direct | branch: skip Textract |
-| **Grounding-only / no hallucination** | n/a (no generation) | n/a | ✅ citations enforce it | ✅ grounded to OCR output |
-| **PHI / residency (AWS)** | ✅ in-account | ✅ self-hosted | Bedrock ✅ (no Files API / `inference_geo`) | ✅ both in AWS |
-| **Cost / latency** | Low-Med per page | Low (self-run) | Med (token cost on images) | **Highest (two stages)** |
-| **Build / ops cost** | Low (managed) | **High (run/scale OCR)** | Low | Med-High |
+| Criteria                              | 1. AWS Textract                | 2. OSS OCR (pdfplumber/unstructured + Tesseract) | 3. LLM-native (Claude PDF + Citations)      | 4. Hybrid (Textract → Claude)  |
+| ------------------------------------- | ------------------------------ | ------------------------------------------------ | ------------------------------------------- | ------------------------------ |
+| **Locator fidelity**                  | bbox + page + confidence       | bbox + page (Tesseract `hOCR`)                   | **page only** (`page_location`)             | **bbox + page + confidence**   |
+| **Semantic field extraction**         | ❌ (raw blocks / Queries only) | ❌                                               | ✅ (grounded)                               | ✅ (grounded, schema-shaped)   |
+| **Emits canonical schema**            | ❌                             | ❌                                               | ⚠️ not with citations on                    | ✅ (grounds to Textract IDs)   |
+| **Messy scanned medical records**     | ✅ strong                      | ⚠️ Tesseract weaker                              | ✅ vision is strong                         | ✅ strongest (OCR + reasoning) |
+| **Native PDF / .docx**                | overkill                       | works                                            | ✅ direct                                   | branch: skip Textract          |
+| **Grounding-only / no hallucination** | n/a (no generation)            | n/a                                              | ✅ citations enforce it                     | ✅ grounded to OCR output      |
+| **PHI / residency (AWS)**             | ✅ in-account                  | ✅ self-hosted                                   | Bedrock ✅ (no Files API / `inference_geo`) | ✅ both in AWS                 |
+| **Cost / latency**                    | Low-Med per page               | Low (self-run)                                   | Med (token cost on images)                  | **Highest (two stages)**       |
+| **Build / ops cost**                  | Low (managed)                  | **High (run/scale OCR)**                         | Low                                         | Med-High                       |
 
 ## Recommendation
 
 **Adopt the hybrid (Option 4): Textract for layout + provenance locators, then Claude (on Bedrock for PHI) for grounded field extraction.**
 
-It is the only approach that delivers **bbox-precise per-field provenance** *and* a **schema-shaped, grounding-only extraction** — the two things the input contract makes non-negotiable — while keeping all PHI inside AWS. The page-level limit and citations-vs-schema incompatibility of pure Claude (Option 3) are exactly what the Textract grounding layer removes.
+It is the only approach that delivers **bbox-precise per-field provenance** _and_ a **schema-shaped, grounding-only extraction** — the two things the input contract makes non-negotiable — while keeping all PHI inside AWS. The page-level limit and citations-vs-schema incompatibility of pure Claude (Option 3) are exactly what the Textract grounding layer removes.
 
 **Implementation outline:**
+
 1. **Type-branch on ingest.** Detect text-layer PDFs and `.docx` (skip OCR — parse structurally with page/paragraph offsets); route scanned PDFs/images to **Textract** (`AnalyzeDocument` with `LAYOUT` + `TABLES` + `FORMS`, or targeted `Queries`). Run Textract async for multi-page documents via the S3 + SNS job pattern.
 2. **Persist a provenance store.** Write every Textract block (id, type, text, page, bbox, confidence) to PostgreSQL keyed by document + block id — this is the citation backing store and the OCR cache.
 3. **Grounded extraction.** Feed the normalized Textract text (block ids inline) to Claude with the **canonical field schema**; require each field to return its value **plus the block id(s)** it came from, or `null` + reason if absent (grounding-only; no invented values).
@@ -77,10 +78,11 @@ It is the only approach that delivers **bbox-precise per-field provenance** *and
 5. **PHI posture.** Run Claude via **Bedrock** (data stays in-account; PDF+Citations available; send inline base64 since the Files API is absent on Bedrock); or first-party Anthropic under a BAA if the Files API / `inference_geo` are needed.
 
 **Risks & mitigations:**
-- *Two-stage cost/latency* → cache Textract output (it's deterministic per document); only re-run extraction on prompt changes. Use Textract Queries to pull just the needed fields when full Layout isn't required.
-- *Textract misreads on poor scans* → surface confidence scores into the sufficiency gate; low-confidence fields route to attorney review rather than silent acceptance [S4][S6].
-- *Bedrock lacks the Files API* → send PDFs/images inline as base64 (within the 32MB/page limits); chunk very large records.
-- *Citations-vs-schema trap if you skip Textract* → don't ground to Claude's own page citations; ground to Textract block ids, which carry no such restriction.
+
+- _Two-stage cost/latency_ → cache Textract output (it's deterministic per document); only re-run extraction on prompt changes. Use Textract Queries to pull just the needed fields when full Layout isn't required.
+- _Textract misreads on poor scans_ → surface confidence scores into the sufficiency gate; low-confidence fields route to attorney review rather than silent acceptance [S4][S6].
+- _Bedrock lacks the Files API_ → send PDFs/images inline as base64 (within the 32MB/page limits); chunk very large records.
+- _Citations-vs-schema trap if you skip Textract_ → don't ground to Claude's own page citations; ground to Textract block ids, which carry no such restriction.
 
 **Alternative if constraints change:** if bbox precision proves unnecessary (e.g. page-level "see p.7" is enough for the attorney) and cost/latency dominate, **Claude native PDF + Citations (Option 3)** is the simpler one-stage path — accept page-level provenance and run extraction as cited free-text or via a tool-call schema that embeds the page citation as a field.
 

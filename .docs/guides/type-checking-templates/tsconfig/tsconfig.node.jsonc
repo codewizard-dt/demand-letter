@@ -8,7 +8,7 @@
 
     // --- Language ---
     "target": "ES2023",
-    "lib": ["ES2023"],                        // No DOM — vite.config.ts runs in Node
+    "lib": ["ES2023"], // No DOM — vite.config.ts runs in Node
 
     // --- Modules ---
     "module": "ESNext",
@@ -19,7 +19,7 @@
 
     // --- Emit ---
     "noEmit": true,
-    "types": ["node"],                        // Node.js globals (process, __dirname, etc.)
+    "types": ["node"], // Node.js globals (process, __dirname, etc.)
 
     // --- Strict ---
     "strict": true,
@@ -28,7 +28,7 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
 
-    "skipLibCheck": true
+    "skipLibCheck": true,
   },
-  "include": ["vite.config.ts"]              // Cover ONLY the vite config; nothing else
+  "include": ["vite.config.ts"], // Cover ONLY the vite config; nothing else
 }

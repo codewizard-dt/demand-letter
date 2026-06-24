@@ -6,13 +6,13 @@
   "compilerOptions": {
     // --- Output ---
     "outDir": "./dist",
-    "declaration": true,                      // Emit .d.ts declaration files
-    "declarationMap": true,                   // Source maps for declaration files (enables "go to source")
-    "emitDeclarationOnly": true,              // Bundler (Rollup/Vite lib mode) handles JS; TS emits types only
+    "declaration": true, // Emit .d.ts declaration files
+    "declarationMap": true, // Source maps for declaration files (enables "go to source")
+    "emitDeclarationOnly": true, // Bundler (Rollup/Vite lib mode) handles JS; TS emits types only
     "sourceMap": true,
 
     // --- Language ---
-    "target": "ES2020",                       // Safe floor for modern bundled library consumers
+    "target": "ES2020", // Safe floor for modern bundled library consumers
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
 
     // --- Modules ---
@@ -22,7 +22,7 @@
     "resolveJsonModule": true,
 
     // --- JSX ---
-    "jsx": "react-jsx",                       // React 17+ automatic transform; never use "react" (old style)
+    "jsx": "react-jsx", // React 17+ automatic transform; never use "react" (old style)
 
     // --- Strict type checking ---
     "strict": true,
@@ -36,9 +36,9 @@
     // --- Interop ---
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
   // Exclude tests and spec files from the published declaration output
-  "exclude": ["node_modules", "dist", "**/*.test.*", "**/*.spec.*"]
+  "exclude": ["node_modules", "dist", "**/*.test.*", "**/*.spec.*"],
 }

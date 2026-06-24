@@ -4,18 +4,18 @@ End-to-end guide: build images on GitHub Actions, push to GHCR, auto-deploy to a
 
 ### Target quick-reference
 
-| Target | When to run |
-|---|---|
-| `make ports` | Check which URLs/ports the stack is using |
-| `make login` | First-time GHCR auth on a new machine or VPS |
-| `make dev` | Day-to-day local development (hot-reload, builds from source) |
-| `make up` | Start production stack from pre-built GHCR images |
-| `make down` | Stop and remove all containers |
-| `make ps` | Check container health/status |
-| `make push` | Build and push prod images manually (CI bypass) |
-| `make deploy` | Full manual deploy: sync files to VPS + pull + restart |
-| `make deploy-pull` | Run on VPS directly after files are already synced |
-| `make ssh-alias` | Add/update the `~/.ssh/config` entry for the VPS |
+| Target             | When to run                                                   |
+| ------------------ | ------------------------------------------------------------- |
+| `make ports`       | Check which URLs/ports the stack is using                     |
+| `make login`       | First-time GHCR auth on a new machine or VPS                  |
+| `make dev`         | Day-to-day local development (hot-reload, builds from source) |
+| `make up`          | Start production stack from pre-built GHCR images             |
+| `make down`        | Stop and remove all containers                                |
+| `make ps`          | Check container health/status                                 |
+| `make push`        | Build and push prod images manually (CI bypass)               |
+| `make deploy`      | Full manual deploy: sync files to VPS + pull + restart        |
+| `make deploy-pull` | Run on VPS directly after files are already synced            |
+| `make ssh-alias`   | Add/update the `~/.ssh/config` entry for the VPS              |
 
 ---
 
@@ -261,12 +261,12 @@ tar xzf runner.tar.gz && rm runner.tar.gz
   --unattended
 ```
 
-| Placeholder | Example |
-|---|---|
-| `<ORG>/<REPO>` | `acme/my-app` |
+| Placeholder            | Example              |
+| ---------------------- | -------------------- |
+| `<ORG>/<REPO>`         | `acme/my-app`        |
 | `<REGISTRATION_TOKEN>` | Token from GitHub UI |
-| `<RUNNER_NAME>` | `vps-prod` |
-| `<LABEL>` | `prod` |
+| `<RUNNER_NAME>`        | `vps-prod`           |
+| `<LABEL>`              | `prod`               |
 
 ### Step 2 — Install as a systemd service
 
@@ -414,11 +414,11 @@ ssh-alias:
 
 ## Sizing Guide
 
-| Scenario | VPS |
-|---|---|
+| Scenario                         | VPS                   |
+| -------------------------------- | --------------------- |
 | Small app (≤4 containers, no ML) | $12/mo — 1 vCPU, 2 GB |
-| Medium app (4–8 containers) | $24/mo — 2 vCPU, 4 GB |
-| App with ML sidecars (TTS/STT) | $48/mo — 2 vCPU, 8 GB |
+| Medium app (4–8 containers)      | $24/mo — 2 vCPU, 4 GB |
+| App with ML sidecars (TTS/STT)   | $48/mo — 2 vCPU, 8 GB |
 
 ---
 
@@ -433,16 +433,16 @@ ssh-alias:
 
 ## Troubleshooting
 
-| Symptom | Fix |
-|---|---|
-| Runner shows **Offline** | `systemctl restart "actions.runner.*"` |
-| `docker compose pull` — 401 / permission denied | Re-run Step 3 (GHCR auth) |
-| `docker compose pull` — 403 Forbidden (after successful login) | GHCR packages are **private** by default. Go to GitHub → your profile → Packages → each image → Package settings → Change visibility → Public. Or re-login as the **runner** OS user (not root): `su - runner && echo PAT \| docker login ghcr.io -u <user> --password-stdin`. Credentials in root's `~/.docker/config.json` are not visible to the runner service user. |
-| Deploy job stays **Queued** indefinitely | Runner is offline or label mismatch — verify runner is **Idle** in GitHub UI and `runs-on` labels match |
-| `docker compose up --wait` times out | A healthcheck is failing — `docker compose ps` and `docker compose logs <service>` |
-| Images build but wrong version deployed | Confirm `:latest` tag is being pushed and `docker compose pull` is pulling `:latest`, not a pinned digest |
-| `config.sh` — `Permission denied` on `.env` / `_diag` | Runner was configured as root, but `/opt/actions-runner` is owned by root. Create a non-root user first: `useradd -m -G docker runner && chown -R runner:runner /opt/actions-runner`, then `su - runner` before running `config.sh`. Install the service with `./svc.sh install runner` (pass the username). |
-| Caddy container up but site shows `ERR_CONNECTION_REFUSED` — no ports in `docker ps` | Containers were started with a stale compose file that had no port bindings. Run `docker compose up -d --force-recreate` to restart all containers with the current compose config. |
-| `cp: cannot create regular file '/opt/<PROJECT>/...': Permission denied` in deploy job | The runner OS user doesn't own `/opt/<PROJECT>`. Fix: `chown -R runner:runner /opt/<PROJECT>` (run as root on the VPS). |
-| Gitleaks flags fake tokens in test/UAT docs | Add the file path glob and/or token regex to `.gitleaks.toml` under `[allowlist]`. Example: `paths = ['(?i)\.docs/uat/']` |
-| Host-mounted config file causes `not a directory` error on container start | If the config file is baked into the image (e.g. via `COPY` in the Dockerfile), remove the bind-mount volume from `docker-compose.yml`. Docker creates a directory at the mount path when the host file doesn't exist, causing the error on the next start. |
+| Symptom                                                                                | Fix                                                                                                                                                                                                                                                                                                                                                                      |
+| -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Runner shows **Offline**                                                               | `systemctl restart "actions.runner.*"`                                                                                                                                                                                                                                                                                                                                   |
+| `docker compose pull` — 401 / permission denied                                        | Re-run Step 3 (GHCR auth)                                                                                                                                                                                                                                                                                                                                                |
+| `docker compose pull` — 403 Forbidden (after successful login)                         | GHCR packages are **private** by default. Go to GitHub → your profile → Packages → each image → Package settings → Change visibility → Public. Or re-login as the **runner** OS user (not root): `su - runner && echo PAT \| docker login ghcr.io -u <user> --password-stdin`. Credentials in root's `~/.docker/config.json` are not visible to the runner service user. |
+| Deploy job stays **Queued** indefinitely                                               | Runner is offline or label mismatch — verify runner is **Idle** in GitHub UI and `runs-on` labels match                                                                                                                                                                                                                                                                  |
+| `docker compose up --wait` times out                                                   | A healthcheck is failing — `docker compose ps` and `docker compose logs <service>`                                                                                                                                                                                                                                                                                       |
+| Images build but wrong version deployed                                                | Confirm `:latest` tag is being pushed and `docker compose pull` is pulling `:latest`, not a pinned digest                                                                                                                                                                                                                                                                |
+| `config.sh` — `Permission denied` on `.env` / `_diag`                                  | Runner was configured as root, but `/opt/actions-runner` is owned by root. Create a non-root user first: `useradd -m -G docker runner && chown -R runner:runner /opt/actions-runner`, then `su - runner` before running `config.sh`. Install the service with `./svc.sh install runner` (pass the username).                                                             |
+| Caddy container up but site shows `ERR_CONNECTION_REFUSED` — no ports in `docker ps`   | Containers were started with a stale compose file that had no port bindings. Run `docker compose up -d --force-recreate` to restart all containers with the current compose config.                                                                                                                                                                                      |
+| `cp: cannot create regular file '/opt/<PROJECT>/...': Permission denied` in deploy job | The runner OS user doesn't own `/opt/<PROJECT>`. Fix: `chown -R runner:runner /opt/<PROJECT>` (run as root on the VPS).                                                                                                                                                                                                                                                  |
+| Gitleaks flags fake tokens in test/UAT docs                                            | Add the file path glob and/or token regex to `.gitleaks.toml` under `[allowlist]`. Example: `paths = ['(?i)\.docs/uat/']`                                                                                                                                                                                                                                                |
+| Host-mounted config file causes `not a directory` error on container start             | If the config file is baked into the image (e.g. via `COPY` in the Dockerfile), remove the bind-mount volume from `docker-compose.yml`. Docker creates a directory at the mount path when the host file doesn't exist, causing the error on the next start.                                                                                                              |

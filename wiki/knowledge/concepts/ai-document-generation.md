@@ -46,8 +46,8 @@ Research into demand letter legal conventions surfaced five design principles fo
 
 Later input-focused research sharpens the framing above: the workflow is fundamentally a **slot-filling join**, not free generation. The template (class A) defines the slots and supplies all form and verbatim boilerplate; the case record (class B) fills the variable slots and supplies all facts. Both classes are necessary; neither is sufficient alone, and sufficiency is the join — the case record must cover every variable slot the template exposes. This adds three operational requirements to the principles above:
 
-- **Provenance, not just citation** — source documents must be ingested preserving page/paragraph locators (including OCR'd scans), so every extracted value carries a verifiable source position. The citation layer is part of the *input/output contract*, not an optional feature.
-- **Grounding-only generation** — the model populates fields **only** from (A) and (B). General legal/medical training knowledge is an *inaccuracy vector*, not a permitted generation input; a value absent from (A) or (B) is flagged missing, not generated.
+- **Provenance, not just citation** — source documents must be ingested preserving page/paragraph locators (including OCR'd scans), so every extracted value carries a verifiable source position. The citation layer is part of the _input/output contract_, not an optional feature.
+- **Grounding-only generation** — the model populates fields **only** from (A) and (B). General legal/medical training knowledge is an _inaccuracy vector_, not a permitted generation input; a value absent from (A) or (B) is flagged missing, not generated.
 - **Sufficiency gate + gap report** — before generation, a coverage check verifies every variable slot has an extracted value (with citation) or an explicit attorney value. Uncovered slots produce a **gap report**, never a hallucinated fill.
 - **Attorney-judgment slots** — demand amount, general-damages valuation, and future-medical reserve are decisions, not extractable facts; the system collects them explicitly via form input rather than guessing.
 

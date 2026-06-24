@@ -3,12 +3,12 @@
 // Key: uses `strictTypeChecked` + `parserOptions.projectService` for full type-aware linting.
 // Replace plugin imports to match your actual installed packages.
 
-import js from '@eslint/js'
-import globals from 'globals'
-import reactHooks from 'eslint-plugin-react-hooks'
-import reactRefresh from 'eslint-plugin-react-refresh'
-import tseslint from 'typescript-eslint'
-import { defineConfig, globalIgnores } from 'eslint/config'
+import js from '@eslint/js';
+import globals from 'globals';
+import reactHooks from 'eslint-plugin-react-hooks';
+import reactRefresh from 'eslint-plugin-react-refresh';
+import tseslint from 'typescript-eslint';
+import { defineConfig, globalIgnores } from 'eslint/config';
 // If using vitest (native flat config, no FlatCompat needed):
 // import vitest from 'eslint-plugin-vitest'
 // If using jest (v29+ ships native flat config, no FlatCompat needed):
@@ -21,8 +21,8 @@ export default defineConfig([
     'build',
     'coverage',
     '.vite',
-    '**/*.gen.ts',     // generated files
-    '**/*.d.ts',       // declaration files
+    '**/*.gen.ts', // generated files
+    '**/*.d.ts', // declaration files
   ]),
 
   // --- Source files: TypeScript + React ---
@@ -81,7 +81,7 @@ export default defineConfig([
     // extends: [jest.configs['flat/recommended']],  // no FlatCompat needed in jest v29+
     languageOptions: {
       globals: {
-        ...globals.node,                             // process, __dirname, etc.
+        ...globals.node, // process, __dirname, etc.
       },
     },
     rules: {
@@ -102,4 +102,4 @@ export default defineConfig([
       '@typescript-eslint/no-require-imports': 'off',
     },
   },
-])
+]);

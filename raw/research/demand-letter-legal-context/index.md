@@ -32,6 +32,7 @@ This project has no codebase yet — this research is foundational context for a
 ### 1. Definition and Purpose [S1][S2][S5]
 
 A demand letter is a formal written communication — usually on law firm letterhead — from one party to another (often attorney-to-insurer or attorney-to-defendant) that:
+
 - **States the factual background** of the dispute
 - **Asserts a legal right or claim** (with statutory or contractual basis)
 - **Quantifies and demands specific relief** (payment, action, or cessation)
@@ -46,15 +47,15 @@ Secondary purposes include: creating a paper trail of the dispute, establishing 
 
 Demand letters are used across virtually every area of civil law. The principal types:
 
-| Type | Common Context | Core Demand |
-|------|---------------|-------------|
-| **Personal injury / insurance settlement** | Car accidents, slip-and-fall, medical malpractice | Monetary compensation from insurer for bodily injury damages |
-| **Breach of contract** | Unpaid invoices, failed delivery, broken agreements | Performance, payment, or damages for breach |
-| **Debt collection** | Overdue accounts, loans | Payment of debt owed |
-| **Employment disputes** | Unpaid wages, wrongful termination, discrimination | Back pay, severance, cessation of conduct |
-| **Real estate / landlord-tenant** | Security deposit, lease breach, eviction | Return of funds, repairs, vacating premises |
-| **IP / defamation / consumer protection** | Trademark infringement, copyright violation, false advertising | Cease and desist, damages |
-| **Time-limited policy limits demand** (CCP §999, CA) | High-value PI claims | All policy limits, within strict statutory conditions |
+| Type                                                 | Common Context                                                 | Core Demand                                                  |
+| ---------------------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------ |
+| **Personal injury / insurance settlement**           | Car accidents, slip-and-fall, medical malpractice              | Monetary compensation from insurer for bodily injury damages |
+| **Breach of contract**                               | Unpaid invoices, failed delivery, broken agreements            | Performance, payment, or damages for breach                  |
+| **Debt collection**                                  | Overdue accounts, loans                                        | Payment of debt owed                                         |
+| **Employment disputes**                              | Unpaid wages, wrongful termination, discrimination             | Back pay, severance, cessation of conduct                    |
+| **Real estate / landlord-tenant**                    | Security deposit, lease breach, eviction                       | Return of funds, repairs, vacating premises                  |
+| **IP / defamation / consumer protection**            | Trademark infringement, copyright violation, false advertising | Cease and desist, damages                                    |
+| **Time-limited policy limits demand** (CCP §999, CA) | High-value PI claims                                           | All policy limits, within strict statutory conditions        |
 
 **The personal injury / insurance demand is the most common and most structured subtype** — it has a canonical multi-section format with specific medical, damages, and settlement-conditions content (see the Donahue sample letter). [S6][S7]
 
@@ -78,16 +79,19 @@ A legally effective demand letter universally contains:
 ### 4. Legal Implications [S3][S10][S11][S12]
 
 **Admissibility:**
+
 - Under **FRE Rule 408** (federal) and state equivalents (e.g., California Evidence Code §§1152/1154), demand letters and settlement communications are inadmissible **to prove liability or the amount of a claim** [S10][S11].
 - However, they are **not privileged** — they can be discovered and admitted for other purposes (showing knowledge, bad faith, statute of limitations timing, bias of witnesses) [S11][S12].
 - Practitioners sometimes caption letters "Rule 408 Settlement Communication" as a signal of intent, but this labeling has no binding effect on admissibility determinations — courts look at substance, not labels [S12].
 
 **Statute of Limitations:**
+
 - A demand letter does **NOT toll the statute of limitations** in most jurisdictions — the clock keeps running regardless [S13].
 - If the limitations period is tight and settlement negotiations are underway, parties need a signed **tolling agreement** or the plaintiff must file suit to stop the clock [S13].
 - Some statutes make a demand letter a **condition precedent to suit** (e.g., Florida auto insurance statutes, certain consumer protection statutes, government claims acts). Filing suit before completing any required notice/cure period typically results in dismissal without prejudice [S3][S13].
 
 **Court weight:**
+
 - Courts generally want to see that parties made good-faith attempts to settle before litigating; a demand letter documents that attempt and can influence how a judge views conduct in subsequent proceedings [S2][S5].
 - In California, failure of an insurer to accept a reasonable CCP §999 demand within the deadline can expose the insurer to **bad-faith liability** and judgment in excess of policy limits [S7].
 

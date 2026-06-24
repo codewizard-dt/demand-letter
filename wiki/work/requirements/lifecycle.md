@@ -11,15 +11,15 @@ Active files are **never moved** after creation; state lives in the `status:` fr
 
 ## Frontmatter schema
 
-| Key | Required | Notes |
-|-----|----------|-------|
-| `id` | yes | `REQ-NNN` |
-| `title` | yes | short requirement name |
-| `status` | yes | `draft \| approved \| retired` |
-| `created` / `updated` | yes | `YYYY-MM-DD` |
-| `owner` | yes | accountable person/role |
-| `stakeholders` | no | consulted/informed list |
-| `tags` | no | discovery only |
+| Key                   | Required | Notes                          |
+| --------------------- | -------- | ------------------------------ |
+| `id`                  | yes      | `REQ-NNN`                      |
+| `title`               | yes      | short requirement name         |
+| `status`              | yes      | `draft \| approved \| retired` |
+| `created` / `updated` | yes      | `YYYY-MM-DD`                   |
+| `owner`               | yes      | accountable person/role        |
+| `stakeholders`        | no       | consulted/informed list        |
+| `tags`                | no       | discovery only                 |
 
 Approved requirements are amended via append-only `## Amendment N` blocks, never edited in place.
 

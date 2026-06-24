@@ -1,6 +1,6 @@
 # Evals That Actually Work: A 5-Stage Framework for Production AI Quality
 
-> A generic, project-agnostic guide to building an evaluation suite for any production AI system. Distills the "Evals That Actually Work" framework into the test types, artifacts, cadences, and anti-patterns a team needs to go from *"we tested it manually"* to *"is this better?" is a question we answer with data*.
+> A generic, project-agnostic guide to building an evaluation suite for any production AI system. Distills the "Evals That Actually Work" framework into the test types, artifacts, cadences, and anti-patterns a team needs to go from _"we tested it manually"_ to _"is this better?" is a question we answer with data_.
 
 This guide is **not specific to any one codebase**. Drop it into any project that ships LLM-backed features (agents, RAG systems, classifiers, summarizers, judges) and use it as a blueprint for what to build and in what order.
 
@@ -22,19 +22,19 @@ With evals you:
 - Compare quality with data
 - Ship and know
 
-If your answer to *"how do you know your AI is good?"* is *"we tested it manually"* or *"it looked fine in review,"* you don't have an eval strategy — you have vibes.
+If your answer to _"how do you know your AI is good?"_ is _"we tested it manually"_ or _"it looked fine in review,"_ you don't have an eval strategy — you have vibes.
 
 ---
 
 ## 2. The framework: five stages, each builds on the last
 
-| # | Stage | Purpose | When it runs |
-|---|-------|---------|--------------|
-| 1 | **Golden Sets** | Baseline correctness | Every commit |
-| 2 | **Labeled Scenarios** | Coverage mapping | Every release |
-| 3 | **Replay Harnesses** | Reproducibility + ML metrics | Weekly / nightly |
-| 4 | **Rubrics** | Multi-dimensional quality scoring | Before shipping |
-| 5 | **Experiments** | Data-driven decisions on changes | On any change |
+| #   | Stage                 | Purpose                           | When it runs     |
+| --- | --------------------- | --------------------------------- | ---------------- |
+| 1   | **Golden Sets**       | Baseline correctness              | Every commit     |
+| 2   | **Labeled Scenarios** | Coverage mapping                  | Every release    |
+| 3   | **Replay Harnesses**  | Reproducibility + ML metrics      | Weekly / nightly |
+| 4   | **Rubrics**           | Multi-dimensional quality scoring | Before shipping  |
+| 5   | **Experiments**       | Data-driven decisions on changes  | On any change    |
 
 **Start at Stage 1. Add stages as your system matures.** Do not try to build all five at once. A team with 15 good golden cases is shipping better software than a team with a half-finished rubric harness and no regression suite.
 
@@ -53,35 +53,35 @@ These stages map cleanly to test layers:
 ### Shape
 
 - **Size:** 10–20 cases. Quality > quantity.
-- **Format:** YAML or JSON, one record per case. Lives in a top-level `evals/golden/` directory, *separate from the code under test*, so the eval substrate stays portable.
+- **Format:** YAML or JSON, one record per case. Lives in a top-level `evals/golden/` directory, _separate from the code under test_, so the eval substrate stays portable.
 - **Cost:** Zero LLM calls. Pure code evals — assertions over the system's recorded output.
 - **Cadence:** Every commit, in CI.
 
 ### Schema
 
 ```yaml
-- id: "gs-001"
-  query: "What is our remote work policy?"
+- id: 'gs-001'
+  query: 'What is our remote work policy?'
   expected_tools:
     - vector_search
   expected_sources:
     - remote_work_policy.md
   must_contain:
-    - "remote"
-    - "core hours"
+    - 'remote'
+    - 'core hours'
   must_not_contain:
     - "I don't know"
-    - "no information"
+    - 'no information'
 ```
 
 ### The four check types
 
-| Check | What it catches |
-|---|---|
-| **Tool selection** | Agent used the wrong tool |
-| **Source citation** | Agent cited the wrong document |
-| **Content validation** (`must_contain`) | Response is missing key facts |
-| **Negative validation** (`must_not_contain`) | Agent hallucinated or gave up |
+| Check                                        | What it catches                |
+| -------------------------------------------- | ------------------------------ |
+| **Tool selection**                           | Agent used the wrong tool      |
+| **Source citation**                          | Agent cited the wrong document |
+| **Content validation** (`must_contain`)      | Response is missing key facts  |
+| **Negative validation** (`must_not_contain`) | Agent hallucinated or gave up  |
 
 All four are **deterministic, binary, no LLM needed**. They run as plain `assert` statements over recorded system output.
 
@@ -102,12 +102,12 @@ assert "I don't know" not in response_text
 
 ### Four rules for golden sets that stay useful
 
-| Rule | Detail |
-|---|---|
-| **Start small** | 10–20 quality cases beats 100 sloppy ones |
-| **Run on every commit** | These *are* your regression tests |
-| **Add from production bugs** | Every confirmed prod bug becomes a new case |
-| **Never** | Change expected output just to make tests pass |
+| Rule                         | Detail                                         |
+| ---------------------------- | ---------------------------------------------- |
+| **Start small**              | 10–20 quality cases beats 100 sloppy ones      |
+| **Run on every commit**      | These _are_ your regression tests              |
+| **Add from production bugs** | Every confirmed prod bug becomes a new case    |
+| **Never**                    | Change expected output just to make tests pass |
 
 ### Artifacts
 
@@ -117,27 +117,27 @@ Every run emits per-case verdict files (JSON) and a summary (Markdown). Diffs vs
 
 ## 4. Stage 2 — Labeled Scenarios
 
-**Goal:** Answer *"does it work for **all types**?"* not just *"does it work?"* Golden sets prove correctness on the canonical happy path. Labeled scenarios prove **coverage** across the full input space.
+**Goal:** Answer _"does it work for **all types**?"_ not just _"does it work?"_ Golden sets prove correctness on the canonical happy path. Labeled scenarios prove **coverage** across the full input space.
 
 ### Shape
 
 - **Size:** 30–100+ cases.
 - **Format:** Same as golden sets, plus **tags** for category, subcategory, and difficulty.
 - **Cadence:** Every release (not every commit — too slow / too expensive).
-- **All must pass?** No. You watch pass-rate *trends* per cell, not a binary gate.
+- **All must pass?** No. You watch pass-rate _trends_ per cell, not a binary gate.
 
 ### Schema
 
 ```yaml
-- id: "sc-m-001"
+- id: 'sc-m-001'
   query: "What's our refund policy and how many refunds last quarter?"
-  expected_tools: ["vector_search", "sql_query"]
-  category:    multi_tool
+  expected_tools: ['vector_search', 'sql_query']
+  category: multi_tool
   subcategory: vector_and_sql
-  difficulty:  straightforward
+  difficulty: straightforward
 ```
 
-The tags don't change *how the test runs* — they change *what the results tell you.*
+The tags don't change _how the test runs_ — they change _what the results tell you._
 
 ### Coverage matrix
 
@@ -161,12 +161,12 @@ The empty cells are your test-writing backlog.
 
 ### Golden Sets vs. Labeled Scenarios
 
-| | Golden Sets | Labeled Scenarios |
-|---|---|---|
-| **Question** | "Does it work?" | "Does it work for all types?" |
-| **Size** | 10–20 | 30–100+ |
-| **All must pass?** | Yes | No |
-| **When to run** | Every commit | Every release |
+|                    | Golden Sets     | Labeled Scenarios             |
+| ------------------ | --------------- | ----------------------------- |
+| **Question**       | "Does it work?" | "Does it work for all types?" |
+| **Size**           | 10–20           | 30–100+                       |
+| **All must pass?** | Yes             | No                            |
+| **When to run**    | Every commit    | Every release                 |
 
 ---
 
@@ -193,13 +193,13 @@ scores   = evaluate_session(replayed)
 
 ### ML-grade metrics this unlocks
 
-| Metric | What it measures |
-|---|---|
-| **Precision** | How many retrieved docs are relevant? |
-| **Recall** | How many relevant docs were retrieved? |
-| **Groundedness** | Is the response grounded in sources? |
-| **Faithfulness** | Does it stay true to sources (no hallucination)? |
-| **Tool accuracy** | Did it use the correct tools? |
+| Metric            | What it measures                                 |
+| ----------------- | ------------------------------------------------ |
+| **Precision**     | How many retrieved docs are relevant?            |
+| **Recall**        | How many relevant docs were retrieved?           |
+| **Groundedness**  | Is the response grounded in sources?             |
+| **Faithfulness**  | Does it stay true to sources (no hallucination)? |
+| **Tool accuracy** | Did it use the correct tools?                    |
 
 Precision, recall, and tool accuracy are deterministic. **Groundedness and faithfulness require an LLM judge** — which is where Stage 4 (rubrics) earns its keep.
 
@@ -217,7 +217,7 @@ Replays let your full pipeline (retrieval → tool calls → generation → judg
 
 ## 6. Stage 4 — Rubrics & LLM-as-Judge
 
-**Goal:** Move from binary (pass/fail) to multi-dimensional *quality* scoring. Use an LLM judge — but **only after calibrating it against humans**.
+**Goal:** Move from binary (pass/fail) to multi-dimensional _quality_ scoring. Use an LLM judge — but **only after calibrating it against humans**.
 
 ### When to reach for an LLM judge
 
@@ -243,16 +243,16 @@ The judge makes a binary call **per claim**, then aggregates into a groundedness
 
 A rubric is a set of weighted, named quality dimensions. A reasonable starting shape:
 
-| Dimension | Weight | Question |
-|---|---|---|
-| Relevance | 30% | Does it address the question? |
-| Accuracy | 40% | Are the facts correct? |
-| Completeness | 20% | Does it fully answer? |
-| Clarity | 10% | Is it easy to understand? |
+| Dimension    | Weight | Question                      |
+| ------------ | ------ | ----------------------------- |
+| Relevance    | 30%    | Does it address the question? |
+| Accuracy     | 40%    | Are the facts correct?        |
+| Completeness | 20%    | Does it fully answer?         |
+| Clarity      | 10%    | Is it easy to understand?     |
 
-Weighted average → single quality score. Track *trends* across releases. A 5% drop in accuracy is a red flag even if overall pass-rate holds.
+Weighted average → single quality score. Track _trends_ across releases. A 5% drop in accuracy is a red flag even if overall pass-rate holds.
 
-Domain-specific rubrics swap these dimensions for what matters in your domain (e.g., a medical-advice judge might use *safety / accuracy / scope-adherence / clarity*).
+Domain-specific rubrics swap these dimensions for what matters in your domain (e.g., a medical-advice judge might use _safety / accuracy / scope-adherence / clarity_).
 
 ### Every score needs an explicit anchor
 
@@ -260,23 +260,23 @@ Domain-specific rubrics swap these dimensions for what matters in your domain (e
 accuracy:
   weight: 0.4
   scores:
-    5: "All facts correct and verifiable from cited sources"
-    3: "Mostly correct with one minor inaccuracy"
-    1: "Contains significant errors or misleading information"
-    0: "Completely incorrect or fabricated"
+    5: 'All facts correct and verifiable from cited sources'
+    3: 'Mostly correct with one minor inaccuracy'
+    1: 'Contains significant errors or misleading information'
+    0: 'Completely incorrect or fabricated'
 ```
 
 **No anchor = no consistency.** A judge that interprets "3" differently each run is useless. If you can't write down what a 5 looks like in concrete terms, neither the judge nor a human can score it.
 
 ### Score thresholds → action policy
 
-| Score | Quality | Action |
-|---|---|---|
-| 4.5–5.0 | Excellent | Ship it |
-| 3.5–4.4 | Good | Minor tweaks |
-| 2.5–3.4 | Acceptable | Review and improve |
-| 1.5–2.4 | Poor | Significant work needed |
-| 0–1.4 | Critical | Stop. Fix now. |
+| Score   | Quality    | Action                  |
+| ------- | ---------- | ----------------------- |
+| 4.5–5.0 | Excellent  | Ship it                 |
+| 3.5–4.4 | Good       | Minor tweaks            |
+| 2.5–3.4 | Acceptable | Review and improve      |
+| 1.5–2.4 | Poor       | Significant work needed |
+| 0–1.4   | Critical   | Stop. Fix now.          |
 
 Wire these thresholds into your release gate or orchestrator so the action is automatic, not a meeting.
 
@@ -294,7 +294,7 @@ correlation(human_scores, llm_scores)
 # If < 0.8, your rubric is broken — fix it before trusting the judge
 ```
 
-**A judge with a bad rubric produces confident, wrong scores.** Calibration must happen *before* you let the judge gate releases.
+**A judge with a bad rubric produces confident, wrong scores.** Calibration must happen _before_ you let the judge gate releases.
 
 ---
 
@@ -316,12 +316,12 @@ correlation(human_scores, llm_scores)
 
 ### Four rules
 
-| Rule | Why |
-|---|---|
-| **One change per experiment** | Isolate variables to understand impact |
-| **Same test set every time** | Apples to apples |
-| **Track cost** | 6% quality gain at 5× cost may not be worth it |
-| **Version your prompts** | Store them as files; commit to git |
+| Rule                          | Why                                            |
+| ----------------------------- | ---------------------------------------------- |
+| **One change per experiment** | Isolate variables to understand impact         |
+| **Same test set every time**  | Apples to apples                               |
+| **Track cost**                | 6% quality gain at 5× cost may not be worth it |
+| **Version your prompts**      | Store them as files; commit to git             |
 
 ### Statistical significance
 
@@ -337,24 +337,24 @@ Combine experiment outputs into a gate: **rubric pass-rate above threshold AND c
 
 ### 1. The Likert trap
 
-> *"Rate the quality of this response: 1 (poor) to 5 (excellent)"*
+> _"Rate the quality of this response: 1 (poor) to 5 (excellent)"_
 
 **What happens:** Human A gives "3" for adequate answers. Human B gives "4". Aggregated scores are noise, not signal.
 **Fix:** Define every point on the scale with a concrete anchor. If you can't write the anchor, you haven't done the work.
 
 ### 2. Vague criteria
 
-> *"The response demonstrates strategic thinking"*
+> _"The response demonstrates strategic thinking"_
 
 **Problems:** "Strategic thinking" is undefined. Two evaluators will score it differently. An LLM judge will hallucinate a definition. You can't tell what improvement looks like.
-**Fix:** Make it falsifiable: *"Response identifies ≥2 explicit trade-offs with concrete examples."*
+**Fix:** Make it falsifiable: _"Response identifies ≥2 explicit trade-offs with concrete examples."_
 
 ### 3. Ambiguous ranges
 
-> *"The response length should be between 300 and 500 tokens"*
+> _"The response length should be between 300 and 500 tokens"_
 
 **Problem:** A 450-token response that misses the question passes. A 250-token response that perfectly answers it fails. This criterion measures **form, not quality**.
-**Fix:** Describe what good looks like: *"Answers all parts of the question; does not include unrequested information."*
+**Fix:** Describe what good looks like: _"Answers all parts of the question; does not include unrequested information."_
 
 ### The underlying rule
 
@@ -378,15 +378,15 @@ assert "$500 annual stipend" in response
 
 Binary checks have **zero calibration cost, zero API cost, and produce the same result every run.** Reserve LLM judges for what can't be checked programmatically.
 
-### Write rubric anchors *before* you run any evals
+### Write rubric anchors _before_ you run any evals
 
-| Step | Why |
-|---|---|
+| Step                                     | Why                          |
+| ---------------------------------------- | ---------------------------- |
 | 1. Write score anchors (0, 3, 5 minimum) | Forces you to define quality |
-| 2. Score 20 examples by hand | Creates ground truth |
-| 3. Run LLM judge on same examples | Measures calibration |
-| 4. Adjust until correlation ≥ 0.8 | Validates the judge |
-| 5. Then run at scale | Now you can trust it |
+| 2. Score 20 examples by hand             | Creates ground truth         |
+| 3. Run LLM judge on same examples        | Measures calibration         |
+| 4. Adjust until correlation ≥ 0.8        | Validates the judge          |
+| 5. Then run at scale                     | Now you can trust it         |
 
 ### Match the eval to the moment
 
@@ -421,15 +421,15 @@ Every run should emit per-call token usage and dollar cost. Without cost as a tr
 
 If you're laying out a test suite around this framework, a natural mapping:
 
-| Layer | Lives in | Maps to | Cost per CI run |
-|---|---|---|---|
-| **unit** | `tests/unit/` | Stage 1 golden sets, schema validators, deterministic asserts | $0 |
-| **integration** | `tests/integration/` | Stage 2–3 replay-based pipeline tests | $0 (fixtures) |
-| **e2e** | `tests/e2e/` | Stage 5 single-case live smoke test | small, gated |
-| **golden** | `evals/golden/` | Stage 1 corpus + runner | $0 |
-| **scenarios** | `evals/scenarios/` | Stage 2 corpus + coverage report | $0 |
-| **replays** | `evals/replays/` | Stage 3 fixtures + ML metrics | $0 to replay, $$ to record |
-| **rubrics** | `evals/rubrics/` | Stage 4 YAML rubric + calibration set | $ per release |
+| Layer           | Lives in             | Maps to                                                       | Cost per CI run            |
+| --------------- | -------------------- | ------------------------------------------------------------- | -------------------------- |
+| **unit**        | `tests/unit/`        | Stage 1 golden sets, schema validators, deterministic asserts | $0                         |
+| **integration** | `tests/integration/` | Stage 2–3 replay-based pipeline tests                         | $0 (fixtures)              |
+| **e2e**         | `tests/e2e/`         | Stage 5 single-case live smoke test                           | small, gated               |
+| **golden**      | `evals/golden/`      | Stage 1 corpus + runner                                       | $0                         |
+| **scenarios**   | `evals/scenarios/`   | Stage 2 corpus + coverage report                              | $0                         |
+| **replays**     | `evals/replays/`     | Stage 3 fixtures + ML metrics                                 | $0 to replay, $$ to record |
+| **rubrics**     | `evals/rubrics/`     | Stage 4 YAML rubric + calibration set                         | $ per release              |
 
 Keep `evals/` separate from your application package. The eval substrate must be portable, independently versionable, and clearly distinct from the system under test.
 
@@ -437,9 +437,9 @@ Keep `evals/` separate from your application package. The eval substrate must be
 
 ## 12. The goal
 
-**Before:** *"I think the new prompt is better, it felt more accurate."*
+**Before:** _"I think the new prompt is better, it felt more accurate."_
 
-**After:** *"The new prompt scored 4.3/5 vs 4.1/5 on accuracy, passed 91% of golden cases vs 87%, with no change in latency or cost."*
+**After:** _"The new prompt scored 4.3/5 vs 4.1/5 on accuracy, passed 91% of golden cases vs 87%, with no change in latency or cost."_
 
 That's the difference between guessing and shipping with confidence.
 

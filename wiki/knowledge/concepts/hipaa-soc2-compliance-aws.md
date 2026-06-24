@@ -27,18 +27,19 @@ derived_from::[[../../raw/research/textract-soc2-hipaa-aws-compliance/index.md]]
 
 **Redaction is required in specific, narrower contexts:**
 
-| Context | Standard requiring it | Scope |
-|---------|----------------------|-------|
-| CloudWatch / application logs | HIPAA (PHI) + SOC 2 (PII + PHI) | All personal/health data must be scrubbed before logging |
-| LLM prompt/completion logs | SOC 2 CC6.8 / AI auditor expectations | PII and PHI redacted before log write |
-| Test/dev environments | Best practice (both) | Use de-identified data |
-| Data shared outside HIPAA boundary | HIPAA (de-identification required) | Safe Harbor or Expert Determination |
+| Context                            | Standard requiring it                 | Scope                                                    |
+| ---------------------------------- | ------------------------------------- | -------------------------------------------------------- |
+| CloudWatch / application logs      | HIPAA (PHI) + SOC 2 (PII + PHI)       | All personal/health data must be scrubbed before logging |
+| LLM prompt/completion logs         | SOC 2 CC6.8 / AI auditor expectations | PII and PHI redacted before log write                    |
+| Test/dev environments              | Best practice (both)                  | Use de-identified data                                   |
+| Data shared outside HIPAA boundary | HIPAA (de-identification required)    | Safe Harbor or Expert Determination                      |
 
 **Logs are the critical gap:** HIPAA covers PHI in logs; SOC 2 covers both PHI and general PII. For this project both categories appear — PHI from medical records, PII from attorney/client contact data — so logs must be scrubbed of both.
 
 ## AWS Compliance Stack (Three Tiers)
 
 **Tier 1 — Day zero (mandatory before first PHI enters):**
+
 - Sign the **AWS BAA** via AWS Artifact.
 - Enable **KMS CMK encryption** on RDS at creation time (cannot be retrofitted without snapshot-restore).
 - Enable **S3 SSE-KMS** on all PHI-bearing buckets; block all public access.
@@ -47,10 +48,12 @@ derived_from::[[../../raw/research/textract-soc2-hipaa-aws-compliance/index.md]]
 - Enable **AWS Config + HIPAA Conformance Pack** for automated drift detection.
 
 **Tier 2 — Before storing Textract output in PostgreSQL:**
+
 - Run **Comprehend Medical** (PHI) + **Amazon Comprehend** (general PII) on block text after Textract — detect and tag PHI/PII offsets before Postgres INSERT; never log raw block text.
 - Neither Comprehend service redacts — both detect only. A custom inline redaction step is required.
 
 **Tier 3 — Post-MVP / compliance review gate:**
+
 - **AWS Security Hub** with HIPAA + SOC 2 conformance packs for centralised findings.
 - **Amazon Macie** on PHI-bearing S3 buckets for automatic sensitive-data scanning.
 - **Full de-identification** if the compliance review requires PHI removed from PostgreSQL: either inline Comprehend Medical + redaction (Node, no sidecar) or **Presidio** (Python, broader PII surface, requires ECS Fargate sidecar). Key caution: redacting too aggressively from the provenance store breaks the attorney citation flow — keep the full encrypted text in the DB; redact only developer-facing views.

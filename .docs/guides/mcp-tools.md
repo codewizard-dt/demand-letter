@@ -18,15 +18,14 @@ The shell is for running programs (`pnpm test`, `git mv`, `curl`), not for inspe
 
 These MCP servers are **REQUIRED** for all applicable operations. Using standard tools when an MCP tool exists is a violation of project rules.
 
-| MCP Server | Mandatory For | Replaces |
-|------------|--------------|----------|
-| **Serena** | All **code** exploration and editing; **all** file/directory exploration and search (code, markdown, config, anything) | `Read`, `Edit`, `Write`, `Grep`, `Glob` (for code files); `bash` exploration commands (`ls`, `cat`, `find`, `grep`, `sed`, `awk`, `head`, `tail`, `tree`) for **any** file type |
-| **Context7** | All library/framework documentation lookups | WebSearch, WebFetch (for library docs) |
-| **Brave Search** | All general web research | WebSearch (for non-library topics) |
-| **Playwright** | Browser automation, screenshots, UI interaction | WebFetch (for rendered pages) |
+| MCP Server       | Mandatory For                                                                                                          | Replaces                                                                                                                                                                        |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Serena**       | All **code** exploration and editing; **all** file/directory exploration and search (code, markdown, config, anything) | `Read`, `Edit`, `Write`, `Grep`, `Glob` (for code files); `bash` exploration commands (`ls`, `cat`, `find`, `grep`, `sed`, `awk`, `head`, `tail`, `tree`) for **any** file type |
+| **Context7**     | All library/framework documentation lookups                                                                            | WebSearch, WebFetch (for library docs)                                                                                                                                          |
+| **Brave Search** | All general web research                                                                                               | WebSearch (for non-library topics)                                                                                                                                              |
+| **Playwright**   | Browser automation, screenshots, UI interaction                                                                        | WebFetch (for rendered pages)                                                                                                                                                   |
 
 ---
-
 
 ### Standard tools (`Read`, `Edit`, `Write`) are permitted for:
 
@@ -117,6 +116,7 @@ echo "## New Section" >> README.md
 ## Serena (Code Exploration & Editing)
 
 Serena provides two editing approaches:
+
 1. **Symbolic** — LSP-powered, refactoring-safe (entire functions/classes)
 2. **File/line-based** — Precise line-range and regex edits (within functions)
 
@@ -124,32 +124,32 @@ Serena provides two editing approaches:
 
 **Exploration:**
 
-| Tool | Purpose | Key Params |
-|------|---------|------------|
-| `get_symbols_overview` | File structure overview | `relative_path`, `depth` (0=top-level) |
-| `find_symbol` | Find symbols by name | `name_path_pattern`, `include_body`, `depth`, `substring_matching` |
-| `find_referencing_symbols` | Find all callers/references | `name_path`, `relative_path` (file, not dir) |
-| `search_for_pattern` | Regex search across files | `substring_pattern`, `relative_path`, `paths_include_glob` |
-| `list_dir` | List directory contents | `relative_path`, `recursive` |
-| `find_file` | Find files by name/mask | `file_mask`, `relative_path` |
+| Tool                       | Purpose                     | Key Params                                                         |
+| -------------------------- | --------------------------- | ------------------------------------------------------------------ |
+| `get_symbols_overview`     | File structure overview     | `relative_path`, `depth` (0=top-level)                             |
+| `find_symbol`              | Find symbols by name        | `name_path_pattern`, `include_body`, `depth`, `substring_matching` |
+| `find_referencing_symbols` | Find all callers/references | `name_path`, `relative_path` (file, not dir)                       |
+| `search_for_pattern`       | Regex search across files   | `substring_pattern`, `relative_path`, `paths_include_glob`         |
+| `list_dir`                 | List directory contents     | `relative_path`, `recursive`                                       |
+| `find_file`                | Find files by name/mask     | `file_mask`, `relative_path`                                       |
 
 **Symbolic editing** (use when replacing entire symbols):
 
-| Tool | Purpose | Key Params |
-|------|---------|------------|
-| `replace_symbol_body` | Replace function/class body | `name_path`, `relative_path`, `body` (includes signature, NOT docstring) |
-| `insert_after_symbol` | Add code after a symbol | `name_path`, `relative_path`, `body` |
-| `insert_before_symbol` | Add code before a symbol | `name_path`, `relative_path`, `body` |
-| `rename_symbol` | Rename across codebase | `name_path`, `relative_path`, `new_name` |
+| Tool                   | Purpose                     | Key Params                                                               |
+| ---------------------- | --------------------------- | ------------------------------------------------------------------------ |
+| `replace_symbol_body`  | Replace function/class body | `name_path`, `relative_path`, `body` (includes signature, NOT docstring) |
+| `insert_after_symbol`  | Add code after a symbol     | `name_path`, `relative_path`, `body`                                     |
+| `insert_before_symbol` | Add code before a symbol    | `name_path`, `relative_path`, `body`                                     |
+| `rename_symbol`        | Rename across codebase      | `name_path`, `relative_path`, `new_name`                                 |
 
 **File/line editing** (use for precise edits within symbols):
 
-| Tool | Purpose | Key Params |
-|------|---------|------------|
-| `replace_content` | Literal or regex replacement | `relative_path`, `mode` (literal/regex), `needle`, `repl` |
-| `replace_lines` | Replace line range | `relative_path`, `start_line`, `end_line`, `content` (0-based) |
-| `delete_lines` | Delete line range | `relative_path`, `start_line`, `end_line` (0-based) |
-| `insert_at_line` | Insert at line number | `relative_path`, `line`, `content` (0-based) |
+| Tool              | Purpose                      | Key Params                                                     |
+| ----------------- | ---------------------------- | -------------------------------------------------------------- |
+| `replace_content` | Literal or regex replacement | `relative_path`, `mode` (literal/regex), `needle`, `repl`      |
+| `replace_lines`   | Replace line range           | `relative_path`, `start_line`, `end_line`, `content` (0-based) |
+| `delete_lines`    | Delete line range            | `relative_path`, `start_line`, `end_line` (0-based)            |
+| `insert_at_line`  | Insert at line number        | `relative_path`, `line`, `content` (0-based)                   |
 
 ### Name Path Patterns
 
@@ -166,14 +166,14 @@ Serena provides two editing approaches:
 
 ### Choosing Edit Mode
 
-| Scenario | Use |
-|----------|-----|
-| Replace entire function/method/class | Symbolic: `replace_symbol_body` |
-| Add new method to class | Symbolic: `insert_after_symbol` |
-| Rename across codebase | Symbolic: `rename_symbol` |
-| Edit few lines within large function | File/line: `replace_content` or `replace_lines` |
-| Regex-based replacement | File/line: `replace_content` with `mode="regex"` |
-| Edit doesn't align with symbol boundaries | File/line: `replace_lines` |
+| Scenario                                  | Use                                              |
+| ----------------------------------------- | ------------------------------------------------ |
+| Replace entire function/method/class      | Symbolic: `replace_symbol_body`                  |
+| Add new method to class                   | Symbolic: `insert_after_symbol`                  |
+| Rename across codebase                    | Symbolic: `rename_symbol`                        |
+| Edit few lines within large function      | File/line: `replace_content` or `replace_lines`  |
+| Regex-based replacement                   | File/line: `replace_content` with `mode="regex"` |
+| Edit doesn't align with symbol boundaries | File/line: `replace_lines`                       |
 
 ---
 
@@ -189,14 +189,14 @@ mcp__serena__onboarding()
 
 ### Memory Tools
 
-| Tool | Purpose | Key Params |
-|------|---------|------------|
-| `list_memories` | List available memories | `topic` (optional filter, e.g. `"auth"`) |
-| `read_memory` | Read a memory's contents | `memory_name` |
-| `write_memory` | Create a new memory (markdown) | `memory_name`, `content`, `max_chars` (optional) |
-| `edit_memory` | Update existing memory in-place | `memory_name`, `needle`, `repl`, `mode` (`literal` or `regex`), `allow_multiple_occurrences` |
-| `rename_memory` | Rename or move a memory | `old_name`, `new_name` |
-| `delete_memory` | Delete a memory (user permission required) | `memory_name` |
+| Tool            | Purpose                                    | Key Params                                                                                   |
+| --------------- | ------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| `list_memories` | List available memories                    | `topic` (optional filter, e.g. `"auth"`)                                                     |
+| `read_memory`   | Read a memory's contents                   | `memory_name`                                                                                |
+| `write_memory`  | Create a new memory (markdown)             | `memory_name`, `content`, `max_chars` (optional)                                             |
+| `edit_memory`   | Update existing memory in-place            | `memory_name`, `needle`, `repl`, `mode` (`literal` or `regex`), `allow_multiple_occurrences` |
+| `rename_memory` | Rename or move a memory                    | `old_name`, `new_name`                                                                       |
+| `delete_memory` | Delete a memory (user permission required) | `memory_name`                                                                                |
 
 ### Memory Naming & Organization
 
@@ -223,6 +223,7 @@ Write memories to persist **non-obvious project knowledge** useful for future ta
 - Configuration requirements that aren't self-documenting
 
 **Do NOT write memories for**:
+
 - Information already in code comments or docs
 - Temporary task state or debugging notes
 - Easily re-derivable facts (file paths, import lists)
@@ -246,7 +247,6 @@ Write memories to persist **non-obvious project knowledge** useful for future ta
 - **Review post-onboarding**: After Serena onboarding, review generated memories and refine them
 
 ---
-
 
 ## Context7 (Library Documentation)
 
@@ -274,7 +274,6 @@ If results are insufficient, refine the query with more specific terms.
 
 ---
 
-
 ## Brave Search (Web Research)
 
 ### Rate Limit: 1 request per second
@@ -296,22 +295,21 @@ Use for general research, best practices, troubleshooting, news. Do NOT use for 
 
 ---
 
-
 ## Playwright (Browser Automation)
 
 ### Tools
 
-| Tool | Purpose |
-|------|---------|
-| `browser_navigate` | Navigate to a URL |
-| `browser_take_screenshot` | Screenshot current page |
-| `browser_snapshot` | Get accessibility tree (use to get element `ref` IDs before clicking/typing) |
-| `browser_click` | Click element by `ref` ID from snapshot |
-| `browser_type` | Type into an input field by `ref` ID |
-| `browser_evaluate` | Execute JavaScript in browser |
-| `browser_select_option` | Select dropdown option by `ref` ID |
-| `browser_hover` | Hover over element by `ref` ID |
-| `browser_close` | Close the browser |
+| Tool                      | Purpose                                                                      |
+| ------------------------- | ---------------------------------------------------------------------------- |
+| `browser_navigate`        | Navigate to a URL                                                            |
+| `browser_take_screenshot` | Screenshot current page                                                      |
+| `browser_snapshot`        | Get accessibility tree (use to get element `ref` IDs before clicking/typing) |
+| `browser_click`           | Click element by `ref` ID from snapshot                                      |
+| `browser_type`            | Type into an input field by `ref` ID                                         |
+| `browser_evaluate`        | Execute JavaScript in browser                                                |
+| `browser_select_option`   | Select dropdown option by `ref` ID                                           |
+| `browser_hover`           | Hover over element by `ref` ID                                               |
+| `browser_close`           | Close the browser                                                            |
 
 ### Workflow
 
@@ -325,18 +323,18 @@ Use for visual verification, form interaction, and browser-rendered content. Do 
 
 ## Quick Reference: Which Tool for What
 
-| Task | MUST Use | NEVER Use |
-|------|----------|-----------|
-| Read markdown content | Standard `Read` | `cat`, `head`, `tail` |
-| Edit markdown content | Standard `Edit` / `Write` | `sed`, `awk`, `echo >>` |
-| Edit config files (JSON, YAML, .env) | Standard `Read`/`Edit`/`Write` | `sed` |
-| Explore code structure | Serena `get_symbols_overview` | `Read` on code files, `cat` |
-| Find function/class | Serena `find_symbol` | `Grep` on code files, `bash grep` |
-| Edit code | Serena symbolic or file/line tools | Standard `Edit` on code files, `sed` |
-| Rename symbol | Serena `rename_symbol` | Manual find-and-replace |
-| Search file contents | Serena `search_for_pattern` or `Grep` tool | `bash grep` / `rg` / `ag` |
-| List a directory | Serena `list_dir` | `ls`, `tree`, `find -type d` |
-| Find files by name | Serena `find_file` or `Glob` tool | `find -name`, `ls \| grep` |
-| Library docs | Context7 | `WebSearch` / `WebFetch` |
-| General research | Brave Search (sequential, 1/sec) | Parallel searches |
-| Browser interaction | Playwright | `WebFetch` for rendered content |
+| Task                                 | MUST Use                                   | NEVER Use                            |
+| ------------------------------------ | ------------------------------------------ | ------------------------------------ |
+| Read markdown content                | Standard `Read`                            | `cat`, `head`, `tail`                |
+| Edit markdown content                | Standard `Edit` / `Write`                  | `sed`, `awk`, `echo >>`              |
+| Edit config files (JSON, YAML, .env) | Standard `Read`/`Edit`/`Write`             | `sed`                                |
+| Explore code structure               | Serena `get_symbols_overview`              | `Read` on code files, `cat`          |
+| Find function/class                  | Serena `find_symbol`                       | `Grep` on code files, `bash grep`    |
+| Edit code                            | Serena symbolic or file/line tools         | Standard `Edit` on code files, `sed` |
+| Rename symbol                        | Serena `rename_symbol`                     | Manual find-and-replace              |
+| Search file contents                 | Serena `search_for_pattern` or `Grep` tool | `bash grep` / `rg` / `ag`            |
+| List a directory                     | Serena `list_dir`                          | `ls`, `tree`, `find -type d`         |
+| Find files by name                   | Serena `find_file` or `Glob` tool          | `find -name`, `ls \| grep`           |
+| Library docs                         | Context7                                   | `WebSearch` / `WebFetch`             |
+| General research                     | Brave Search (sequential, 1/sec)           | Parallel searches                    |
+| Browser interaction                  | Playwright                                 | `WebFetch` for rendered content      |

@@ -26,7 +26,7 @@ Reference pages by a **stable identity**, not a raw file path — so links survi
 
 ## 3. Typed links
 
-Plain `[[wikilinks]]` are always valid. When a link has a *meaning*, annotate it inline so the graph is semantically navigable:
+Plain `[[wikilinks]]` are always valid. When a link has a _meaning_, annotate it inline so the graph is semantically navigable:
 
 ```
 implements::[[REQ-012]]
@@ -42,15 +42,15 @@ This convention is **declared now but not backfilled** — use it on new and tou
 
 Every page has YAML frontmatter. **Base keys (used now):**
 
-| Key | Applies to | Notes |
-|-----|-----------|-------|
-| `id` | all | stable slug or family ID (REQ-/DEC-/TASK-/BUG-/ROADMAP-) |
-| `title` | all | human-readable title |
-| `status` | work families | per the family's [lifecycle](#); see each `lifecycle.md` |
-| `created` / `updated` | all | ISO dates (`YYYY-MM-DD`) |
-| `tags` | all | flat list, discovery only — not primary structure |
-| `aliases` | knowledge | alternative names for durable linking (item 2) |
-| `sources` | knowledge | back-links to the `raw/` source(s) a page derives from |
+| Key                   | Applies to    | Notes                                                    |
+| --------------------- | ------------- | -------------------------------------------------------- |
+| `id`                  | all           | stable slug or family ID (REQ-/DEC-/TASK-/BUG-/ROADMAP-) |
+| `title`               | all           | human-readable title                                     |
+| `status`              | work families | per the family's [lifecycle](#); see each `lifecycle.md` |
+| `created` / `updated` | all           | ISO dates (`YYYY-MM-DD`)                                 |
+| `tags`                | all           | flat list, discovery only — not primary structure        |
+| `aliases`             | knowledge     | alternative names for durable linking (item 2)           |
+| `sources`             | knowledge     | back-links to the `raw/` source(s) a page derives from   |
 
 **Reserved keys (declared, optional — populated later by overlays, safe to ignore until then):**
 

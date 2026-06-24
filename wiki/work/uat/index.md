@@ -9,4 +9,5 @@ Lists **only active** UAT files (`pending`, `in-progress`, `failed`). When a UAT
 
 Entry format: `- [UAT-NNN — Title](UAT-NNN-slug.md) — verifies TASK-NNN · status`
 
-_(none yet)_
+
+

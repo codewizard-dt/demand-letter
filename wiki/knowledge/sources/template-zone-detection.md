@@ -20,16 +20,16 @@ A focused research report (2026-06-22) answering the question that backs **DEC-0
 
 The techniques split cleanly into **auto-detection** of an unmarked letter and **explicit markup** that makes the boundary deterministic:
 
-| Family | Techniques |
-|--------|-----------|
-| **Auto-detect** | (A) LLM zone classification; (B) multi-letter diff / template induction |
+| Family              | Techniques                                                                                                                    |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| **Auto-detect**     | (A) LLM zone classification; (B) multi-letter diff / template induction                                                       |
 | **Explicit markup** | (C) delimiter tags (`{{field}}`); (D) Word content controls / SDTs; (E) hybrid (LLM-seed → human-confirm → persist as markup) |
 
 **Delimiter markup is the legal-tech standard** — docxtemplater (JS) and docxtpl/Jinja2 (Python, used by Docassemble / Suffolk LIT Lab) fill directly inside the OOXML zip, so **formatting is lossless by construction** and the boilerplate/variable boundary is explicit (anything outside a tag is copied verbatim). **Word content controls (SDTs)** are the native machine-readable equivalent — `<w:sdt>` nodes carrying an alias/tag, bindable to a custom XML data part. uses::[[../entities/tools/docxtemplater.md]]
 
 ## The Decisive Constraint — Auto-Detection Cannot Be Trusted Unsupervised
 
-The accuracy mandate makes one failure mode unacceptable: **a boilerplate clause misclassified as variable gets paraphrased by the LLM and silently alters legal meaning** (release scope, §999 acceptance mechanics, payee restrictions) — malpractice-grade. Peer-reviewed work confirms general LLMs are a good fit for *classification* but underperform bespoke models on *rigid extraction*, and production IDP guidance positions LLMs as "strategic accelerators," not the trusted final authority. So **pure LLM detection (A) is too risky without a human gate**, and **multi-letter diff (B)** — though high-precision when letters align — has a cold-start problem (needs ≥2–3 samples per firm) and breaks on reordered/optional sections.
+The accuracy mandate makes one failure mode unacceptable: **a boilerplate clause misclassified as variable gets paraphrased by the LLM and silently alters legal meaning** (release scope, §999 acceptance mechanics, payee restrictions) — malpractice-grade. Peer-reviewed work confirms general LLMs are a good fit for _classification_ but underperform bespoke models on _rigid extraction_, and production IDP guidance positions LLMs as "strategic accelerators," not the trusted final authority. So **pure LLM detection (A) is too risky without a human gate**, and **multi-letter diff (B)** — though high-precision when letters align — has a cold-start problem (needs ≥2–3 samples per firm) and breaks on reordered/optional sections.
 
 A separate structural point: **formatting fidelity is a property of where the fill happens, not of detection.** Explicit-markup methods fill inside the OOXML (lossless); auto-detection that flattens the docx to text must map labels back onto OOXML spans. This argues for **decoupling detection from fill** — detect once, then persist the result as in-OOXML markup.
 

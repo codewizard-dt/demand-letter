@@ -11,17 +11,17 @@ Active files are **never moved** after creation; state lives in the `status:` fr
 
 ## Frontmatter schema
 
-| Key | Required | Notes |
-|-----|----------|-------|
-| `id` | yes | `TASK-NNN` |
-| `title` | yes | task title |
-| `status` | yes | `todo \| in-progress \| done \| trashed` |
-| `created` / `updated` | yes | `YYYY-MM-DD` |
-| `depends_on` | no | `TASK-NNN` IDs that must finish first |
-| `blocks` | no | `TASK-NNN` IDs this one gates |
-| `parallel_safe_with` | no | `TASK-NNN` IDs safe to run concurrently |
-| `uat` | no | link to the matching `../uat/UAT-NNN-slug.md` |
-| `tags` | no | discovery only |
+| Key                   | Required | Notes                                         |
+| --------------------- | -------- | --------------------------------------------- |
+| `id`                  | yes      | `TASK-NNN`                                    |
+| `title`               | yes      | task title                                    |
+| `status`              | yes      | `todo \| in-progress \| done \| trashed`      |
+| `created` / `updated` | yes      | `YYYY-MM-DD`                                  |
+| `depends_on`          | no       | `TASK-NNN` IDs that must finish first         |
+| `blocks`              | no       | `TASK-NNN` IDs this one gates                 |
+| `parallel_safe_with`  | no       | `TASK-NNN` IDs safe to run concurrently       |
+| `uat`                 | no       | link to the matching `../uat/UAT-NNN-slug.md` |
+| `tags`                | no       | discovery only                                |
 
 ## Status transitions
 

@@ -11,7 +11,7 @@ tags: [generation, docxtemplater, grounded, medical-narrative, sse]
 
 # ROADMAP-004: Generation Engine
 
-Replace the naive free-text Claude generation with a deterministic docxtemplater-driven fill: assemble the data object from the provenance store, boilerplate zones stay byte-exact from the template, and Claude on Bedrock generates *only* the medical narrative zone (§4) — the one zone where AI provides the most leverage. The final output is a properly structured DOCX that matches the template exactly.
+Replace the naive free-text Claude generation with a deterministic docxtemplater-driven fill: assemble the data object from the provenance store, boilerplate zones stay byte-exact from the template, and Claude on Bedrock generates _only_ the medical narrative zone (§4) — the one zone where AI provides the most leverage. The final output is a properly structured DOCX that matches the template exactly.
 
 ---
 

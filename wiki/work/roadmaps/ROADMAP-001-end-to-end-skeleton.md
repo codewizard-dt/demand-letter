@@ -3,7 +3,7 @@ id: ROADMAP-001
 title: End-to-End Skeleton
 status: active
 created: 2026-06-22
-updated: 2026-06-22
+updated: 2026-06-23
 owner: David Taylor
 linked_decisions: [DEC-0003]
 tags: [skeleton, infra, bedrock, llm-audit]
@@ -17,13 +17,13 @@ A vertically-complete but deliberately minimal system — upload a template DOCX
 
 ### Phase 1 — Infrastructure
 
-- [ ] AWS SAM project: TypeScript monorepo with packages `api`, `web`, `db`
-- [ ] PostgreSQL schema bootstrap: `jobs` table (id, status, created_at), `files` table (id, job_id, s3_key, type, name)
-- [ ] RDS instance with KMS CMK encryption enabled at creation (mandatory — cannot retrofit)
-- [ ] S3 bucket for source documents and outputs: SSE-KMS, no public access, versioning on
-- [ ] Bedrock model access: request `anthropic.claude-sonnet-4-6` in the Bedrock console (model access takes effect within minutes)
-- [ ] dotenv / SSM Parameters for all secrets; no secrets in code or env files committed
-- [ ] TypeScript strict mode + ESLint + Prettier; `pnpm typecheck` and `pnpm lint` pass on empty project
+- [x] [[TASK-001: AWS SAM TypeScript Monorepo Scaffold]]
+- [x] [[TASK-002: PostgreSQL Schema Bootstrap — jobs and files tables]](../tasks/archive/TASK-002-postgresql-schema-bootstrap.md)
+- [x] [[TASK-003: RDS Instance with KMS CMK Encryption]](../tasks/archive/TASK-003-rds-kms-cmk.md)
+- [x] [[TASK-004: S3 Bucket for Source Documents and Outputs]](../tasks/archive/TASK-004-s3-bucket.md)
+- [x] [[TASK-005: Bedrock Model Access — Verify Inference Profile and Smoke-Test]](../tasks/archive/TASK-005-bedrock-model-access.md)
+- [x] [[TASK-006: dotenv and SSM Parameter Store for All Secrets]](../tasks/archive/TASK-006-dotenv-ssm-secrets.md)
+- [x] [[TASK-007: TypeScript Strict Mode + ESLint + Prettier — Clean Baseline]](../tasks/archive/TASK-007-typescript-eslint-prettier-verify.md)
 
 ---
 

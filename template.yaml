@@ -1,0 +1,181 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Demand Letter Generator — SAM application
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        NODE_ENV: !Ref Stage
+        DATABASE_URL: !Sub '{{resolve:ssm:/${Stage}/demand-letter/db/url}}'
+
+Parameters:
+  Stage:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC to deploy RDS into
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet::Id
+    Description: First private subnet for RDS subnet group
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet::Id
+    Description: Second private subnet for RDS subnet group
+
+  WebAppOrigin:
+    Type: String
+    Default: 'http://localhost:5173'
+    Description: Allowed CORS origin for S3 pre-signed URL uploads
+
+Resources:
+  # Placeholder — Phase 1 resources (S3, RDS) added by TASK-003, TASK-004
+  # API Gateway and Lambda resources added in Phase 3
+
+  DemandLetterKmsKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: CMK for RDS encryption — Demand Letter Generator
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Effect: Allow
+            Principal:
+              Service: rds.amazonaws.com
+            Action:
+              - kms:Decrypt
+              - kms:GenerateDataKey
+            Resource: '*'
+
+  DemandLetterKmsKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub 'alias/${Stage}-demand-letter-rds'
+      TargetKeyId: !Ref DemandLetterKmsKey
+
+  RdsSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: RDS PostgreSQL access — Demand Letter Generator
+      VpcId: !Ref VpcId
+      SecurityGroupIngress: []
+
+  RdsSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Private subnets for Demand Letter RDS
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+
+  DemandLetterDb:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      DBInstanceIdentifier: !Sub '${Stage}-demand-letter-db'
+      DBInstanceClass: db.t4g.micro
+      Engine: postgres
+      EngineVersion: '16.3'
+      AllocatedStorage: '20'
+      StorageType: gp3
+      StorageEncrypted: true
+      KmsKeyId: !Ref DemandLetterKmsKey
+      MasterUsername: !Sub '{{resolve:ssm:/${Stage}/demand-letter/db/username}}'
+      MasterUserPassword: !Sub '{{resolve:ssm:/${Stage}/demand-letter/db/password:1}}'
+      DBSubnetGroupName: !Ref RdsSubnetGroup
+      VPCSecurityGroups:
+        - !Ref RdsSecurityGroup
+      BackupRetentionPeriod: 7
+      MultiAZ: false
+      PubliclyAccessible: false
+      EnablePerformanceInsights: true
+
+  DocumentsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !Ref DemandLetterKmsKey
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ['*']
+            AllowedMethods: [GET, PUT, POST, DELETE, HEAD]
+            AllowedOrigins: [!Ref WebAppOrigin]
+            MaxAge: 3600
+      LifecycleConfiguration:
+        Rules:
+          - Id: MoveOutputsToIntelligentTiering
+            Status: Enabled
+            Prefix: output/
+            Transitions:
+              - TransitionInDays: 30
+                StorageClass: INTELLIGENT_TIERING
+
+  DocumentsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref DocumentsBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyNonSSL
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !GetAtt DocumentsBucket.Arn
+              - !Sub '${DocumentsBucket.Arn}/*'
+            Condition:
+              Bool:
+                'aws:SecureTransport': 'false'
+
+Outputs:
+  DbInstanceEndpoint:
+    Value: !GetAtt DemandLetterDb.Endpoint.Address
+    Export:
+      Name: !Sub '${Stage}-demand-letter-db-endpoint'
+
+  DbInstancePort:
+    Value: !GetAtt DemandLetterDb.Endpoint.Port
+    Export:
+      Name: !Sub '${Stage}-demand-letter-db-port'
+
+  KmsKeyArn:
+    Value: !GetAtt DemandLetterKmsKey.Arn
+    Export:
+      Name: !Sub '${Stage}-demand-letter-kms-key-arn'
+
+  DocumentsBucketName:
+    Value: !Ref DocumentsBucket
+    Export:
+      Name: !Sub '${Stage}-demand-letter-docs-bucket'
+
+  DocumentsBucketArn:
+    Value: !GetAtt DocumentsBucket.Arn
+    Export:
+      Name: !Sub '${Stage}-demand-letter-docs-bucket-arn'

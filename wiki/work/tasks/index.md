@@ -9,4 +9,4 @@ Lists **only active** tasks (`todo`, `in-progress`). When a task leaves the acti
 
 Entry format: `- [TASK-NNN — Title](TASK-NNN-slug.md) — one-line summary · status`
 
-_(none yet)_
+- [TASK-005 — Bedrock Model Access — Verify Inference Profile and Smoke-Test](TASK-005-bedrock-model-access.md) — verify us. inference profile ID and smoke-test invocation · todo

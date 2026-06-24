@@ -25,7 +25,7 @@ Textract's role is the **OCR/layout extraction layer only** — it processes sca
 
 **Neither HIPAA nor SOC 2 requires redacting PHI/PII out of the primary data store.** The correct mechanism for stored data is **encryption** (KMS-backed RDS + S3 SSE-KMS). Redaction is required in a narrower set of contexts:
 
-- **CloudWatch / application logs** — HIPAA requires PHI scrubbed before logging; SOC 2 requires *both* PII and PHI scrubbed (SOC 2 covers all confidential/personal information, not just health data).
+- **CloudWatch / application logs** — HIPAA requires PHI scrubbed before logging; SOC 2 requires _both_ PII and PHI scrubbed (SOC 2 covers all confidential/personal information, not just health data).
 - **LLM prompt/completion logs** — SOC 2 auditors explicitly test for PII/PHI redaction before log writes (CC6.8 / AI company guidance).
 - **Test/dev environments** — best practice to use de-identified data.
 - **Data shared outside the HIPAA boundary** — de-identification required (Safe Harbor or Expert Determination).

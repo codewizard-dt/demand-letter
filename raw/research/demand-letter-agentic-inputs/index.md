@@ -7,13 +7,13 @@ sources: [./sources.md]
 
 # Research: Required Inputs to Generate the Sample Demand Letter in an Agentic Workflow
 
-> Generating the Donahue demand letter to the PRD's standard — *"matches the template exactly in structure, formatting, and layout, populated with information relevant to the case; accuracy is paramount"* — requires exactly **two classes of input**. **(A) A structural input: the firm template** (a prior letter, e.g. the Donahue `.docx` itself) which alone fixes structure, formatting, layout, section order, boilerplate, and legal register. **(B) A content input: the case record** — the set of source documents (intake sheet, police/incident report, medical records + bills, insurance declarations, lien correspondence) from which every case-specific field is extracted. The template is *necessary* for fidelity but supplies no facts; the case record is *necessary* for content but supplies no form. Together they are *sufficient* only if the case record covers every variable slot the template exposes — which, for the Donahue letter, is an enumerable list of ~40 fields (parties, dates, liability narrative, diagnoses, providers, an itemised specials table, a future-care reserve, and the §999 demand parameters). The accuracy mandate adds a third, non-content requirement: **provenance** — each extracted field must carry a citation back to its source document so the attorney can verify it, since a hallucinated diagnosis or dollar figure is malpractice-grade. Anything beyond these two input classes (web knowledge, general legal training) must NOT be a generation input — it is the leakage path that produces unverifiable, inaccurate output.
+> Generating the Donahue demand letter to the PRD's standard — _"matches the template exactly in structure, formatting, and layout, populated with information relevant to the case; accuracy is paramount"_ — requires exactly **two classes of input**. **(A) A structural input: the firm template** (a prior letter, e.g. the Donahue `.docx` itself) which alone fixes structure, formatting, layout, section order, boilerplate, and legal register. **(B) A content input: the case record** — the set of source documents (intake sheet, police/incident report, medical records + bills, insurance declarations, lien correspondence) from which every case-specific field is extracted. The template is _necessary_ for fidelity but supplies no facts; the case record is _necessary_ for content but supplies no form. Together they are _sufficient_ only if the case record covers every variable slot the template exposes — which, for the Donahue letter, is an enumerable list of ~40 fields (parties, dates, liability narrative, diagnoses, providers, an itemised specials table, a future-care reserve, and the §999 demand parameters). The accuracy mandate adds a third, non-content requirement: **provenance** — each extracted field must carry a citation back to its source document so the attorney can verify it, since a hallucinated diagnosis or dollar figure is malpractice-grade. Anything beyond these two input classes (web knowledge, general legal training) must NOT be a generation input — it is the leakage path that produces unverifiable, inaccurate output.
 
 ---
 
 ## Research Questions
 
-1. What classes of input does the agentic workflow require, and which are *necessary* versus *sufficient*?
+1. What classes of input does the agentic workflow require, and which are _necessary_ versus _sufficient_?
 2. Decomposing the sample letter zone-by-zone, what is the exhaustive list of variable fields the system must populate, and which source document supplies each?
 3. What does the template input alone determine (vs. what it cannot supply)?
 4. What does "accuracy is paramount" add to the input contract beyond raw facts?
@@ -26,11 +26,11 @@ sources: [./sources.md]
 No application code exists yet. The foundational assets are all in `raw/` and synthesised in the wiki:
 
 - **The template/sample**: `raw/AAA-Insurance_Time-Limited-Policy-Limits-Demand_Pat-Donahue.docx` — a real California CCP §999 time-limited policy-limits demand from Stalwart Law Group, analysed in `wiki/knowledge/sources/aaa-insurance-demand-letter-pat-donahue.md`. Its 7-section structure is the concrete target.
-- **The PRD**: `raw/prd-demand-letter-generator.md` — defines the generation contract: template + case materials → letter matching template *exactly* in structure/formatting/layout, accuracy paramount, attorney refinement loop, Claude preferred, TS/React/AWS/PostgreSQL.
+- **The PRD**: `raw/prd-demand-letter-generator.md` — defines the generation contract: template + case materials → letter matching template _exactly_ in structure/formatting/layout, accuracy paramount, attorney refinement loop, Claude preferred, TS/React/AWS/PostgreSQL.
 - **Prior research**: `raw/research/demand-letter-legal-context/` — the legal-context layer (types, universal 10-element structure, FRE 408, SOL non-tolling, PI timeline).
 - **Concept pages**: `wiki/knowledge/concepts/{demand-letter,ai-document-generation,template-driven-generation,time-limited-policy-limits-demand}.md` — already record the zone-based generation principle, boilerplate-verbatim rule, and citation-layer recommendation.
 
-This report builds on that synthesis to answer the *inputs* question specifically and concretely.
+This report builds on that synthesis to answer the _inputs_ question specifically and concretely.
 
 ---
 
@@ -38,14 +38,14 @@ This report builds on that synthesis to answer the *inputs* question specificall
 
 ### 1. There are exactly two input classes; both are necessary, neither alone is sufficient [S1][S2][S3]
 
-The PRD's own framing — *"Given a real demand letter as a template **and** relevant legal case materials"* [S1] — names the two classes:
+The PRD's own framing — _"Given a real demand letter as a template **and** relevant legal case materials"_ [S1] — names the two classes:
 
-| Class | What it is | What it determines | What it CANNOT supply |
-|-------|-----------|--------------------|------------------------|
-| **(A) Template** | A prior firm letter (the Donahue `.docx` is the exemplar) | Structure, section order, headings, formatting, layout, legal register, **and the verbatim boilerplate** (settlement conditions, release language, §999 acceptance mechanics) | Any case-specific fact |
-| **(B) Case record** | The source documents for *this* claim | Every variable value: parties, dates, narrative facts, diagnoses, providers, dollar amounts | Any structure or formatting |
+| Class               | What it is                                                | What it determines                                                                                                                                                            | What it CANNOT supply       |
+| ------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
+| **(A) Template**    | A prior firm letter (the Donahue `.docx` is the exemplar) | Structure, section order, headings, formatting, layout, legal register, **and the verbatim boilerplate** (settlement conditions, release language, §999 acceptance mechanics) | Any case-specific fact      |
+| **(B) Case record** | The source documents for _this_ claim                     | Every variable value: parties, dates, narrative facts, diagnoses, providers, dollar amounts                                                                                   | Any structure or formatting |
 
-Because "matches the template exactly in structure, formatting, and layout" is a hard requirement [S1], the template is **necessary** — you cannot reconstruct a firm's exact layout and boilerplate from case facts. Because the letter must be "populated with information relevant to the case," the case record is **necessary** — the template is a blank cast. **Sufficiency** is the join: the case record must cover *every variable slot the template exposes*. A missing slot (e.g. no declarations page → no policy-limit confirmation) is an insufficiency that the workflow must detect and surface, not fill by invention.
+Because "matches the template exactly in structure, formatting, and layout" is a hard requirement [S1], the template is **necessary** — you cannot reconstruct a firm's exact layout and boilerplate from case facts. Because the letter must be "populated with information relevant to the case," the case record is **necessary** — the template is a blank cast. **Sufficiency** is the join: the case record must cover _every variable slot the template exposes_. A missing slot (e.g. no declarations page → no policy-limit confirmation) is an insufficiency that the workflow must detect and surface, not fill by invention.
 
 > **Design consequence:** the agentic workflow is fundamentally a **slot-filling** problem (template defines slots; case record fills them), not a free-generation problem. This matches the wiki's existing "zone-based generation" and "boilerplate verbatim from template" principles in `ai-document-generation.md`. [S4]
 
@@ -112,18 +112,18 @@ The sample letter's 7 sections expose the following variable slots. This is the 
 
 **Closing/signature** — attorney name, bar affiliation, firm (Faby Rivera, Esq.; Stalwart Law Group) → **firm profile / template**.
 
-The rows marked **template boilerplate** confirm a critical point: a large fraction of §7 is *not* a case-record input at all — it comes verbatim from the template (class A). The case record (class B) supplies only the small set of variables those boilerplate clauses reference (policy limits, lien claimants, payee names). [S5]
+The rows marked **template boilerplate** confirm a critical point: a large fraction of §7 is _not_ a case-record input at all — it comes verbatim from the template (class A). The case record (class B) supplies only the small set of variables those boilerplate clauses reference (policy limits, lien claimants, payee names). [S5]
 
 ### 3. The template input alone fixes everything formatting-related — but supplies zero facts [S4][S5]
 
-Because fidelity to "structure, formatting, and layout" is mandatory, the template input must be ingested in a form that *preserves* those properties — i.e. as a structured `.docx`, not flattened plain text. The template determines: section presence and order; heading text and styling; paragraph/numbering structure; the verbatim boilerplate blocks; and the firm voice/register. The wiki already records this as "template-driven generation" and "boilerplate verbatim." What the template *cannot* do is supply any case fact — making class B independently necessary. *(Inference grounded in PRD wording + existing concept pages — no external primary source.)*
+Because fidelity to "structure, formatting, and layout" is mandatory, the template input must be ingested in a form that _preserves_ those properties — i.e. as a structured `.docx`, not flattened plain text. The template determines: section presence and order; heading text and styling; paragraph/numbering structure; the verbatim boilerplate blocks; and the firm voice/register. The wiki already records this as "template-driven generation" and "boilerplate verbatim." What the template _cannot_ do is supply any case fact — making class B independently necessary. _(Inference grounded in PRD wording + existing concept pages — no external primary source.)_
 
 ### 4. "Accuracy is paramount" adds two requirements beyond raw facts: provenance and grounding-only [S1][S2][S6]
 
 The accuracy mandate converts a third item from "nice-to-have" into part of the input/output contract:
 
 - **Provenance (citation layer).** Every populated value (each diagnosis, dollar figure, date, party, provider) must be traceable to the source document and location it came from, so the attorney can verify rather than re-read everything. The wiki already recommends this. This means source documents must be ingested in a way that preserves locators (page/paragraph), not just raw text. [S6]
-- **Grounding-only generation.** The model must populate fields *only* from the case record + template — never from its own training knowledge. General legal/medical knowledge is explicitly **not** a permitted generation input; it is the primary inaccuracy vector (invented case law, plausible-but-wrong diagnoses). The two-class input model is therefore also a *guardrail*: if a value isn't in (A) or (B), it must be flagged as missing, not generated. [S1]
+- **Grounding-only generation.** The model must populate fields _only_ from the case record + template — never from its own training knowledge. General legal/medical knowledge is explicitly **not** a permitted generation input; it is the primary inaccuracy vector (invented case law, plausible-but-wrong diagnoses). The two-class input model is therefore also a _guardrail_: if a value isn't in (A) or (B), it must be flagged as missing, not generated. [S1]
 
 This reframes a missing input: insufficiency must produce a **gap report** ("no declarations page → policy limits unconfirmed"), not a hallucinated fill.
 
@@ -139,16 +139,17 @@ This reframes a missing input: insufficiency must produce a **gap report** ("no 
 6. **Insurance information** — adjuster/claim identifiers + declarations page (policy limits).
 7. **Attorney-supplied valuation parameters** — general-damages figure, future-medical reserve, demand amount/strategy (these are judgment calls, not extractable facts).
 
-Items 2–6 are the *case record*; item 1 is the *template*; item 7 is *attorney input the documents cannot supply*.
+Items 2–6 are the _case record_; item 1 is the _template_; item 7 is _attorney input the documents cannot supply_.
 
 **Optional / quality-improving (not required):**
+
 - Photographs, scene/vehicle-damage evidence (strengthen liability/damages narrative).
-- Radiology image files themselves (the *reports* suffice for text).
+- Radiology image files themselves (the _reports_ suffice for text).
 - Lien correspondence (only if liens exist; otherwise the boilerplate clause stands unparameterised).
 - Prior correspondence with the insurer (tone/context).
 - Firm style guide / additional sample letters (sharpen voice matching beyond the single template).
 
-**Refinement-loop input (PRD-required, post-draft):** attorney free-text instructions to revise specific sections — a *second-pass* input, not part of the initial generation bundle.
+**Refinement-loop input (PRD-required, post-draft):** attorney free-text instructions to revise specific sections — a _second-pass_ input, not part of the initial generation bundle.
 
 ---
 
@@ -176,7 +177,7 @@ Not applicable — this report enumerates the required input set; it does not co
 
 Model the agentic workflow's input contract as **two ingestion channels feeding a slot-filling join, gated by a sufficiency check**:
 
-1. **Channel A — Template ingestion.** Accept the firm's prior letter as `.docx`; parse it into typed zones (header, liability, damages, specials, general damages, settlement conditions, signature). Classify each zone as *boilerplate-verbatim* or *variable-populated*. This is the structure/formatting/layout authority and must be preserved losslessly.
+1. **Channel A — Template ingestion.** Accept the firm's prior letter as `.docx`; parse it into typed zones (header, liability, damages, specials, general damages, settlement conditions, signature). Classify each zone as _boilerplate-verbatim_ or _variable-populated_. This is the structure/formatting/layout authority and must be preserved losslessly.
 
 2. **Channel B — Case-record ingestion.** Accept the source-document set (intake, police report, medical records, bills, declarations, optional evidence). Extract into the normalised field schema from Finding 2, **with a source locator attached to every field** (provenance). Collect attorney-judgment slots (demand amount, valuation, reserve) via explicit form input, flagged as attorney-sourced.
 
@@ -187,10 +188,11 @@ Model the agentic workflow's input contract as **two ingestion channels feeding 
 5. **Refinement loop.** Accept attorney free-text instructions as a second-pass input scoped to named zones.
 
 **Risks & mitigations:**
-- *Hallucinated fills on missing inputs* → hard sufficiency gate + gap report; never auto-fill.
-- *Boilerplate paraphrased and legally altered* → mark boilerplate zones non-LLM, copy verbatim with variable substitution only.
-- *Lost formatting from text-flattening the template* → ingest/emit `.docx` structurally end-to-end.
-- *Unverifiable output* → mandatory per-field provenance; no field renders without a source or explicit attorney-input tag.
+
+- _Hallucinated fills on missing inputs_ → hard sufficiency gate + gap report; never auto-fill.
+- _Boilerplate paraphrased and legally altered_ → mark boilerplate zones non-LLM, copy verbatim with variable substitution only.
+- _Lost formatting from text-flattening the template_ → ingest/emit `.docx` structurally end-to-end.
+- _Unverifiable output_ → mandatory per-field provenance; no field renders without a source or explicit attorney-input tag.
 
 **Define the field schema in Finding 2 as the canonical input contract** — it is the bridge between document ingestion and template population, and it is testable (does the case record cover every field?).
 

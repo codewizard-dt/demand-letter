@@ -1,5 +1,5 @@
 ---
-topic: "Microsoft Presidio (https://microsoft.github.io/presidio/) — assess fit for our infrastructure and setup: TypeScript/React/Node.js/AWS Lambda/PostgreSQL, with the DEC-0003 hybrid Textract→Claude-on-Bedrock pipeline for medical-record ingestion and PHI already kept inside AWS. Determine what role (if any) Presidio would play, what it costs to integrate, and whether it is the right tool."
+topic: 'Microsoft Presidio (https://microsoft.github.io/presidio/) — assess fit for our infrastructure and setup: TypeScript/React/Node.js/AWS Lambda/PostgreSQL, with the DEC-0003 hybrid Textract→Claude-on-Bedrock pipeline for medical-record ingestion and PHI already kept inside AWS. Determine what role (if any) Presidio would play, what it costs to integrate, and whether it is the right tool.'
 slug: presidio-phi-detection
 researched: 2026-06-22
 sources: [./sources.md]
@@ -7,7 +7,7 @@ sources: [./sources.md]
 
 # Research: Microsoft Presidio — Fit Assessment
 
-> **The short answer:** Presidio is a strong, open-source PII/PHI detection and anonymization library, but it is a **poor direct fit for our stack** because it is **Python-only** with no native TS/Node bindings, requires loading multi-hundred-MB NLP models that are hostile to AWS Lambda's cold-start and size limits, and addresses a problem our architecture already handles differently — PHI never leaves the AWS account (DEC-0003#D2 chose Bedrock), so *anonymization-before-transmission* is not mandatory. Presidio would need to run as a **sidecar microservice** (Dockerized REST API), which adds operational complexity and a new deployment unit. The medical NER recognizer (HuggingFace `StanfordAIMI/stanford-deidentifier-base`) that would give useful PHI coverage requires the `transformers` extra and a model download at container-build time. **The strongest use case** for Presidio here would be a **de-identification pre-processing step** before storing raw Textract output in PostgreSQL, to strip patient names/dates/SSNs from the provenance store so developers can query it without PHI exposure — a valuable but not architecturally mandatory addition. If that use case is confirmed, deploy it as a separate Python microservice (ECS Fargate or a container-image Lambda), not in the Node Lambda.
+> **The short answer:** Presidio is a strong, open-source PII/PHI detection and anonymization library, but it is a **poor direct fit for our stack** because it is **Python-only** with no native TS/Node bindings, requires loading multi-hundred-MB NLP models that are hostile to AWS Lambda's cold-start and size limits, and addresses a problem our architecture already handles differently — PHI never leaves the AWS account (DEC-0003#D2 chose Bedrock), so _anonymization-before-transmission_ is not mandatory. Presidio would need to run as a **sidecar microservice** (Dockerized REST API), which adds operational complexity and a new deployment unit. The medical NER recognizer (HuggingFace `StanfordAIMI/stanford-deidentifier-base`) that would give useful PHI coverage requires the `transformers` extra and a model download at container-build time. **The strongest use case** for Presidio here would be a **de-identification pre-processing step** before storing raw Textract output in PostgreSQL, to strip patient names/dates/SSNs from the provenance store so developers can query it without PHI exposure — a valuable but not architecturally mandatory addition. If that use case is confirmed, deploy it as a separate Python microservice (ECS Fargate or a container-image Lambda), not in the Node Lambda.
 
 ## Research Questions
 
@@ -48,25 +48,25 @@ The base Presidio install (spaCy `en_core_web_lg`) covers general PII: names, em
 
 DEC-0003 chose Bedrock specifically so **PHI never leaves the AWS account** — there is no "sending PHI to a third-party API" problem that requires anonymization-before-transmission. The real PHI exposure risks in our pipeline are:
 
-| Exposure surface | Does Presidio help? |
-|------------------|---------------------|
-| PHI sent to Claude inference | ❌ — already mitigated by Bedrock (in-account) |
+| Exposure surface                         | Does Presidio help?                                                                             |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| PHI sent to Claude inference             | ❌ — already mitigated by Bedrock (in-account)                                                  |
 | Raw Textract blocks stored in PostgreSQL | ✅ — strip/pseudonymize before persisting, so dev access to the DB doesn't expose patient names |
-| Logs (CloudWatch, Lambda traces) | ✅ — scrub PHI before logging |
-| Prompt text logged or cached | ✅ — scrub extraction prompts |
+| Logs (CloudWatch, Lambda traces)         | ✅ — scrub PHI before logging                                                                   |
+| Prompt text logged or cached             | ✅ — scrub extraction prompts                                                                   |
 
 Presidio's most natural insertion point is **pre-storage** — after Textract but before writing block text into PostgreSQL, scan for and redact/pseudonymize free-text PHI so the provenance store is not itself a PHI store. This is architecturally optional (Bedrock addresses the transmission risk) but valuable for defence-in-depth and developer ergonomics.
 
 ### 5. Alternatives to Presidio for the targeted use case [S1][S3]
 
-| Alternative | Trade-offs |
-|-------------|------------|
-| **AWS Comprehend Medical** | Managed, HIPAA-eligible, TS/Node SDK available (`@aws-sdk/client-comprehendmedical`), entity detection with offsets; costs per character; no anonymization (detect only) |
-| **Amazon Macie** | S3-level PHI detection; coarser (file-level), not per-field; not in-line |
-| **DIY regex/NLP** | Custom regex patterns for MRN, DOB, SSN; lower accuracy; no maintenance from MS |
-| **Azure Health Data Services** | Full HIPAA de-id; Azure-only; not aligned with AWS infrastructure |
+| Alternative                    | Trade-offs                                                                                                                                                               |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **AWS Comprehend Medical**     | Managed, HIPAA-eligible, TS/Node SDK available (`@aws-sdk/client-comprehendmedical`), entity detection with offsets; costs per character; no anonymization (detect only) |
+| **Amazon Macie**               | S3-level PHI detection; coarser (file-level), not per-field; not in-line                                                                                                 |
+| **DIY regex/NLP**              | Custom regex patterns for MRN, DOB, SSN; lower accuracy; no maintenance from MS                                                                                          |
+| **Azure Health Data Services** | Full HIPAA de-id; Azure-only; not aligned with AWS infrastructure                                                                                                        |
 
-**AWS Comprehend Medical** is the strongest alternative: same AWS residency guarantee as Textract, native TS/Node SDK, returns entity type + offset + confidence (same locator model as Textract blocks), no separate service to deploy. It covers HIPAA PHI categories (patient names, dates, ages, providers, MRNs, etc.) natively. It does not *anonymize* (redact/replace) — only detects — but combined with a simple redaction step that's sufficient for the "scrub before Postgres" use case.
+**AWS Comprehend Medical** is the strongest alternative: same AWS residency guarantee as Textract, native TS/Node SDK, returns entity type + offset + confidence (same locator model as Textract blocks), no separate service to deploy. It covers HIPAA PHI categories (patient names, dates, ages, providers, MRNs, etc.) natively. It does not _anonymize_ (redact/replace) — only detects — but combined with a simple redaction step that's sufficient for the "scrub before Postgres" use case.
 
 ## Constraints
 
@@ -77,17 +77,17 @@ Presidio's most natural insertion point is **pre-storage** — after Textract bu
 
 ## Solution Comparison
 
-| Criteria | A. Presidio (sidecar) | B. AWS Comprehend Medical | C. No PHI scrubbing (Bedrock-only) |
-|----------|-----------------------|---------------------------|-------------------------------------|
-| **What it does** | Detect + anonymize/redact text PHI | Detect PHI (offset + confidence); no anonymize | Accept that PHI stays in-account |
-| **Stack fit** | Poor — Python REST sidecar | ✅ native `@aws-sdk` TS/Node | ✅ no integration needed |
-| **AWS residency** | ✅ self-hosted in AWS | ✅ managed AWS service | ✅ (Bedrock already) |
-| **Medical NER coverage** | Good with transformers model | ✅ HIPAA PHI native | n/a |
-| **Anonymization** | ✅ redact/replace/mask/hash | ❌ detect only | n/a |
-| **Lambda deploy** | ❌ container image; cold-start risk | ✅ API call, no infra | ✅ no change |
-| **Build cost** | High — new sidecar, Docker, REST client | Low — add SDK call + redact step | Minimal |
-| **Ongoing ops** | High — model version, container updates | Low — AWS managed | None |
-| **HIPAA coverage** | Partial (base PII) / Good (+ transformers) | ✅ full HIPAA PHI | n/a |
+| Criteria                 | A. Presidio (sidecar)                      | B. AWS Comprehend Medical                      | C. No PHI scrubbing (Bedrock-only) |
+| ------------------------ | ------------------------------------------ | ---------------------------------------------- | ---------------------------------- |
+| **What it does**         | Detect + anonymize/redact text PHI         | Detect PHI (offset + confidence); no anonymize | Accept that PHI stays in-account   |
+| **Stack fit**            | Poor — Python REST sidecar                 | ✅ native `@aws-sdk` TS/Node                   | ✅ no integration needed           |
+| **AWS residency**        | ✅ self-hosted in AWS                      | ✅ managed AWS service                         | ✅ (Bedrock already)               |
+| **Medical NER coverage** | Good with transformers model               | ✅ HIPAA PHI native                            | n/a                                |
+| **Anonymization**        | ✅ redact/replace/mask/hash                | ❌ detect only                                 | n/a                                |
+| **Lambda deploy**        | ❌ container image; cold-start risk        | ✅ API call, no infra                          | ✅ no change                       |
+| **Build cost**           | High — new sidecar, Docker, REST client    | Low — add SDK call + redact step               | Minimal                            |
+| **Ongoing ops**          | High — model version, container updates    | Low — AWS managed                              | None                               |
+| **HIPAA coverage**       | Partial (base PII) / Good (+ transformers) | ✅ full HIPAA PHI                              | n/a                                |
 
 ## Recommendation
 
@@ -97,12 +97,13 @@ Presidio's most natural insertion point is **pre-storage** — after Textract bu
 
 2. **Near-term (post-MVP, if DB-level PHI scrubbing is required by the compliance review):** Use **AWS Comprehend Medical** as a detection step after Textract; build a redaction function inline in the Node Lambda that replaces detected PHI offsets in block text before Postgres insert. This is native TS/Node, stays in AWS, and avoids a sidecar.
 
-3. **If full anonymization (not just detection) is required** — e.g., to share the provenance store externally or to de-identify for test data generation — *then* consider Presidio as a sidecar on **ECS Fargate** (long-lived, no cold-start), with the `[transformers]` extra and the Stanford de-identifier model, callable from the Lambda via internal HTTP. This is real scope and should be its own task.
+3. **If full anonymization (not just detection) is required** — e.g., to share the provenance store externally or to de-identify for test data generation — _then_ consider Presidio as a sidecar on **ECS Fargate** (long-lived, no cold-start), with the `[transformers]` extra and the Stanford de-identifier model, callable from the Lambda via internal HTTP. This is real scope and should be its own task.
 
 **Risks & mitigations:**
-- *Compliance review flags raw PHI in Postgres* → add Comprehend Medical detection + redaction inline (low build cost); or escalate to Presidio sidecar if full anonymization is needed.
-- *Presidio model drift / maintenance* → if Presidio is adopted, pin the Docker image and model version; add CI to rebuild on security updates.
-- *Comprehend Medical costs* → \$0.01 per 100 characters for medical entity detection; a 20-page medical record at ~50K chars ≈ $5 per document; model for MVP volume.
+
+- _Compliance review flags raw PHI in Postgres_ → add Comprehend Medical detection + redaction inline (low build cost); or escalate to Presidio sidecar if full anonymization is needed.
+- _Presidio model drift / maintenance_ → if Presidio is adopted, pin the Docker image and model version; add CI to rebuild on security updates.
+- _Comprehend Medical costs_ → \$0.01 per 100 characters for medical entity detection; a 20-page medical record at ~50K chars ≈ $5 per document; model for MVP volume.
 
 ## Next Steps
 

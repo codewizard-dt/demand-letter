@@ -6,9 +6,9 @@
 
   // --- Scope: explicit include/exclude keeps analysis fast and avoids noise ---
   "include": [
-    "src",       // production source
-    "tests",     // test code should be checked
-    "scripts"    // utility scripts
+    "src", // production source
+    "tests", // test code should be checked
+    "scripts" // utility scripts
   ],
   "exclude": [
     "**/node_modules",
@@ -51,7 +51,7 @@
   "reportUnusedImports": "warning",
   "reportUnusedVariables": "warning",
   // Flag access to __-prefixed members from outside the class
-  "reportPrivateUsage": "warning",
+  "reportPrivateUsage": "warning"
 
   // --- Strict overrides to add even in "standard" mode ---
   // Uncomment as the codebase matures:

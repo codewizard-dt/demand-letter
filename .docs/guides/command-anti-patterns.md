@@ -11,6 +11,7 @@ Every shell invocation should do exactly one thing.
 Do NOT chain `A && B && C && D` just because all must succeed — run them as separate invocations so (a) each is independently re-runnable, (b) approval prompts aren't ganged, (c) failures pinpoint the offending step.
 
 **Bad** (real incident that triggered this guide):
+
 ```bash
 SCRATCH=$(mktemp -d) && echo "SCRATCH=$SCRATCH" && mkdir -p "$SCRATCH" && /path/sync-docs-scaffold.sh "$SCRATCH" && echo "---SCRATCH_PATH---" && echo "$SCRATCH" > /tmp/scratch_path.txt && cat /tmp/scratch_path.txt
 ```
@@ -31,6 +32,7 @@ Why: project-local paths are (a) visible to MCP Serena (which is project-scoped)
 mkdir -p ./tmp/scratch
 ./sync-docs-scaffold.sh ./tmp/scratch
 ```
+
 (two invocations, both single-purpose)
 
 ---

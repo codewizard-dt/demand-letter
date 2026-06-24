@@ -1,5 +1,5 @@
 ---
-topic: "Textract, SOC2, HIPAA, and solutions for compliance for both of those within the AWS ecosystem"
+topic: 'Textract, SOC2, HIPAA, and solutions for compliance for both of those within the AWS ecosystem'
 slug: textract-soc2-hipaa-aws-compliance
 researched: 2026-06-22
 sources: [./sources.md]
@@ -7,7 +7,7 @@ sources: [./sources.md]
 
 # Research: Textract, SOC2, HIPAA, and AWS Compliance Solutions
 
-> **Executive summary:** AWS Textract is formally HIPAA-eligible (covered under the AWS BAA) and SOC 2–compliant, so it is safe to process PHI through it. Neither HIPAA nor SOC 2 requires *redaction* of the primary data store — they require **encryption at rest** (KMS + RDS/S3 encryption) plus access controls and audit logging. Redaction is required in a narrower set of contexts: CloudWatch/application logs must never contain plaintext PHI, and test environments should use de-identified data. The practical build checklist for this stack is: sign the AWS BAA, enable KMS-backed encryption on every storage tier (RDS, S3, EBS), enforce TLS everywhere, scrub PHI from Lambda logs before CloudWatch, enable CloudTrail, and — as a defence-in-depth step post-MVP — add an AWS Comprehend Medical + inline-redaction pass after Textract and before writing block text to PostgreSQL.
+> **Executive summary:** AWS Textract is formally HIPAA-eligible (covered under the AWS BAA) and SOC 2–compliant, so it is safe to process PHI through it. Neither HIPAA nor SOC 2 requires _redaction_ of the primary data store — they require **encryption at rest** (KMS + RDS/S3 encryption) plus access controls and audit logging. Redaction is required in a narrower set of contexts: CloudWatch/application logs must never contain plaintext PHI, and test environments should use de-identified data. The practical build checklist for this stack is: sign the AWS BAA, enable KMS-backed encryption on every storage tier (RDS, S3, EBS), enforce TLS everywhere, scrub PHI from Lambda logs before CloudWatch, enable CloudTrail, and — as a defence-in-depth step post-MVP — add an AWS Comprehend Medical + inline-redaction pass after Textract and before writing block text to PostgreSQL.
 
 ---
 
@@ -64,14 +64,14 @@ The Confidentiality criteria (C1.1, C1.2) additionally require controls over acc
 
 Neither HIPAA nor SOC 2 requires **redacting PHI/PII out of the primary data store**. The standard mechanism for protecting PHI/PII in storage is **encryption**, not removal. Redaction has a distinct, narrower set of required contexts:
 
-| Context | Redaction required? | Reason |
-|---------|--------------------|----|
-| Primary database (PostgreSQL provenance store) | ❌ — encryption (KMS) suffices | HIPAA § 164.312(a)(2)(iv); SOC 2 CC6.1 |
-| S3 bucket storing raw case documents | ❌ — SSE-KMS suffices | Same |
-| CloudWatch / application logs | ✅ **Yes — PHI must be scrubbed before logging** | PHI must not appear in plaintext in any logging system; [S11] explicitly notes this |
-| Test / development environments | ✅ Best practice (de-identified data) | Avoids PHI exposure to developers who don't need it |
-| Data shared outside the HIPAA boundary | ✅ Required for de-identification | Safe Harbor or Expert Determination methods |
-| LLM prompt/completion logs | ✅ For SOC 2 (CC6.8 / AI auditor expectations) | "Apply PII/PHI redaction before the log is written" [S12] |
+| Context                                        | Redaction required?                              | Reason                                                                              |
+| ---------------------------------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| Primary database (PostgreSQL provenance store) | ❌ — encryption (KMS) suffices                   | HIPAA § 164.312(a)(2)(iv); SOC 2 CC6.1                                              |
+| S3 bucket storing raw case documents           | ❌ — SSE-KMS suffices                            | Same                                                                                |
+| CloudWatch / application logs                  | ✅ **Yes — PHI must be scrubbed before logging** | PHI must not appear in plaintext in any logging system; [S11] explicitly notes this |
+| Test / development environments                | ✅ Best practice (de-identified data)            | Avoids PHI exposure to developers who don't need it                                 |
+| Data shared outside the HIPAA boundary         | ✅ Required for de-identification                | Safe Harbor or Expert Determination methods                                         |
+| LLM prompt/completion logs                     | ✅ For SOC 2 (CC6.8 / AI auditor expectations)   | "Apply PII/PHI redaction before the log is written" [S12]                           |
 
 **The Textract provenance store in PostgreSQL (block text, page, bbox, confidence)** must be stored in an **encrypted RDS instance** (KMS). It does not need to have PHI redacted out of it — the encrypted store is the compliant mechanism. De-identification of that store is a defence-in-depth option (and valuable for developer access ergonomics), but is not mandated.
 
@@ -79,35 +79,35 @@ Neither HIPAA nor SOC 2 requires **redacting PHI/PII out of the primary data sto
 
 #### Tier 1: Mandatory baseline (encrypt everything, enable audit logging)
 
-| AWS Service | Purpose | Notes |
-|-------------|---------|-------|
-| **AWS KMS** | Encryption key management for all storage tiers | Customer-managed keys (CMK) give key rotation + access audit |
-| **RDS Encryption at Rest** | Encrypt PostgreSQL provenance store | Enable at DB creation; uses KMS CMK |
-| **S3 SSE-KMS** | Encrypt raw case-document buckets | `aws:kms` SSEAlgorithm; block all public access |
-| **TLS 1.2+ everywhere** | Encrypt all data in transit | Enforced at ALB/API Gateway; Lambda→RDS via SSL |
-| **AWS CloudTrail** | Audit log for all API calls (Textract, Bedrock, RDS, S3, Lambda) | Enable in all regions; store logs in separate encrypted S3 bucket with MFA delete |
-| **AWS Config + HIPAA Conformance Pack** | Automated compliance rule checks | Flags unencrypted resources, public S3, open security groups |
-| **AWS Artifact (BAA)** | Sign the AWS Business Associate Addendum | Must be done before any PHI enters the account |
+| AWS Service                             | Purpose                                                          | Notes                                                                             |
+| --------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| **AWS KMS**                             | Encryption key management for all storage tiers                  | Customer-managed keys (CMK) give key rotation + access audit                      |
+| **RDS Encryption at Rest**              | Encrypt PostgreSQL provenance store                              | Enable at DB creation; uses KMS CMK                                               |
+| **S3 SSE-KMS**                          | Encrypt raw case-document buckets                                | `aws:kms` SSEAlgorithm; block all public access                                   |
+| **TLS 1.2+ everywhere**                 | Encrypt all data in transit                                      | Enforced at ALB/API Gateway; Lambda→RDS via SSL                                   |
+| **AWS CloudTrail**                      | Audit log for all API calls (Textract, Bedrock, RDS, S3, Lambda) | Enable in all regions; store logs in separate encrypted S3 bucket with MFA delete |
+| **AWS Config + HIPAA Conformance Pack** | Automated compliance rule checks                                 | Flags unencrypted resources, public S3, open security groups                      |
+| **AWS Artifact (BAA)**                  | Sign the AWS Business Associate Addendum                         | Must be done before any PHI enters the account                                    |
 
 #### Tier 2: PHI/PII detection and log scrubbing
 
-| AWS Service | Purpose | Notes |
-|-------------|---------|-------|
-| **Amazon Comprehend Medical** | Detect HIPAA PHI entities (patient names, dates, MRNs, diagnoses, providers) with offset + confidence | Native `@aws-sdk/client-comprehendmedical`; HIPAA-eligible; $0.01 / 100 chars |
-| **Amazon Comprehend** (general) | Detect general PII (names, email, phone, SSN, addresses) | Native TS/Node SDK; use `ContainsPiiEntities` / `DetectPiiEntities` |
-| **Log scrubbing in Lambda** | Strip PHI before writing to CloudWatch | Run Comprehend detection on Textract block text; replace detected entities before logging; never log raw medical record text |
+| AWS Service                     | Purpose                                                                                               | Notes                                                                                                                        |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| **Amazon Comprehend Medical**   | Detect HIPAA PHI entities (patient names, dates, MRNs, diagnoses, providers) with offset + confidence | Native `@aws-sdk/client-comprehendmedical`; HIPAA-eligible; $0.01 / 100 chars                                                |
+| **Amazon Comprehend** (general) | Detect general PII (names, email, phone, SSN, addresses)                                              | Native TS/Node SDK; use `ContainsPiiEntities` / `DetectPiiEntities`                                                          |
+| **Log scrubbing in Lambda**     | Strip PHI before writing to CloudWatch                                                                | Run Comprehend detection on Textract block text; replace detected entities before logging; never log raw medical record text |
 
-> **Note on Presidio:** Presidio (Microsoft OSS) is a *general-purpose PII detection and anonymization* library — it covers all PII categories (names, email, phone, SSN, credit cards, addresses, NPI numbers, passports, etc.) as well as clinical PHI via an optional HuggingFace transformer recognizer. It is broader than Comprehend Medical. However, it is Python-only and requires a sidecar deployment (see `raw/research/presidio-phi-detection/index.md`). For this stack's near-term needs (PHI scrubbing from block text before Postgres, log redaction), Comprehend Medical + Comprehend covers the same ground natively in Node without a sidecar.
+> **Note on Presidio:** Presidio (Microsoft OSS) is a _general-purpose PII detection and anonymization_ library — it covers all PII categories (names, email, phone, SSN, credit cards, addresses, NPI numbers, passports, etc.) as well as clinical PHI via an optional HuggingFace transformer recognizer. It is broader than Comprehend Medical. However, it is Python-only and requires a sidecar deployment (see `raw/research/presidio-phi-detection/index.md`). For this stack's near-term needs (PHI scrubbing from block text before Postgres, log redaction), Comprehend Medical + Comprehend covers the same ground natively in Node without a sidecar.
 
 #### Tier 3: Defence-in-depth (post-MVP)
 
-| Control | Purpose | AWS Service |
-|---------|---------|-------------|
-| De-identification of provenance store | Allow developer DB access without PHI exposure | Comprehend Medical detection + inline Node redaction step after Textract, before Postgres INSERT |
-| CloudWatch log insights filtering | Ensure no PHI leaks in Lambda logs | Lambda log filter patterns; structured JSON logging |
-| AWS Macie | Detect PII/PHI accidentally left in S3 buckets | Automated scan; alerts on unexpected sensitive data |
-| AWS Security Hub | Aggregate findings from Config, GuardDuty, Macie into one compliance dashboard | Enable HIPAA and SOC 2 conformance packs |
-| VPC private subnets | Isolate RDS / Lambda from public internet | PHI-bearing services in private subnets; no public IPs |
+| Control                               | Purpose                                                                        | AWS Service                                                                                      |
+| ------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| De-identification of provenance store | Allow developer DB access without PHI exposure                                 | Comprehend Medical detection + inline Node redaction step after Textract, before Postgres INSERT |
+| CloudWatch log insights filtering     | Ensure no PHI leaks in Lambda logs                                             | Lambda log filter patterns; structured JSON logging                                              |
+| AWS Macie                             | Detect PII/PHI accidentally left in S3 buckets                                 | Automated scan; alerts on unexpected sensitive data                                              |
+| AWS Security Hub                      | Aggregate findings from Config, GuardDuty, Macie into one compliance dashboard | Enable HIPAA and SOC 2 conformance packs                                                         |
+| VPC private subnets                   | Isolate RDS / Lambda from public internet                                      | PHI-bearing services in private subnets; no public IPs                                           |
 
 ---
 
@@ -122,15 +122,15 @@ Neither HIPAA nor SOC 2 requires **redacting PHI/PII out of the primary data sto
 
 ## Solution Comparison: PHI/PII scrubbing approaches
 
-| Criteria | A. Comprehend Medical + Comprehend (inline Node) | B. Presidio (Python sidecar) | C. Bedrock-only (no scrubbing) |
-|----------|--------------------------------------------------|------------------------------|-------------------------------|
-| **Covers** | PHI (HIPAA 18 identifiers) + general PII | All PII + clinical PHI (with transformers model) | n/a |
-| **Stack fit** | ✅ native `@aws-sdk` TS/Node | ❌ Python REST sidecar | ✅ no new code |
-| **AWS residency** | ✅ managed AWS service | ✅ self-hosted in AWS | ✅ (Bedrock already) |
-| **Anonymization** | ❌ detect only; pair with custom redact step | ✅ detect + redact/replace/mask/hash | n/a |
-| **Lambda deploy** | ✅ API call, no infra | ❌ container image; cold-start risk | ✅ no change |
-| **Build cost** | Low — add SDK call + redact utility | High — new sidecar + Docker + REST client | Minimal |
-| **Residual risk** | Developers with DB access can see PHI block text | Minimised — PHI stripped before Postgres | Developers see PHI in DB |
+| Criteria          | A. Comprehend Medical + Comprehend (inline Node) | B. Presidio (Python sidecar)                     | C. Bedrock-only (no scrubbing) |
+| ----------------- | ------------------------------------------------ | ------------------------------------------------ | ------------------------------ |
+| **Covers**        | PHI (HIPAA 18 identifiers) + general PII         | All PII + clinical PHI (with transformers model) | n/a                            |
+| **Stack fit**     | ✅ native `@aws-sdk` TS/Node                     | ❌ Python REST sidecar                           | ✅ no new code                 |
+| **AWS residency** | ✅ managed AWS service                           | ✅ self-hosted in AWS                            | ✅ (Bedrock already)           |
+| **Anonymization** | ❌ detect only; pair with custom redact step     | ✅ detect + redact/replace/mask/hash             | n/a                            |
+| **Lambda deploy** | ✅ API call, no infra                            | ❌ container image; cold-start risk              | ✅ no change                   |
+| **Build cost**    | Low — add SDK call + redact utility              | High — new sidecar + Docker + REST client        | Minimal                        |
+| **Residual risk** | Developers with DB access can see PHI block text | Minimised — PHI stripped before Postgres         | Developers see PHI in DB       |
 
 ---
 
@@ -158,10 +158,11 @@ Neither HIPAA nor SOC 2 requires **redacting PHI/PII out of the primary data sto
 10. **If full anonymization is required** (e.g., for test data generation, or a compliance review flags the raw PHI in Postgres): build an **inline redaction step** that replaces Comprehend Medical–detected entities with `[PATIENT_NAME]`-style tokens before the Postgres INSERT. This is the same approach as the AWS official sample `aws-samples/aws-ai-phi-deidentification` but inline in Node rather than a sidecar [S13].
 
 **Risks & mitigations:**
-- *Redacting too aggressively before Postgres* → the provenance store is the citation backing store; if block text is stripped, the attorney cannot click to verify the source. **Redact only the developer/ops view; keep the full text encrypted in the DB** (or store both a redacted and an encrypted-original version).
-- *2026 HIPAA rule change lands before the system is in production* → encryption baseline already satisfies the proposed rule; encryption-at-rest on every tier is sufficient.
-- *Comprehend Medical misses entities* → use confidence thresholds and treat detection as best-effort scrubbing for logs; the primary protection is encryption, not detection.
-- *Textract sees PHI before Comprehend runs* → Textract itself is HIPAA-eligible; the PHI is safe in transit and at Textract's processing layer.
+
+- _Redacting too aggressively before Postgres_ → the provenance store is the citation backing store; if block text is stripped, the attorney cannot click to verify the source. **Redact only the developer/ops view; keep the full text encrypted in the DB** (or store both a redacted and an encrypted-original version).
+- _2026 HIPAA rule change lands before the system is in production_ → encryption baseline already satisfies the proposed rule; encryption-at-rest on every tier is sufficient.
+- _Comprehend Medical misses entities_ → use confidence thresholds and treat detection as best-effort scrubbing for logs; the primary protection is encryption, not detection.
+- _Textract sees PHI before Comprehend runs_ → Textract itself is HIPAA-eligible; the PHI is safe in transit and at Textract's processing layer.
 
 ---
 

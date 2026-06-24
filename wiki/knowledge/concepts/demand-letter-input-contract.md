@@ -16,16 +16,16 @@ derived_from::[[../sources/demand-letter-agentic-inputs.md]] | relates_to::[[ai-
 
 ## Definition
 
-The **input contract** is the precise specification of what an agentic demand-letter workflow must be given to produce a letter to the PRD's standard. It frames generation as a **slot-filling join**: the template defines the slots; the case record fills them; a sufficiency gate verifies coverage before any text is generated. It is the testable bridge between document ingestion and template population — *does the case record cover every field the template exposes?*
+The **input contract** is the precise specification of what an agentic demand-letter workflow must be given to produce a letter to the PRD's standard. It frames generation as a **slot-filling join**: the template defines the slots; the case record fills them; a sufficiency gate verifies coverage before any text is generated. It is the testable bridge between document ingestion and template population — _does the case record cover every field the template exposes?_
 
 ## The Two Input Classes (both necessary, neither sufficient alone)
 
-| Class | What it is | Determines | Cannot supply |
-|-------|-----------|------------|---------------|
-| **(A) Template** | A prior firm letter (Donahue `.docx`) | Structure, section order, headings, formatting, layout, legal register, **verbatim boilerplate** | Any case-specific fact |
-| **(B) Case record** | Source documents for *this* claim | Every variable value: parties, dates, narrative facts, diagnoses, providers, amounts | Any structure or formatting |
+| Class               | What it is                            | Determines                                                                                       | Cannot supply               |
+| ------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------ | --------------------------- |
+| **(A) Template**    | A prior firm letter (Donahue `.docx`) | Structure, section order, headings, formatting, layout, legal register, **verbatim boilerplate** | Any case-specific fact      |
+| **(B) Case record** | Source documents for _this_ claim     | Every variable value: parties, dates, narrative facts, diagnoses, providers, amounts             | Any structure or formatting |
 
-**Sufficiency = the join.** The case record is sufficient only if it covers *every variable slot the template exposes*. An uncovered slot is an insufficiency to **surface, not invent**. relates_to::[[../sources/demand-letter-agentic-inputs.md]]
+**Sufficiency = the join.** The case record is sufficient only if it covers _every variable slot the template exposes_. An uncovered slot is an insufficiency to **surface, not invent**. relates_to::[[../sources/demand-letter-agentic-inputs.md]]
 
 ## Three Field Origins
 
@@ -112,9 +112,9 @@ For a Donahue-class CA PI/§999 demand:
 
 Items 2–6 are the case record; item 1 is the template; item 7 is attorney input the documents cannot supply.
 
-**Optional / quality-improving (not required):** photographs and scene/vehicle-damage evidence; radiology image files (the *reports* suffice); lien correspondence (only if liens exist); prior insurer correspondence; additional sample letters / firm style guide for voice matching.
+**Optional / quality-improving (not required):** photographs and scene/vehicle-damage evidence; radiology image files (the _reports_ suffice); lien correspondence (only if liens exist); prior insurer correspondence; additional sample letters / firm style guide for voice matching.
 
-**Refinement-loop input (post-draft):** attorney free-text instructions scoped to named zones — a *second-pass* input, not part of the initial generation bundle.
+**Refinement-loop input (post-draft):** attorney free-text instructions scoped to named zones — a _second-pass_ input, not part of the initial generation bundle.
 
 ## Sufficiency Gate & Gap Report
 

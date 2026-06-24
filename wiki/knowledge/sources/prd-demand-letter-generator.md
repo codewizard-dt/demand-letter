@@ -28,6 +28,7 @@ A **stretch goal** adds Google Docs-style real-time collaborative editing of the
 **Stack:** TypeScript (primary), Python (optional), SQL — React frontend, Node.js backend, AWS Lambda via SAM, PostgreSQL persistence. uses::[[../entities/tools/anthropic-claude.md]]
 
 **Performance constraints:**
+
 - HTTP request/response: ≤ 5 seconds (non-streaming)
 - Database queries: ≤ 2 seconds
 - AI model calls: SSE streaming preferred

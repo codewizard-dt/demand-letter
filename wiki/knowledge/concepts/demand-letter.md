@@ -23,15 +23,15 @@ Its primary purpose is **pre-suit settlement** — avoiding the time, cost, and 
 
 Demand letters are used across virtually all areas of civil law. The major types:
 
-| Type | Common Context | Core Demand |
-|------|---------------|-------------|
+| Type                                       | Common Context                            | Core Demand                                          |
+| ------------------------------------------ | ----------------------------------------- | ---------------------------------------------------- |
 | **Personal injury / insurance settlement** | Car accidents, slip-and-fall, malpractice | Monetary compensation from insurer for bodily injury |
-| **Breach of contract** | Unpaid invoices, failed delivery | Performance, payment, or damages for breach |
-| **Debt collection** | Overdue accounts, loans | Payment of debt owed |
-| **Employment disputes** | Unpaid wages, wrongful termination | Back pay, severance, cessation of conduct |
-| **Real estate / landlord-tenant** | Security deposit, lease breach | Return of funds, repairs, vacating premises |
-| **IP / defamation / consumer** | Trademark, copyright, false advertising | Cease and desist, damages |
-| **Time-limited policy limits** (CCP §999) | High-value CA PI claims | All policy limits, strict statutory conditions |
+| **Breach of contract**                     | Unpaid invoices, failed delivery          | Performance, payment, or damages for breach          |
+| **Debt collection**                        | Overdue accounts, loans                   | Payment of debt owed                                 |
+| **Employment disputes**                    | Unpaid wages, wrongful termination        | Back pay, severance, cessation of conduct            |
+| **Real estate / landlord-tenant**          | Security deposit, lease breach            | Return of funds, repairs, vacating premises          |
+| **IP / defamation / consumer**             | Trademark, copyright, false advertising   | Cease and desist, damages                            |
+| **Time-limited policy limits** (CCP §999)  | High-value CA PI claims                   | All policy limits, strict statutory conditions       |
 
 **The PI/insurance demand is the most common and most structured subtype**, with a canonical multi-section format and extensive medical and legal content. See relates_to::[[../sources/aaa-insurance-demand-letter-pat-donahue.md]] for the canonical template.
 

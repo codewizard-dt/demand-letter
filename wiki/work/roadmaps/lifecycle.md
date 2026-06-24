@@ -11,16 +11,16 @@ Active files are **never moved** after creation; state lives in the `status:` fr
 
 ## Frontmatter schema
 
-| Key | Required | Notes |
-|-----|----------|-------|
-| `id` | yes | `ROADMAP-NNN` |
-| `title` | yes | roadmap goal |
-| `status` | yes | `active \| done` |
-| `created` / `updated` | yes | `YYYY-MM-DD` |
-| `owner` | no | accountable person/role |
-| `linked_requirements` | no | `REQ-NNN` back-links |
-| `linked_decisions` | no | `DEC-NNNN` back-links |
-| `tags` | no | discovery only |
+| Key                   | Required | Notes                   |
+| --------------------- | -------- | ----------------------- |
+| `id`                  | yes      | `ROADMAP-NNN`           |
+| `title`               | yes      | roadmap goal            |
+| `status`              | yes      | `active \| done`        |
+| `created` / `updated` | yes      | `YYYY-MM-DD`            |
+| `owner`               | no       | accountable person/role |
+| `linked_requirements` | no       | `REQ-NNN` back-links    |
+| `linked_decisions`    | no       | `DEC-NNNN` back-links   |
+| `tags`                | no       | discovery only          |
 
 ## Status transitions
 

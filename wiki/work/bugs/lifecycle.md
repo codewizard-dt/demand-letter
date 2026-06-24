@@ -11,17 +11,17 @@ Active files are **never moved** after creation; state lives in the `status:` fr
 
 ## Frontmatter schema
 
-| Key | Required | Notes |
-|-----|----------|-------|
-| `id` | yes | `BUG-NNNN` |
-| `title` | yes | short slug/summary |
-| `status` | yes | `open \| triaged \| in-progress \| closed \| wontfix \| duplicate \| cannot-reproduce` |
-| `severity` | yes | `critical \| high \| medium \| low` |
-| `priority` | yes | `P0 \| P1 \| P2 \| P3` |
-| `created` / `updated` | yes | `YYYY-MM-DD` |
-| `reporter` | yes | who filed it |
-| `assignee` | no | `unassigned` until triage |
-| `tags` | no | discovery only |
+| Key                   | Required | Notes                                                                                  |
+| --------------------- | -------- | -------------------------------------------------------------------------------------- |
+| `id`                  | yes      | `BUG-NNNN`                                                                             |
+| `title`               | yes      | short slug/summary                                                                     |
+| `status`              | yes      | `open \| triaged \| in-progress \| closed \| wontfix \| duplicate \| cannot-reproduce` |
+| `severity`            | yes      | `critical \| high \| medium \| low`                                                    |
+| `priority`            | yes      | `P0 \| P1 \| P2 \| P3`                                                                 |
+| `created` / `updated` | yes      | `YYYY-MM-DD`                                                                           |
+| `reporter`            | yes      | who filed it                                                                           |
+| `assignee`            | no       | `unassigned` until triage                                                              |
+| `tags`                | no       | discovery only                                                                         |
 
 Closing requires a Root Cause Analysis, a fix commit, and a regression test (`/bug-close` gate).
 

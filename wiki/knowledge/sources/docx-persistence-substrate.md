@@ -18,9 +18,9 @@ A focused research report (2026-06-22) answering the question DEC-0001 deferred:
 
 ## Core Claim — Delimiter Tags Win on a Convergence of Reasons
 
-Three substrates were compared: **(A) delimiter/placeholder tags** filled by docxtemplater, **(B) Word content controls / SDTs**, and **(C) SDTs bound to a custom XML part**. All three are OOXML-native and formatting-lossless, so the differentiator is the *programmatic fill story* in a serverless Node stack. **Option A is recommended** because three forces converge:
+Three substrates were compared: **(A) delimiter/placeholder tags** filled by docxtemplater, **(B) Word content controls / SDTs**, and **(C) SDTs bound to a custom XML part**. All three are OOXML-native and formatting-lossless, so the differentiator is the _programmatic fill story_ in a serverless Node stack. **Option A is recommended** because three forces converge:
 
-1. **OSS maturity** — docxtemplater, docx-templates, and easy-template-x are all active Node/browser libraries; programmatic SDT *filling* generally needs **Aspose** (commercial, .NET-bridged) or hand-rolled OOXML. uses::[[../entities/tools/docxtemplater.md]]
+1. **OSS maturity** — docxtemplater, docx-templates, and easy-template-x are all active Node/browser libraries; programmatic SDT _filling_ generally needs **Aspose** (commercial, .NET-bridged) or hand-rolled OOXML. uses::[[../entities/tools/docxtemplater.md]]
 2. **Native expressiveness** — docxtemplater natively provides **loops** (`{#specials}…{/specials}` for the itemised specials table), **conditionals** (`{#hasLiens}…{/hasLiens}` for optional §7 clauses), a **structured error schema** that refuses to emit a corrupt file, and **`nullGetter`** for fail-closed missing-value handling.
 3. **The DEC-0001 annotation UI changes the calculus** — because the UI writes the markup **programmatically**, SDTs' main advantage (native in-Word authoring) is moot, and docxtemplater's main fragility (Word splitting hand-typed tags across runs) is avoided.
 

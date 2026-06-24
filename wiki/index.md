@@ -12,6 +12,7 @@ Conventions that govern every page (atomic pages, stable IDs, typed links, front
 Entry format: `- [Title](path) — one-line summary`.
 
 The wiki is split into two domains with opposite organizing laws:
+
 - **Knowledge** — timeless, link-navigated synthesis (sources, concepts, entities). Pages are listed individually below.
 - **Work** — stateful, status-navigated lifecycle artifacts (requirements, decisions, roadmaps, tasks, uat, bugs). Items are **not** listed here — each family keeps its own `index.md` of active items; this page links to those.
 
@@ -20,6 +21,7 @@ The wiki is split into two domains with opposite organizing laws:
 ## Knowledge
 
 ### Sources
+
 - [PRD — Demand Letter Generator (Steno)](knowledge/sources/prd-demand-letter-generator.md) — Steno's product spec: AI demand letter generation from templates + case docs, Claude, TypeScript/React/AWS/PostgreSQL, 1-week build
 - [Sample Demand Letter — Pat Donahue v. AAA](knowledge/sources/aaa-insurance-demand-letter-pat-donahue.md) — Canonical template input: California CCP §999 policy-limits demand from Stalwart Law Group; illustrates full letter structure
 - [Research — Demand Letters in Legal Context](knowledge/sources/demand-letter-legal-context.md) — Web research synthesis: types taxonomy, universal 10-element structure, FRE 408 admissibility rules, SOL non-tolling, PI settlement timeline
@@ -29,6 +31,7 @@ The wiki is split into two domains with opposite organizing laws:
 - [Research — Textract, SOC2, HIPAA, and AWS Compliance Solutions](knowledge/sources/textract-soc2-hipaa-aws-compliance.md) — Textract role + compliance status; encryption vs redaction at rest; PHI+PII log scrubbing; three-tier AWS compliance stack; Presidio vs Comprehend Medical
 
 ### Concepts
+
 - [Demand Letter](knowledge/concepts/demand-letter.md) — Definition, 7-type taxonomy, universal 10-element structure, PI-specific 7-section format, legal implications (FRE 408, SOL, condition precedent)
 - [Time-Limited Policy Limits Demand (CCP §999)](knowledge/concepts/time-limited-policy-limits-demand.md) — California statutory demand subtype with strict acceptance mechanics and bad-faith consequences
 - [Pre-Litigation Settlement Process (PI/Insurance)](knowledge/concepts/pre-litigation-settlement-process.md) — 7-step timeline from incident through MMI, demand package, insurer review, negotiation, to litigation; role of the generator
@@ -41,6 +44,7 @@ The wiki is split into two domains with opposite organizing laws:
 ### Entities
 
 **People**
+
 - [Faby Rivera, Esq.](knowledge/entities/people/faby-rivera.md) — Attorney at Stalwart Law Group; authored the sample demand letter
 - [Patrick Donahue](knowledge/entities/people/pat-donahue.md) — Claimant in the sample case; RV technician with multilevel spinal injuries
 - [Elaine Collins](knowledge/entities/people/elaine-collins.md) — AAA claims adjuster; named recipient of the sample letter
@@ -50,6 +54,7 @@ The wiki is split into two domains with opposite organizing laws:
 - [Dr. Michael P. Kelly, D.C.](knowledge/entities/people/dr-michael-kelly.md) — Chiropractor at Santee Chiropractic Clinic
 
 **Organisations**
+
 - [Steno](knowledge/entities/organisations/steno.md) — Legaltech company; project client building the demand letter generator
 - [Stalwart Law Group, APC](knowledge/entities/organisations/stalwart-law-group.md) — CA personal injury law firm; authors of the sample demand letter template
 - [Interinsurance Exchange of the Automobile Club (AAA)](knowledge/entities/organisations/aaa-interinsurance-exchange.md) — Respondent insurer in the sample case
@@ -58,6 +63,7 @@ The wiki is split into two domains with opposite organizing laws:
 - [MAX MRI Radiology](knowledge/entities/organisations/max-mri-radiology.md) — Radiology provider; lumbar and thoracic MRI imaging in sample case
 
 **Tools**
+
 - [Anthropic Claude](knowledge/entities/tools/anthropic-claude.md) — Preferred LLM for demand letter generation; runs on Amazon Bedrock for PHI residency (DEC-0003#D2)
 - [docxtemplater](knowledge/entities/tools/docxtemplater.md) — JS library that fills delimiter-tagged `.docx` templates inside the OOXML (lossless); docxtpl/Jinja2 is the Python equivalent; candidate persistence substrate
 - [AWS Textract](knowledge/entities/tools/aws-textract.md) — OCR/layout extraction layer in the hybrid ingestion pipeline; returns Block objects (bbox+page+confidence); HIPAA-eligible and SOC 2-compliant
@@ -65,6 +71,7 @@ The wiki is split into two domains with opposite organizing laws:
 - [AWS KMS](knowledge/entities/tools/aws-kms.md) — Encryption key management for all storage tiers (RDS, S3, EBS); satisfies HIPAA and SOC 2 encryption-at-rest requirements
 
 **Components**
+
 - [knowledge/entities/components/](knowledge/entities/components/) (this project's own modules, services, scripts — none yet)
 
 ---

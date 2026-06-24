@@ -35,17 +35,17 @@ Brief summary of the technical approach or key decisions (1-3 sentences).
 
 ## Steps
 
-### 1. Section Name  <!-- agent: general-purpose -->
+### 1. Section Name <!-- agent: general-purpose -->
 
 - [ ] Step description with enough detail for an agent to implement
 - [ ] Another step — include file paths, component names, or API routes when known
   - Sub-detail or acceptance criteria (plain text indent, not a checkbox)
 
-### 2. Another Section  <!-- agent: general-purpose -->
+### 2. Another Section <!-- agent: general-purpose -->
 
 - [ ] More steps grouped by logical area
 
-### N. Verification  <!-- agent: general-purpose -->
+### N. Verification <!-- agent: general-purpose -->
 
 - [ ] Verify TypeScript compiles / tests pass / app runs
 - [ ] Verify key user flows work end-to-end
@@ -73,7 +73,9 @@ Brief summary of the technical approach or key decisions (1-3 sentences).
 ```
 
 When a task reaches `completed/`, a UAT link is appended:
+
 ```markdown
 ---
+
 **UAT**: [`.docs/uat/completed/NNN-slug.uat.md`](../uat/completed/NNN-slug.uat.md)
 ```

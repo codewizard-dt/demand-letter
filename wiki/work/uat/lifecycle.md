@@ -11,14 +11,14 @@ Active files are **never moved** after creation; state lives in the `status:` fr
 
 ## Frontmatter schema
 
-| Key | Required | Notes |
-|-----|----------|-------|
-| `id` | yes | `UAT-NNN` |
-| `title` | yes | UAT title |
-| `status` | yes | `pending \| in-progress \| passed \| failed \| skipped \| trashed` |
-| `task` | yes | `TASK-NNN` back-link to the task under test |
-| `created` / `updated` | yes | `YYYY-MM-DD` |
-| `tags` | no | discovery only |
+| Key                   | Required | Notes                                                              |
+| --------------------- | -------- | ------------------------------------------------------------------ |
+| `id`                  | yes      | `UAT-NNN`                                                          |
+| `title`               | yes      | UAT title                                                          |
+| `status`              | yes      | `pending \| in-progress \| passed \| failed \| skipped \| trashed` |
+| `task`                | yes      | `TASK-NNN` back-link to the task under test                        |
+| `created` / `updated` | yes      | `YYYY-MM-DD`                                                       |
+| `tags`                | no       | discovery only                                                     |
 
 The body carries an `implements::[[TASK-NNN]]` typed link; the task carries a `uat:` frontmatter link back (`../uat/UAT-NNN-slug.md`).
 
