@@ -1,8 +1,0 @@
-[     708ms] Unexpected token '%'
-[     912ms] [LOG] Script start @ https://flytech-tracking.s3.amazonaws.com/path/id.js:0
-[     920ms] [ERROR] Error in main function: TypeError: Cannot read properties of undefined (reading 'ip')
-    at https://flytech-tracking.s3.amazonaws.com/path/id.js:80:18 @ https://flytech-tracking.s3.amazonaws.com/path/id.js:84
-[    1146ms] [LOG] GraphAI: project id from load is 0f6b2453cb6da947b393a9b35f6492e3 @ https://graphtech.ai/ag/js/graphai-min.js:36
-[    1147ms] [LOG] retrieved visitor id 3fTvpkQJDFAVPIo00urt @ https://graphtech.ai/ag/js/graphai-min.js:38
-[    1185ms] [LOG] slideNum:  5 @ https://steno.com/:1838
-[    1386ms] [LOG] GraphAI: Start observing @ https://graphtech.ai/ag/js/graphai-min.js:11

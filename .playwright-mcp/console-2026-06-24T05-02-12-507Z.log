@@ -1,9 +1,0 @@
-[     638ms] Unexpected token '%'
-[    1702ms] [LOG] Script start @ https://flytech-tracking.s3.amazonaws.com/path/id.js:0
-[    1940ms] [ERROR] Error in main function: TypeError: Cannot read properties of undefined (reading 'ip')
-    at https://flytech-tracking.s3.amazonaws.com/path/id.js:80:18 @ https://flytech-tracking.s3.amazonaws.com/path/id.js:84
-[    2048ms] [LOG] GraphAI: project id from load is 0f6b2453cb6da947b393a9b35f6492e3 @ https://graphtech.ai/ag/js/graphai-min.js:36
-[    2236ms] [LOG] slideNum:  5 @ https://steno.com/:1838
-[    3208ms] [WARNING] Unable to create a text session because the service is not running. @ https://steno.com/:0
-[    3208ms] [WARNING] The language detection model was required but not available. @ https://steno.com/:0
-[    5783ms] [LOG] GraphAI: Start observing @ https://graphtech.ai/ag/js/graphai-min.js:11
