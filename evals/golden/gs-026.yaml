@@ -1,0 +1,20 @@
+- id: "gs-026"
+  description: "renderTemplate() nullGetter throws TemplateRenderError when a template tag is absent from the data object"
+  query: |
+    Input: data object is missing the 'claimantName' key;
+    the tagged template DOCX contains {claimantName}
+    Call: renderTemplate(jobId, data)
+    Expected: throws TemplateRenderError with message containing
+    'Unexpected missing tag: {claimantName}' — never emits a partially-filled document
+  tested_files:
+    - packages/api/src/lib/docx-renderer.ts
+  expected_tools:
+    - renderTemplate
+  must_contain:
+    - "TemplateRenderError"
+    - "Unexpected missing tag"
+    - "{claimantName}"
+  must_not_contain:
+    - "partially-filled"
+    - "empty string"
+    - "null"

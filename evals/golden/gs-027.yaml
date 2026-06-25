@@ -1,0 +1,20 @@
+- id: "gs-027"
+  description: "generateMedicalNarrative() grounding validator flags [block-id] citations not in the known block set"
+  query: |
+    Context: known block IDs = { "blk-001", "blk-002" }
+    LLM response contains: "... [block-blk-001] confirms injury.
+    [block-FAKE-999] documents treatment."
+    Expected: groundingReport.unknownCitations = ["FAKE-999"];
+    groundingReport.validCitations = 1
+  tested_files:
+    - packages/api/src/lib/medical-narrative.ts
+  expected_tools:
+    - generateMedicalNarrative
+  must_contain:
+    - '"unknownCitations"'
+    - '"FAKE-999"'
+    - '"validCitations": 1'
+  must_not_contain:
+    - '"unknownCitations": []'
+    - '"validCitations": 0'
+    - "hallucinated"

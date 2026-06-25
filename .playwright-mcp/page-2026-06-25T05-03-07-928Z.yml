@@ -1,0 +1,19 @@
+- generic [ref=e4]:
+  - paragraph [ref=e5]: Welcome back
+  - heading "Sign in to Steno" [level=2] [ref=e6]
+  - generic [ref=e7]:
+    - generic [ref=e8]:
+      - generic [ref=e9]: Email address
+      - textbox "Email address" [ref=e10]:
+        - /placeholder: you@example.com
+    - generic [ref=e11]:
+      - generic [ref=e12]: Password
+      - textbox "Password" [ref=e13]:
+        - /placeholder: ••••••••
+    - link "Forgot password?" [ref=e15] [cursor=pointer]:
+      - /url: /forgot-password
+    - button "Sign in" [ref=e16] [cursor=pointer]
+  - paragraph [ref=e17]:
+    - text: Don’t have an account?
+    - link "Register" [ref=e18] [cursor=pointer]:
+      - /url: /register

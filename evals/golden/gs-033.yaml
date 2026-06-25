@@ -1,0 +1,18 @@
+- id: "gs-033"
+  description: "redactText() returns the original string unchanged when entities array is empty"
+  query: |
+    Input: text = "No PHI present in this block."
+    entities = []
+    Call: redactText(text, entities)
+    Expected: "No PHI present in this block." (identical to input, no mutation)
+  tested_files:
+    - packages/api/src/lib/redact-text.ts
+  expected_tools:
+    - redactText
+  must_contain:
+    - "No PHI present in this block."
+  must_not_contain:
+    - "[PATIENT_NAME]"
+    - "[PHI_ENTITY]"
+    - "[PHONE]"
+    - "undefined"

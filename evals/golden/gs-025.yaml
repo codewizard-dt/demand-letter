@@ -1,0 +1,23 @@
+- id: "gs-025"
+  description: "buildDataObject() parses per_provider_line_items JSON into an array at 'specials' key"
+  query: |
+    Input: extractedFields = [{ fieldName: 'per_provider_line_items',
+    value: '[{"provider":"Valley ER","amount":"$4,200"}]',
+    isNull: false, acceptMissing: false }]
+    Call: buildDataObject(jobId)
+    Expected: result['specials'] is an array with one object —
+    NOT a raw JSON string. The tagName 'specials' is used (not 'perProviderLineItems'
+    or 'per_provider_line_items').
+  tested_files:
+    - packages/api/src/lib/generation-data-builder.ts
+    - packages/api/src/lib/field-schema.ts
+  expected_tools:
+    - buildDataObject
+  must_contain:
+    - '"specials"'
+    - '"provider"'
+    - '"amount"'
+  must_not_contain:
+    - '"per_provider_line_items"'
+    - '"perProviderLineItems"'
+    - '"[{\\"provider\\"'

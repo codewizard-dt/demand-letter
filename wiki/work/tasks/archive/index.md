@@ -35,3 +35,16 @@ Terminal task files (`done` or `trashed`) moved here by `/wiki-archive` to reduc
 | [[TASK-029]] | Attorney Annotation UI — Zone Review and Confirmation Page | done | 2026-06-24 |
 | [[TASK-030]] | Delimiter Tag Injection — Inject {field_name} Tags, Save to S3, and Enumerate Slots via InspectModule | done | 2026-06-24 |
 | [[TASK-031]] | ROADMAP-002 End-to-End Verification — Zone Detection Pipeline Smoke Test | done | 2026-06-24 |
+| [[TASK-038]] | field-schema.ts: centralize snake_case → camelCase docxtemplater tag mapping | done | 2026-06-24 |
+| [[TASK-036]] | Generation data builder: assemble docxtemplater data object from extracted_fields | done | 2026-06-24 |
+| [[TASK-037]] | Sufficiency pre-check: fail fast with 400 if any required template slot is uncovered | done | 2026-06-24 |
+| [[TASK-044]] | docxtemplater render: load tagged template DOCX from S3 and render with data object | done | 2026-06-25 |
+| [[TASK-048]] | Wire renderTemplate into post-jobs-generate.ts: upload DOCX to S3 and set jobs.status = complete | done | 2026-06-25 |
+| [[TASK-046]] | SSE consumer: parse SSE stream from POST /jobs/:id/generate and show "Building document…" progress indicator | done | 2026-06-25 |
+| [[TASK-053]] | redactText utility: replace PHI/PII entity spans with typed tokens | done | 2026-06-25 |
+| [[TASK-051]] | Detect PHI entities per block via ComprehendMedical DetectPHI | done | 2026-06-25 |
+| [[TASK-056]] | ESLint rule to flag direct console.log with block text in Lambda handlers | done | 2026-06-25 |
+| [[TASK-055]] | Role-based block text redaction in GET /jobs/:id/blocks API | done | 2026-06-25 |
+| [[TASK-054]] | Fail-closed detection policy and log scrubbing in SNS Textract handler | done | 2026-06-25 |
+| [[TASK-058]] | Phase 4: Storage security confirmation — RDS KMS, S3 SSE-KMS, CloudTrail, AWS Config | done | 2026-06-25 |
+| [[TASK-059]] | Phase 5: End-to-end compliance verification — PHI redaction, detection failure, attorney vs developer roles | done | 2026-06-25 |

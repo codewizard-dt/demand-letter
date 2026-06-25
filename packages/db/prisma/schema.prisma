@@ -11,13 +11,16 @@ datasource db {
 model Job {
   id        String   @id @default(cuid())
   status    String   @default("pending")
-  output    String?
-  createdAt DateTime @default(now())
+  output      String?
+  outputS3Key String?
+  createdAt   DateTime @default(now())
   updatedAt DateTime @updatedAt
   files           File[]
   templates       Template[]
   sourceFiles     SourceFile[]
   extractedFields ExtractedField[]
+  refinements     Refinement[]
+  collaborativeChanges CollaborativeChange[]
 
   @@index([status])
   @@index([createdAt])
@@ -170,4 +173,35 @@ model Block {
 
   @@index([sourceFileId])
   @@index([page])
+}
+
+model Refinement {
+  id           String   @id @default(cuid())
+  jobId        String
+  job          Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  instruction  String
+  scope        String   @default("all")   // "all" or a section name e.g. "medical_narrative"
+  beforeText   String
+  afterText    String
+  accepted     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  @@index([jobId])
+  @@index([createdAt])
+  @@map("refinements")
+}
+
+model CollaborativeChange {
+  id            String   @id @default(cuid())
+  jobId         String
+  userId        String
+  userName      String
+  operationType String   // "insert" | "delete" | "format"
+  contentDelta  Json
+  createdAt     DateTime @default(now())
+
+  job           Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([jobId, createdAt])
 }

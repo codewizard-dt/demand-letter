@@ -1,0 +1,272 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - link "Skip to content" [ref=e3] [cursor=pointer]:
+      - /url: "#main-content"
+    - generic [ref=e4]:
+      - link "Steno Logo" [ref=e6] [cursor=pointer]:
+        - /url: /?hsLang=en
+        - img "Steno Logo" [ref=e7]
+      - navigation "Navigation Menu" [ref=e10]:
+        - menu [ref=e11]:
+          - menuitem "What We Do" [ref=e12] [cursor=pointer]
+          - menuitem "For Court Reporters" [ref=e13] [cursor=pointer]
+          - menuitem "Technology & Integrations" [ref=e14] [cursor=pointer]
+          - menuitem "About" [ref=e15] [cursor=pointer]
+          - menuitem "Schedule Now" [ref=e16] [cursor=pointer]
+      - link "Sign In" [ref=e18] [cursor=pointer]:
+        - /url: /dashboard?hsLang=en
+      - generic [ref=e19] [cursor=pointer]: Contact
+  - main [ref=e20]:
+    - generic [ref=e21]:
+      - generic [ref=e22]:
+        - generic [ref=e26]:
+          - img "HeaderImage_Technology" [ref=e28]
+          - generic [ref=e29]:
+            - generic [ref=e30]:
+              - generic [ref=e31]: Legal Technology & Integrations
+              - heading "Purpose-Built Legal Technology" [level=1] [ref=e32]
+              - paragraph [ref=e33]: Steno fulfills a critical need in the antiquated legal technology industry by introducing intuitive solutions that improve the litigation process for all.
+            - generic [ref=e35] [cursor=pointer]: Schedule a Demo
+        - img "branches" [ref=e38]
+        - generic [ref=e41]:
+          - generic [ref=e43]:
+            - img "Technology icon" [ref=e45]
+            - generic [ref=e46]:
+              - generic [ref=e47]: Custom Legal Technology
+              - generic [ref=e48]: Steno’s in-house tech teams develop an intimate understanding of the problems law firms face, then introduce solutions that simplify unnecessarily complex systems.
+          - generic [ref=e50]:
+            - img "Cost and time saving icon" [ref=e52]
+            - generic [ref=e53]:
+              - generic [ref=e54]: Cost and Time-Saving Solutions
+              - paragraph [ref=e56]: Steno builds solutions that streamline workflows, improve collaboration, and make the litigation process easier.
+          - generic [ref=e58]:
+            - img "User experience" [ref=e60]
+            - generic [ref=e61]:
+              - generic [ref=e62]: Intuitive User Experience
+              - generic [ref=e63]: Steno’s clients come from various backgrounds and different levels of technological experience, so we create legal technology that is easy to use and doesn’t require intensive training to understand.
+      - generic [ref=e66]:
+        - iframe [ref=e72]:
+          - generic [active] [ref=f21e1]:
+            - generic "YouTube Video Player" [ref=f21e3]
+            - generic [ref=f21e5]:
+              - generic:
+                - generic:
+                  - button "Play video" [ref=f21e10] [cursor=pointer]
+                  - button "Hide player controls" [ref=f21e12] [cursor=pointer]
+                  - generic [ref=f21e14]:
+                    - generic [ref=f21e19]:
+                      - generic [ref=f21e20]:
+                        - 'link "Digital Firm Dashboard: Instantly Book a Deposition" [ref=f21e21] [cursor=pointer]':
+                          - /url: https://www.youtube.com/watch?v=m-gUUfjzzTI
+                        - link "Steno" [ref=f21e22] [cursor=pointer]:
+                          - /url: /channel/UCWSOwdkldUgb5Bqyq3Q7-2w
+                          - generic [ref=f21e23]: Steno
+                      - generic [ref=f21e24]:
+                        - button [ref=f21e25] [cursor=pointer]
+                        - generic [ref=f21e27]:
+                          - generic: Steno
+                          - generic: 911 subscribers
+                    - generic [ref=f21e28]:
+                      - button "Share" [ref=f21e31] [cursor=pointer]:
+                        - generic [ref=f21e35]:
+                          - img
+                      - link "Watch on YouTube" [ref=f21e42] [cursor=pointer]:
+                        - /url: https://www.youtube.com/watch?v=m-gUUfjzzTI
+                        - generic [ref=f21e45]:
+                          - text: Watch on
+                          - img [ref=f21e47]:
+                            - generic [ref=f21e49]:
+                              - img
+        - generic [ref=e73]:
+          - heading "Digital Firm Dashboard" [level=2] [ref=e74]
+          - paragraph [ref=e76]: Our dashboard is a hub where you can quickly and easily manage all your firm’s litigation support services. From booking jobs to file management, we aim to make everything about your litigation process run smoothly.
+          - link "Learn More " [ref=e78] [cursor=pointer]:
+            - /url: https://brief.steno.com/firm-dashboard?hsLang=en
+      - generic [ref=e81]:
+        - iframe [ref=e87]:
+          - generic [active] [ref=f22e1]:
+            - generic "YouTube Video Player" [ref=f22e3]
+            - generic [ref=f22e5]:
+              - generic:
+                - generic:
+                  - button "Play video" [ref=f22e10] [cursor=pointer]
+                  - button "Hide player controls" [ref=f22e12] [cursor=pointer]
+                  - generic [ref=f22e14]:
+                    - generic [ref=f22e19]:
+                      - generic [ref=f22e20]:
+                        - link "Introducing Steno Connect for Zoom" [ref=f22e21] [cursor=pointer]:
+                          - /url: https://www.youtube.com/watch?v=PhLQmCGvopE
+                        - link "Steno" [ref=f22e22] [cursor=pointer]:
+                          - /url: /channel/UCWSOwdkldUgb5Bqyq3Q7-2w
+                          - generic [ref=f22e23]: Steno
+                      - generic [ref=f22e24]:
+                        - button [ref=f22e25] [cursor=pointer]
+                        - generic [ref=f22e27]:
+                          - generic: Steno
+                          - generic: 911 subscribers
+                    - generic [ref=f22e28]:
+                      - button "Share" [ref=f22e31] [cursor=pointer]:
+                        - generic [ref=f22e35]:
+                          - img
+                      - link "Watch on YouTube" [ref=f22e42] [cursor=pointer]:
+                        - /url: https://www.youtube.com/watch?v=PhLQmCGvopE
+                        - generic [ref=f22e45]:
+                          - text: Watch on
+                          - img [ref=f22e47]:
+                            - generic [ref=f22e49]:
+                              - img
+        - generic [ref=e88]:
+          - heading "Remote Depositions with Steno Connect" [level=2] [ref=e89]:
+            - text: Remote Depositions with
+            - text: Steno Connect
+          - paragraph [ref=e91]: Steno Connect is our signature, state-of-the-art remote deposition offering. It includes seamless exhibit handling and is purpose-built for remote litigation.
+          - link "Learn More " [ref=e93] [cursor=pointer]:
+            - /url: /steno-connect?hsLang=en
+      - generic [ref=e96]:
+        - iframe [ref=e102]:
+          - generic [active] [ref=f23e1]:
+            - generic "YouTube Video Player" [ref=f23e3]
+            - generic [ref=f23e5]:
+              - generic:
+                - generic:
+                  - button "Play video" [ref=f23e10] [cursor=pointer]
+                  - button "Hide player controls" [ref=f23e12] [cursor=pointer]
+                  - generic [ref=f23e14]:
+                    - generic [ref=f23e19]:
+                      - generic [ref=f23e20]:
+                        - link "Steno x Litify Integration Demo" [ref=f23e21] [cursor=pointer]:
+                          - /url: https://www.youtube.com/watch?v=U67cjqqklZ4
+                        - link "Steno" [ref=f23e22] [cursor=pointer]:
+                          - /url: /channel/UCWSOwdkldUgb5Bqyq3Q7-2w
+                          - generic [ref=f23e23]: Steno
+                      - generic [ref=f23e24]:
+                        - button [ref=f23e25] [cursor=pointer]
+                        - generic [ref=f23e27]:
+                          - generic: Steno
+                          - generic: 911 subscribers
+                    - generic [ref=f23e28]:
+                      - button "Share" [ref=f23e31] [cursor=pointer]:
+                        - generic [ref=f23e35]:
+                          - img
+                      - link "Watch on YouTube" [ref=f23e42] [cursor=pointer]:
+                        - /url: https://www.youtube.com/watch?v=U67cjqqklZ4
+                        - generic [ref=f23e45]:
+                          - text: Watch on
+                          - img [ref=f23e47]:
+                            - generic [ref=f23e49]:
+                              - img
+        - generic [ref=e103]:
+          - heading "Integrated Court Reporting with Litify" [level=2] [ref=e104]
+          - paragraph [ref=e106]: Easily book court reporting services and access transcripts, exhibits and videos directly from your Litify platform. Our seamless integration allows you to view all your files in one place without ever leaving your legal tech case management platform.
+          - link "Learn More " [ref=e108] [cursor=pointer]:
+            - /url: http://steno.com/technology/litify-integration?hsLang=en
+      - generic [ref=e111]:
+        - generic [ref=e113]:
+          - img "Clio Platform"
+        - generic [ref=e114]:
+          - heading "Integrated with Clio Manage" [level=2] [ref=e115]
+          - paragraph [ref=e117]: Easily book court reporting services and access your case transcripts, exhibits, and videos from right within your Clio Manage account. Our seamless integration allows you to schedule services and manage all your deposition files without ever leaving Clio.
+          - link "Learn More " [ref=e119] [cursor=pointer]:
+            - /url: https://steno.com/clio-integration?hsLang=en
+      - img "branches" [ref=e122]
+      - generic [ref=e124]:
+        - generic [ref=e125]:
+          - heading "Additional Resources" [level=2] [ref=e126]
+          - heading "Learn more about Steno, the services we provide, and how we can help improve your litigation experience." [level=3] [ref=e127]
+        - generic [ref=e128]:
+          - generic [ref=e131]:
+            - generic [ref=e132]: "Tackling Innovation: Why Steno’s UX Solutions Dominate in the Antiquated Legal Technology Industry"
+            - generic [ref=e133]: At Steno, innovation means building technology focused on user experience and making our clients’ work easier. We've designed solutions that improve UX for our clients.
+            - link "Learn More" [ref=e135] [cursor=pointer]:
+              - /url: https://brief.steno.com/stenos-ux-solutions-dominate-legal-technology?hsLang=en
+          - generic [ref=e138]:
+            - generic [ref=e139]: How Steno Protects Your Sensitive Information
+            - generic [ref=e140]: Steno's technology was audited and found to be in compliance with System and Organization Controls (SOC) 2 Type II and HIPAA.
+            - link "Learn More" [ref=e142] [cursor=pointer]:
+              - /url: https://brief.steno.com/soc2-hipaa-compliance?hsLang=en
+          - generic [ref=e145]:
+            - generic [ref=e146]: How This Firm Owner Found the Perfect Remote Deposition Solution on Instagram
+            - generic [ref=e147]: Read this Q&A to learn why Throckmorton Law Firm PLLC relies on Steno for remote depositions on a deferred payment basis.
+            - link "Learn More" [ref=e149] [cursor=pointer]:
+              - /url: https://brief.steno.com/connor-throckmorton?hsLang=en
+      - generic [ref=e153]:
+        - heading "See Our Legal Technology In Action" [level=2] [ref=e154]
+        - paragraph [ref=e155]: Don't let technical hurdles and outdated technology stand in your way. See how the latest in purpose-built legal technology can help you meet deadlines, work up cases, and generate new business.
+        - generic [ref=e157]: Schedule a Demo
+  - contentinfo [ref=e159]:
+    - navigation "Navigation Menu" [ref=e162]:
+      - menu [ref=e163]:
+        - menuitem "Get in Touch" [ref=e164] [cursor=pointer]
+        - menu [ref=e165]:
+          - menuitem "Schedule Now Form" [ref=e166] [cursor=pointer]
+          - menuitem "Book a Demo" [ref=e167] [cursor=pointer]
+          - menuitem "concierge@steno.com" [ref=e168] [cursor=pointer]
+          - menuitem "888.707.8366" [ref=e169] [cursor=pointer]
+          - menuitem "315 W. 9th St Suite 807 Los Angeles, CA 90015" [ref=e170] [cursor=pointer]:
+            - generic:
+              - text: 315 W. 9th St
+              - text: Suite 807
+              - text: Los Angeles, CA 90015
+        - menuitem "What We Do" [ref=e171] [cursor=pointer]
+        - menu [ref=e172]:
+          - menuitem "Court Reporting" [ref=e173] [cursor=pointer]
+          - menuitem "Remote Depositions" [ref=e174] [cursor=pointer]
+          - menuitem "DelayPay" [ref=e175] [cursor=pointer]
+          - menuitem "Legal Technology" [ref=e176] [cursor=pointer]
+          - menuitem "Litigation Support Services (CA)" [ref=e177] [cursor=pointer]
+        - menuitem "Technology & Integrations" [ref=e178] [cursor=pointer]
+        - menu [ref=e179]:
+          - menuitem "Transcript Genius" [ref=e180] [cursor=pointer]
+          - menuitem "Steno Connect for Zoom" [ref=e181] [cursor=pointer]
+          - menuitem "Firm Dashboard" [ref=e182] [cursor=pointer]
+          - menuitem "Clio Integration" [ref=e183] [cursor=pointer]
+          - menuitem "Litify Integration" [ref=e184] [cursor=pointer]
+        - menuitem "About Steno" [ref=e185] [cursor=pointer]
+        - menu [ref=e186]:
+          - menuitem "About the Company" [ref=e187] [cursor=pointer]
+          - menuitem "Trust Center & Security" [ref=e188] [cursor=pointer]
+          - menuitem "Guides & Webinars" [ref=e189] [cursor=pointer]
+          - menuitem "Steno in the News" [ref=e190] [cursor=pointer]
+          - menuitem "Steno Careers" [ref=e191] [cursor=pointer]
+          - menuitem "For Court Reporters" [ref=e192] [cursor=pointer]
+          - menuitem "Contractor Roles" [ref=e193] [cursor=pointer]
+          - menuitem "Knowledge Base" [ref=e194] [cursor=pointer]
+          - menuitem "The Brief Blog" [ref=e195] [cursor=pointer]
+          - menuitem "Between the Briefs Podcast" [ref=e196] [cursor=pointer]
+    - link "steno" [ref=e198] [cursor=pointer]:
+      - /url: /?hsLang=en
+      - img "steno" [ref=e199]
+    - generic [ref=e200]:
+      - generic [ref=e201]:
+        - generic [ref=e202]: Copyright © 2026.
+        - generic [ref=e203]:
+          - link "Terms of Use" [ref=e204] [cursor=pointer]:
+            - /url: /terms?hsLang=en
+          - link "Beta Terms of Use" [ref=e205] [cursor=pointer]:
+            - /url: /terms-beta?hsLang=en
+          - link "Privacy Policy" [ref=e206] [cursor=pointer]:
+            - /url: /privacy?hsLang=en
+          - link "California Privacy" [ref=e207] [cursor=pointer]:
+            - /url: https://steno.com/privacy?hsLang=en#additional-info-for-california
+          - link "Data Processing Addendum" [ref=e208] [cursor=pointer]:
+            - /url: /dpa?hsLang=en
+          - link "Court Reporter Agreement" [ref=e209] [cursor=pointer]:
+            - /url: /court-reporter-agreement?hsLang=en
+          - generic [ref=e210]: Cookies Settings
+          - generic [ref=e211]: "Steno Agency, Inc. NV: Firm #108F"
+      - generic [ref=e212]:
+        - link "YouTube" [ref=e213] [cursor=pointer]:
+          - /url: https://www.youtube.com/channel/UCWSOwdkldUgb5Bqyq3Q7-2w
+          - generic [ref=e214]: 
+        - link "LinkedIn" [ref=e215] [cursor=pointer]:
+          - /url: https://www.linkedin.com/company/steno-inc/
+          - generic [ref=e216]: 
+        - link "Facebook" [ref=e217] [cursor=pointer]:
+          - /url: https://www.facebook.com/stenocourtreporting/
+          - generic [ref=e218]: 
+        - link "Instagram" [ref=e219] [cursor=pointer]:
+          - /url: https://www.instagram.com/steno_reporters/
+          - generic [ref=e220]: 
+  - generic [ref=e221] [cursor=pointer]:
+    - button "Open Preferences" [ref=e223]
+    - text: Cookies Settings

@@ -1,0 +1,19 @@
+- id: "gs-031"
+  description: "GET /jobs/:id/blocks returns redacted text when X-Caller-Role is developer"
+  query: |
+    Setup: block with text = "Jane Smith was treated." and
+    phiOffsets = [{ type: "PATIENT", startOffset: 0, endOffset: 10 }]
+    Request: GET /jobs/job-123/blocks with header X-Caller-Role: developer
+    Expected: response block text = "[PATIENT_NAME] was treated."
+    Raw PHI "Jane Smith" must not appear in the response.
+  tested_files:
+    - packages/api/src/handlers/get-jobs-blocks.ts
+  expected_tools:
+    - getJobsBlocks
+  must_contain:
+    - "[PATIENT_NAME]"
+    - "was treated"
+  must_not_contain:
+    - "Jane Smith"
+    - "Jane"
+    - "phiOffsets"

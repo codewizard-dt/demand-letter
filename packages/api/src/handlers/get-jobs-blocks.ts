@@ -1,17 +1,22 @@
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import type { Prisma } from '@prisma/client';
 import { prisma } from '@demand-letter/db';
+import { redactText, type RedactableEntity } from '../lib/redact-text';
+import { corsHeaders } from '../lib/cors';
 
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+  try {
   const jobId = event.pathParameters?.id;
   if (!jobId) {
-    return { statusCode: 400, body: JSON.stringify({ error: 'Missing job id' }) };
+    return { statusCode: 400,
+      headers: { ...corsHeaders }, body: JSON.stringify({ error: 'missing_job_id', message: 'Job ID is required.' }) };
   }
 
   // Verify job exists
   const job = await prisma.job.findUnique({ where: { id: jobId } });
   if (!job) {
-    return { statusCode: 404, body: JSON.stringify({ error: 'Job not found' }) };
+    return { statusCode: 404,
+      headers: { ...corsHeaders }, body: JSON.stringify({ error: 'job_not_found', message: 'The requested job does not exist.' }) };
   }
 
   // Parse query parameters
@@ -43,20 +48,35 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
         bbox: true,
         confidence: true,
         createdAt: true,
+        phiOffsets: true,
       },
     }),
     prisma.block.count({ where }),
   ]);
 
+  const callerRole = (event.headers?.['x-caller-role'] ?? event.headers?.['X-Caller-Role'] ?? 'developer').toLowerCase();
+  const isAttorney = callerRole === 'attorney';
+
+  const responseBlocks = blocks.map((block) => {
+    const entities = (block.phiOffsets as RedactableEntity[] | null) ?? [];
+    const text = isAttorney ? block.text : redactText(block.text, entities);
+    const { phiOffsets: _omit, ...rest } = block;
+    return { ...rest, text };
+  });
+
   return {
     statusCode: 200,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      blocks,
+      blocks: responseBlocks,
       page,
       limit,
       totalCount,
       hasMore: page * limit < totalCount,
     }),
   };
+  } catch (err) {
+    console.error('blocks error', err);
+    return { statusCode: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'internal_server_error', message: 'An unexpected error occurred.' }) };
+  }
 };

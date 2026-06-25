@@ -1,5 +1,6 @@
 import { APIGatewayProxyHandlerV2 } from 'aws-lambda';
 import { prisma } from '@demand-letter/db';
+import { corsHeaders } from '../lib/cors';
 
 interface JudgmentBody {
   fields: { fieldName: string; value: string }[];
@@ -9,18 +10,21 @@ interface JudgmentBody {
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   const jobId = event.pathParameters?.id;
   if (!jobId) {
-    return { statusCode: 400, body: JSON.stringify({ error: 'Missing job ID' }) };
+    return { statusCode: 400,
+      headers: { ...corsHeaders }, body: JSON.stringify({ error: 'missing_job_id', message: 'Job ID is required.' }) };
   }
   const job = await prisma.job.findUnique({ where: { id: jobId } });
   if (!job) {
-    return { statusCode: 404, body: JSON.stringify({ error: 'Job not found' }) };
+    return { statusCode: 404,
+      headers: { ...corsHeaders }, body: JSON.stringify({ error: 'job_not_found', message: 'The requested job does not exist.' }) };
   }
 
   let body: JudgmentBody;
   try {
     body = JSON.parse(event.body ?? '{}') as JudgmentBody;
   } catch {
-    return { statusCode: 400, body: JSON.stringify({ error: 'Invalid JSON body' }) };
+    return { statusCode: 400,
+      headers: { ...corsHeaders }, body: JSON.stringify({ error: 'invalid_json_body', message: 'Request body must be valid JSON.' }) };
   }
 
   // Upsert attorney-judgment fields
@@ -74,7 +78,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
   return {
     statusCode: 200,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     body: JSON.stringify({ ok: true }),
   };
 };

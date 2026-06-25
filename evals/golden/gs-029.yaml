@@ -1,0 +1,21 @@
+- id: "gs-029"
+  description: "redactText() falls back to [PHI_ENTITY] for an entity type not in the TOKEN_MAP"
+  query: |
+    Input: text = "Call us at 555-867-5309 for follow-up."
+    entities = [{ type: "UNKNOWN_ENTITY_TYPE", startOffset: 10, endOffset: 21 }]
+    Call: redactText(text, entities)
+    Expected: "Call us at [PHI_ENTITY] for follow-up."
+    The span "555-867-5309" must be replaced; the catch-all token must be [PHI_ENTITY].
+  tested_files:
+    - packages/api/src/lib/redact-text.ts
+  expected_tools:
+    - redactText
+  must_contain:
+    - "[PHI_ENTITY]"
+    - "Call us at"
+    - "for follow-up"
+  must_not_contain:
+    - "555-867-5309"
+    - "[PHONE]"
+    - "undefined"
+    - "null"

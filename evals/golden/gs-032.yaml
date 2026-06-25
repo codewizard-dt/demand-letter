@@ -1,0 +1,19 @@
+- id: "gs-032"
+  description: "GET /jobs/:id/blocks returns full unredacted text when X-Caller-Role is attorney"
+  query: |
+    Setup: block with text = "Jane Smith was treated." and
+    phiOffsets = [{ type: "PATIENT", startOffset: 0, endOffset: 10 }]
+    Request: GET /jobs/job-123/blocks with header X-Caller-Role: attorney
+    Expected: response block text = "Jane Smith was treated."
+    The attorney role must see the raw PHI, not the redacted token.
+  tested_files:
+    - packages/api/src/handlers/get-jobs-blocks.ts
+  expected_tools:
+    - getJobsBlocks
+  must_contain:
+    - "Jane Smith"
+    - "was treated"
+  must_not_contain:
+    - "[PATIENT_NAME]"
+    - "[PHI_ENTITY]"
+    - "phiOffsets"

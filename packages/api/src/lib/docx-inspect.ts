@@ -1,20 +1,15 @@
 import PizZip from 'pizzip';
-import Docxtemplater from 'docxtemplater';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const inspectModule = require('docxtemplater/js/inspect-module.js') as () => {
-  getAllTags: () => Record<string, unknown>;
-};
 
+// Scan DOCX XML for {tagName} placeholders without the lodash-dependent inspect module
 export function enumerateSlots(buffer: Buffer): string[] {
   const zip = new PizZip(buffer);
-  const iModule = inspectModule();
-  const doc = new Docxtemplater(zip, {
-    modules: [iModule],
-    paragraphLoop: true,
-    linebreaks: true,
-  });
-  // InspectModule collects tags during compilation; no render() call needed
-  doc.compile();
-  const tags: Record<string, unknown> = iModule.getAllTags();
-  return Object.keys(tags);
+  const seen = new Set<string>();
+  for (const name of Object.keys(zip.files)) {
+    if (!name.endsWith('.xml')) continue;
+    const content = zip.files[name].asText();
+    for (const match of content.matchAll(/\{([a-zA-Z_][a-zA-Z0-9_.]*)\}/g)) {
+      seen.add(match[1]);
+    }
+  }
+  return Array.from(seen);
 }

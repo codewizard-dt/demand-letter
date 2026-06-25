@@ -1,24 +1,42 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './lib/auth';
+import ProtectedRoute from './components/ProtectedRoute';
+import AuthLayout from './components/AuthLayout';
+import LoginPage from './pages/auth/LoginPage';
+import RegisterPage from './pages/auth/RegisterPage';
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
+import AccountPage from './pages/AccountPage';
 import UsagePage from './pages/admin/UsagePage';
 import UploadPage from './pages/UploadPage';
 import GeneratePage from './pages/GeneratePage';
 import AnnotatePage from './pages/AnnotatePage';
 import GapReportPage from './pages/GapReportPage';
-
-// TODO: Add auth guard for /admin/* routes before production deployment
+import EditorPage from './pages/EditorPage';
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-bg font-sans">
-      <BrowserRouter>
+    <BrowserRouter>
+      <AuthProvider>
         <Routes>
-          <Route path="/" element={<UploadPage />} />
-          <Route path="/admin/usage" element={<UsagePage />} />
-          <Route path="/jobs/:id/generate" element={<GeneratePage />} />
-          <Route path="/jobs/:id/gap-report" element={<GapReportPage />} />
-          <Route path="/jobs/:id/templates/:templateId/annotate" element={<AnnotatePage />} />
+          {/* Public auth routes */}
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+
+          {/* Protected routes — require auth, render inside navbar layout */}
+          <Route element={<ProtectedRoute />}>
+            <Route element={<AuthLayout />}>
+              <Route path="/" element={<UploadPage />} />
+              <Route path="/account" element={<AccountPage />} />
+              <Route path="/admin/usage" element={<UsagePage />} />
+              <Route path="/jobs/:id/generate" element={<GeneratePage />} />
+              <Route path="/jobs/:id/gap-report" element={<GapReportPage />} />
+              <Route path="/jobs/:id/templates/:templateId/annotate" element={<AnnotatePage />} />
+              <Route path="/jobs/:id/editor" element={<EditorPage />} />
+            </Route>
+          </Route>
         </Routes>
-      </BrowserRouter>
-    </div>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }

@@ -10,5 +10,5 @@ if (process.env.NODE_ENV !== 'production') {
   globalThis.__prisma = prisma;
 }
 
-export type { Prisma, LlmAuditLog, Template, Zone, TemplateSlot, SourceFile, Block, ExtractedField } from '@prisma/client';
+export type { Prisma, LlmAuditLog, Template, Zone, TemplateSlot, SourceFile, Block, ExtractedField, CollaborativeChange, Refinement } from '@prisma/client';
 export { PrismaClient, LlmFeature, ZoneType } from '@prisma/client';

@@ -11,13 +11,14 @@ Globals:
       Variables:
         NODE_ENV: !Ref Stage
         DATABASE_URL: !Sub '{{resolve:ssm:/${Stage}/demand-letter/db/url}}'
+        CORS_ORIGIN: '*'
   Api:
     BinaryMediaTypes:
       - multipart/form-data
     Cors:
-      AllowMethods: "'GET,POST,PATCH,OPTIONS'"
-      AllowHeaders: "'Content-Type'"
-      AllowOrigin: !Sub "'${WebAppOrigin}'"
+      AllowMethods: "'GET,POST,PATCH,DELETE,OPTIONS'"
+      AllowHeaders: "'Content-Type,X-Caller-Role'"
+      AllowOrigin: "'*'"
 
 Parameters:
   Stage:
@@ -39,8 +40,8 @@ Parameters:
 
   WebAppOrigin:
     Type: String
-    Default: 'http://localhost:5173'
-    Description: Allowed CORS origin for S3 pre-signed URL uploads
+    Default: 'http://localhost:5174'
+    Description: Allowed CORS origin for the web frontend
 
   TextractCompletionTopicArn:
     Type: String
@@ -293,6 +294,32 @@ Resources:
           DOCUMENTS_BUCKET: !Ref DocumentsBucket
           BEDROCK_MODEL_ID: !Sub '{{resolve:ssm:/${Stage}/demand-letter/bedrock-model-id}}'
 
+  PostJobsRefineFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: post-jobs-refine.handler
+      Runtime: nodejs20.x
+      Timeout: 300
+      Layers:
+        - !Ref DbLayer
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+                - bedrock:InvokeModelWithResponseStream
+              Resource: '*'
+      Events:
+        PostJobsRefineApi:
+          Type: Api
+          Properties:
+            Path: /jobs/{id}/refine
+            Method: post
+      Environment:
+        Variables:
+          BEDROCK_MODEL_ID: !Sub '{{resolve:ssm:/${Stage}/demand-letter/bedrock-model-id}}'
+
   GetJobsOutputFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -310,6 +337,9 @@ Resources:
               Resource: '*'
       Layers:
         - !Ref DbLayer
+      Environment:
+        Variables:
+          DOCUMENTS_BUCKET: !Ref DocumentsBucket
       Events:
         GetJobsOutputApi:
           Type: Api
@@ -483,6 +513,8 @@ Resources:
             - Effect: Allow
               Action:
                 - textract:GetDocumentAnalysis
+                - comprehendmedical:DetectPHI
+                - comprehend:DetectPiiEntities
               Resource: '*'
 
   GetJobsBlocksFunction:
@@ -548,6 +580,25 @@ Resources:
       Policies:
         - AWSLambdaBasicExecutionRole
 
+  GetJobsFieldsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: packages/api/src/handlers/get-jobs-fields.handler
+      Runtime: nodejs20.x
+      Timeout: 30
+      MemorySize: 256
+      Layers:
+        - !Ref DbLayer
+      Events:
+        GetJobsFields:
+          Type: Api
+          Properties:
+            Path: /jobs/{id}/fields
+            Method: get
+      Policies:
+        - AWSLambdaBasicExecutionRole
+
   PostJobsAttorneyJudgmentFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -566,6 +617,334 @@ Resources:
             Method: post
       Policies:
         - AWSLambdaBasicExecutionRole
+
+  PatchJobsRefineAcceptFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: patch-jobs-refine-accept.handler
+      Runtime: nodejs20.x
+      Timeout: 30
+      MemorySize: 256
+      Layers:
+        - !Ref DbLayer
+      Events:
+        PatchJobsRefineAccept:
+          Type: Api
+          Properties:
+            Path: /jobs/{id}/refine/{refinement_id}/accept
+            Method: patch
+      Policies:
+        - AWSLambdaBasicExecutionRole
+
+  PatchJobsRefineRejectFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: patch-jobs-refine-reject.handler
+      Runtime: nodejs20.x
+      Timeout: 30
+      MemorySize: 256
+      Layers:
+        - !Ref DbLayer
+      Events:
+        PatchJobsRefineReject:
+          Type: Api
+          Properties:
+            Path: /jobs/{id}/refine/{refinement_id}/reject
+            Method: patch
+      Policies:
+        - AWSLambdaBasicExecutionRole
+
+  GetJobsRefinementsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: get-jobs-refinements.handler
+      Runtime: nodejs20.x
+      Timeout: 30
+      MemorySize: 256
+      Layers:
+        - !Ref DbLayer
+      Events:
+        GetJobsRefinementsApi:
+          Type: Api
+          Properties:
+            Path: /jobs/{id}/refinements
+            Method: get
+      Policies:
+        - AWSLambdaBasicExecutionRole
+
+  GetJobsChangesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: get-jobs-changes.handler
+      Runtime: nodejs20.x
+      Timeout: 30
+      MemorySize: 256
+      Layers:
+        - !Ref DbLayer
+      Events:
+        GetJobsChangesApi:
+          Type: Api
+          Properties:
+            Path: /jobs/{id}/changes
+            Method: get
+      Policies:
+        - AWSLambdaBasicExecutionRole
+
+  DeleteJobsChangesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: delete-jobs-changes.handler
+      Runtime: nodejs20.x
+      Timeout: 30
+      MemorySize: 256
+      Layers:
+        - !Ref DbLayer
+      Events:
+        DeleteJobsChangesApi:
+          Type: Api
+          Properties:
+            Path: /jobs/{id}/changes/{changeId}
+            Method: delete
+      Policies:
+        - AWSLambdaBasicExecutionRole
+
+  CloudTrailLogsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${Stage}-demand-letter-cloudtrail-${AWS::AccountId}'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !Ref DemandLetterKmsKey
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  CloudTrailLogsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref CloudTrailLogsBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AWSCloudTrailAclCheck
+            Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action: s3:GetBucketAcl
+            Resource: !GetAtt CloudTrailLogsBucket.Arn
+          - Sid: AWSCloudTrailWrite
+            Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action: s3:PutObject
+            Resource: !Sub '${CloudTrailLogsBucket.Arn}/AWSLogs/${AWS::AccountId}/*'
+            Condition:
+              StringEquals:
+                's3:x-amz-acl': 'bucket-owner-full-control'
+
+  DemandLetterTrail:
+    Type: AWS::CloudTrail::Trail
+    DependsOn: CloudTrailLogsBucketPolicy
+    Properties:
+      TrailName: !Sub '${Stage}-demand-letter-trail'
+      S3BucketName: !Ref CloudTrailLogsBucket
+      IsLogging: true
+      IsMultiRegionTrail: true
+      EnableLogFileValidation: true
+      KMSKeyId: !Ref DemandLetterKmsKey
+
+  # HIPAA Compliance — AWS Config Conformance Pack (Tier 2)
+  # Deploy manually after stack creation:
+  #   aws configservice put-conformance-pack \
+  #     --conformance-pack-name demand-letter-hipaa \
+  #     --template-s3-uri s3://aws-config-rules-packages/hipaa-final.yaml
+  # This flags drift automatically for HIPAA controls.
+  # Cannot be automated via SAM/CloudFormation due to Config Service permissions.
+
+  # ── WebSocket infrastructure ──────────────────────────────────────────────
+
+  WebSocketConnectionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${AWS::StackName}-websocket-connections"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: connectionId
+          AttributeType: S
+        - AttributeName: jobId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: connectionId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: jobId-index
+          KeySchema:
+            - AttributeName: jobId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+
+  WebSocketApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub "${AWS::StackName}-ws"
+      ProtocolType: WEBSOCKET
+      RouteSelectionExpression: "$request.body.action"
+
+  WebSocketSyncFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: websocket-sync.handler
+      Runtime: nodejs20.x
+      Timeout: 30
+      MemorySize: 256
+      Layers:
+        - !Ref DbLayer
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:PutItem
+                - dynamodb:GetItem
+                - dynamodb:DeleteItem
+                - dynamodb:Query
+              Resource:
+                - !GetAtt WebSocketConnectionsTable.Arn
+                - !Sub '${WebSocketConnectionsTable.Arn}/index/*'
+            - Effect: Allow
+              Action:
+                - execute-api:ManageConnections
+              Resource: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*'
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:PutObject
+              Resource:
+                - !Sub '${DocumentsBucket.Arn}/ydoc-snapshots/*'
+      Environment:
+        Variables:
+          CONNECTIONS_TABLE: !Ref WebSocketConnectionsTable
+          DOCUMENTS_BUCKET: !Ref DocumentsBucket
+
+  WebSocketSyncFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref WebSocketSyncFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*/*'
+
+  MergeYjsSnapshotFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: handlers/merge-yjs-snapshot.handler
+      Runtime: nodejs20.x
+      Timeout: 300
+      MemorySize: 512
+      Layers:
+        - !Ref DbLayer
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:PutObject
+                - s3:DeleteObject
+                - s3:ListBucket
+              Resource:
+                - !GetAtt DocumentsBucket.Arn
+                - !Sub '${DocumentsBucket.Arn}/ydoc-snapshots/*'
+      Events:
+        ScheduledMerge:
+          Type: Schedule
+          Properties:
+            Schedule: rate(5 minutes)
+            Description: Merge pending Y.js snapshot updates into full snapshots
+            Enabled: true
+      Environment:
+        Variables:
+          DOCUMENTS_BUCKET: !Ref DocumentsBucket
+
+  PostJobsExportDocxFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: post-jobs-export-docx.handler
+      Runtime: nodejs20.x
+      Layers:
+        - !Ref DbLayer
+      Events:
+        PostJobsExportDocxApi:
+          Type: Api
+          Properties:
+            Path: /jobs/{id}/export/docx
+            Method: post
+
+  WebSocketConnectIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref WebSocketApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${WebSocketSyncFunction.Arn}/invocations'
+
+  WebSocketConnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WebSocketApi
+      RouteKey: $connect
+      Target: !Sub 'integrations/${WebSocketConnectIntegration}'
+
+  WebSocketDisconnectIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref WebSocketApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${WebSocketSyncFunction.Arn}/invocations'
+
+  WebSocketDisconnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WebSocketApi
+      RouteKey: $disconnect
+      Target: !Sub 'integrations/${WebSocketDisconnectIntegration}'
+
+  WebSocketMessageIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref WebSocketApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${WebSocketSyncFunction.Arn}/invocations'
+
+  WebSocketMessageRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WebSocketApi
+      RouteKey: message
+      Target: !Sub 'integrations/${WebSocketMessageIntegration}'
+
+  WebSocketStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref WebSocketApi
+      StageName: prod
+      AutoDeploy: true
 
 Outputs:
   DbInstanceEndpoint:
@@ -592,3 +971,8 @@ Outputs:
     Value: !GetAtt DocumentsBucket.Arn
     Export:
       Name: !Sub '${Stage}-demand-letter-docs-bucket-arn'
+
+  WebSocketApiUrl:
+    Value: !Sub 'wss://${WebSocketApi}.execute-api.${AWS::Region}.amazonaws.com/prod'
+    Export:
+      Name: !Sub '${Stage}-demand-letter-ws-url'

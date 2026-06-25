@@ -9,7 +9,10 @@ export default [
     rules: {
       ...tseslint.configs.recommended.rules,
       '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-var-requires': 'warn',
+      '@typescript-eslint/ban-ts-comment': 'warn',
+      'no-console': 'warn',
     },
   },
   { ignores: ['**/dist/**', '**/.aws-sam/**', '**/node_modules/**'] },

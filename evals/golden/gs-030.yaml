@@ -1,0 +1,20 @@
+- id: "gs-030"
+  description: "mergeEntities() deduplicates overlapping PHI and PII spans, keeping the higher-confidence entry"
+  query: |
+    Input:
+      phi = [{ type: "PATIENT", startOffset: 0, endOffset: 8, confidence: 0.95 }]
+      pii = [{ type: "PERSON",  startOffset: 1, endOffset: 8, confidence: 0.72 }]
+    Call: mergeEntities(phi, pii)
+    Spans overlap (|0-1| <= 5, |8-8| <= 5).
+    Expected: one entity returned with confidence: 0.95 (the PHI entry wins).
+  tested_files:
+    - packages/api/src/lib/merge-entities.ts
+  expected_tools:
+    - mergeEntities
+  must_contain:
+    - '"confidence": 0.95'
+    - '"type": "PATIENT"'
+  must_not_contain:
+    - '"confidence": 0.72'
+    - '"type": "PERSON"'
+    - '"length": 2'

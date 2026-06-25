@@ -1,32 +1,35 @@
 import { APIGatewayProxyHandler } from 'aws-lambda';
-import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
-import { LlmFeature, prisma } from '@demand-letter/db';
-import { invokeModelStream } from '../lib/ai-provider';
+import { prisma } from '@demand-letter/db';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { renderTemplate, TemplateRenderError, buildDataObject } from '../lib';
+import { generateMedicalNarrative } from '../lib/medical-narrative';
 import { computeGapReport } from '../lib/sufficiency-gate';
-
+import { corsHeaders } from '../lib/cors';
+const MODEL_ID = process.env.BEDROCK_MODEL_ID!;
 const s3 = new S3Client({ region: process.env.AWS_REGION ?? 'us-east-1' });
 const BUCKET = process.env.DOCUMENTS_BUCKET!;
-const MODEL_ID = process.env.BEDROCK_MODEL_ID!;
 
 export const handler: APIGatewayProxyHandler = async (event) => {
   const jobId = event.pathParameters?.id;
   if (!jobId) {
-    return { statusCode: 400, body: JSON.stringify({ error: 'Missing job id' }) };
+    return { statusCode: 400,
+      headers: { ...corsHeaders }, body: JSON.stringify({ error: 'missing_job_id', message: 'Job ID is required.' }) };
   }
 
   const files = await prisma.file.findMany({ where: { jobId } });
   if (!files.length) {
-    return { statusCode: 422, body: JSON.stringify({ error: 'No files uploaded for this job' }) };
+    return { statusCode: 422,
+      headers: { ...corsHeaders }, body: JSON.stringify({ error: 'no_files_uploaded', message: 'This job has no uploaded files yet.' }) };
   }
 
   const gapReport = await computeGapReport(jobId);
   if (gapReport.gaps.length > 0) {
     return {
-      statusCode: 422,
-      headers: { 'Content-Type': 'application/json' },
+      statusCode: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        error: 'gap_report_not_cleared',
-        message: `${gapReport.gaps.length} slot(s) remain uncovered. Fill or accept-missing all gaps before generating.`,
+        error: 'sufficiency_precheck_failed',
+        message: `${gapReport.gaps.length} required slot(s) are not covered. Run /jobs/:id/gap-report to see details.`,
         gaps: gapReport.gaps,
       }),
     };
@@ -35,57 +38,59 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   await prisma.job.update({ where: { id: jobId }, data: { status: 'processing' } });
 
   try {
-    // Fetch all files from S3 and base64-encode as Anthropic document blocks
-    const fileContents = await Promise.all(
-      files.map(async (f) => {
-        const obj = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: f.s3Key }));
-        const bytes = await obj.Body?.transformToByteArray();
-        return {
-          type: 'document' as const,
-          source: {
-            type: 'base64' as const,
-            media_type: f.mimeType as
-              | 'application/pdf'
-              | 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            data: Buffer.from(bytes!).toString('base64'),
-          },
-        };
-      }),
+    const userId = 'system';
+    const { text: narrativeText, groundingReport } = await generateMedicalNarrative(
+      jobId, MODEL_ID, userId
     );
 
-    const userId = 'system'; // no auth at skeleton stage
-    const stream = await invokeModelStream({
-      modelId: MODEL_ID,
-      feature: LlmFeature.skeleton_generation,
-      userId,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            ...fileContents,
-            {
-              type: 'text',
-              text: 'Generate a demand letter matching the provided template exactly, using the case documents as the source of facts.',
-            },
-          ],
-        },
-      ],
+    console.log('Grounding report:', JSON.stringify(groundingReport));
+
+    // Assemble docxtemplater data object and inject the AI-generated narrative
+    const data = await buildDataObject(jobId);
+    (data as Record<string, unknown>).medicalNarrative = narrativeText;
+
+    // Render DOCX from tagged template
+    const docxBuffer = await renderTemplate(jobId, data);
+
+    // Upload rendered DOCX to S3
+    const outputS3Key = `${jobId}/output/demand-letter.docx`;
+    await s3.send(new PutObjectCommand({
+      Bucket: BUCKET,
+      Key: outputS3Key,
+      Body: docxBuffer,
+      ContentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    }));
+
+    await prisma.job.update({
+      where: { id: jobId },
+      data: { status: 'complete', output: narrativeText, outputS3Key },
     });
 
-    // Collect streamed output
-    let output = '';
-    for await (const chunk of stream) {
-      output += chunk;
-    }
-
-    await prisma.job.update({ where: { id: jobId }, data: { status: 'done', output } });
+    // Emit each ~80-char chunk as a separate SSE data event for streaming effect
+    const chunks = narrativeText.match(/.{1,80}/gs) ?? [narrativeText];
+    const sseBody = chunks.map(c => `data: ${c}\n\n`).join('') + 'event: complete\ndata: \n\n';
 
     return {
       statusCode: 200,
-      headers: { 'Content-Type': 'text/plain' },
-      body: output,
+      headers: { ...corsHeaders,
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'X-Accel-Buffering': 'no',
+      } as { [header: string]: string },
+      body: sseBody,
     };
   } catch (err) {
+    if (err instanceof TemplateRenderError) {
+      await prisma.job.update({ where: { id: jobId }, data: { status: 'failed' } });
+      return {
+        statusCode: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          error: 'template_render_failed',
+          errors: err.errors,
+        }),
+      };
+    }
     await prisma.job.update({ where: { id: jobId }, data: { status: 'failed' } });
     throw err;
   }

@@ -1,0 +1,11 @@
+[     382ms] [LOG] leave page @ https://graphtech.ai/ag/js/graphai-min.js:30
+[     432ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ about:blank:0
+[     434ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ about:blank:0
+[     503ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ https://f.hubspotusercontent30.net/hubfs/302335/scripts/jquery-3.5.1.min.js:1
+[     520ms] Unexpected token '%'
+[     543ms] [LOG] Script start @ https://flytech-tracking.s3.amazonaws.com/path/id.js:0
+[     553ms] [ERROR] Error in main function: TypeError: Cannot read properties of undefined (reading 'ip')
+    at https://flytech-tracking.s3.amazonaws.com/path/id.js:80:18 @ https://flytech-tracking.s3.amazonaws.com/path/id.js:84
+[     621ms] [LOG] GraphAI: project id from load is 0f6b2453cb6da947b393a9b35f6492e3 @ https://graphtech.ai/ag/js/graphai-min.js:36
+[     621ms] [LOG] retrieved visitor id 3fTvpkQJDFAVPIo00urt @ https://graphtech.ai/ag/js/graphai-min.js:38
+[    1958ms] [LOG] GraphAI: Start observing @ https://graphtech.ai/ag/js/graphai-min.js:11

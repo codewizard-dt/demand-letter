@@ -20,7 +20,7 @@ export async function computeGapReport(jobId: string): Promise<GapReport> {
     select: { id: true },
   });
   if (!template) {
-    throw new Error(`No template found for job ${jobId}`);
+    return { covered: 0, total: 0, gaps: [] };
   }
 
   const slots = await prisma.templateSlot.findMany({

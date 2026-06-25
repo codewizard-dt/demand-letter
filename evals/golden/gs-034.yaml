@@ -1,0 +1,21 @@
+- id: "gs-034"
+  description: "mergeEntities() preserves both entries when PHI and PII spans do not overlap"
+  query: |
+    Input:
+      phi = [{ type: "PATIENT", startOffset: 0,  endOffset: 8,  confidence: 0.95 }]
+      pii = [{ type: "SSN",     startOffset: 20, endOffset: 31, confidence: 0.99 }]
+    Call: mergeEntities(phi, pii)
+    Spans are non-overlapping (startOffset delta = 20, well beyond the 5-offset tolerance).
+    Expected: two entities returned — one PATIENT at [0,8] and one SSN at [20,31].
+  tested_files:
+    - packages/api/src/lib/merge-entities.ts
+  expected_tools:
+    - mergeEntities
+  must_contain:
+    - '"type": "PATIENT"'
+    - '"type": "SSN"'
+    - '"startOffset": 0'
+    - '"startOffset": 20'
+  must_not_contain:
+    - '"length": 1'
+    - '"length": 0'

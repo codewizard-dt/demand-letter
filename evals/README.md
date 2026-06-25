@@ -30,12 +30,24 @@ Run on every commit. Zero LLM cost — assertions over recorded output.
 | gs-020 | computeGapReport() excludes slot from gaps when acceptMissing=true | sufficiency_gate | sufficiency-gate.ts | 2026-06-24 |
 | gs-021 | runGroundedExtraction() includes block_ids for every populated field | grounded_extraction | extraction-service.ts | 2026-06-24 |
 | gs-022 | runGroundedExtraction() sets is_null=true with null_reason when no blocks support a field | grounded_extraction | extraction-service.ts | 2026-06-24 |
+| gs-023 | buildDataObject() maps snake_case dbName to camelCase tagName key in result | data_assembly | generation-data-builder.ts, field-schema.ts | 2026-06-25 |
+| gs-024 | buildDataObject() omits isNull=true fields when acceptMissing=false — not set to empty string | data_assembly | generation-data-builder.ts | 2026-06-25 |
+| gs-025 | buildDataObject() parses per_provider_line_items JSON into array at 'specials' key | data_assembly | generation-data-builder.ts, field-schema.ts | 2026-06-25 |
+| gs-026 | renderTemplate() nullGetter throws TemplateRenderError when a template tag is absent from data | docx_render | docx-renderer.ts | 2026-06-25 |
+| gs-027 | generateMedicalNarrative() grounding validator flags [block-id] citations not in the known block set | medical_narrative | medical-narrative.ts | 2026-06-25 |
+| gs-028 | redactText() replaces a PATIENT span with [PATIENT_NAME] token without shifting adjacent text | phi_pii_compliance | redact-text.ts | 2026-06-25 |
+| gs-029 | redactText() falls back to [PHI_ENTITY] for an entity type not in the TOKEN_MAP | phi_pii_compliance | redact-text.ts | 2026-06-25 |
+| gs-030 | mergeEntities() deduplicates overlapping PHI and PII spans, keeping the higher-confidence entry | phi_pii_compliance | merge-entities.ts | 2026-06-25 |
+| gs-031 | GET /jobs/:id/blocks returns redacted text when X-Caller-Role is developer | phi_pii_compliance | get-jobs-blocks.ts | 2026-06-25 |
+| gs-032 | GET /jobs/:id/blocks returns full unredacted text when X-Caller-Role is attorney | phi_pii_compliance | get-jobs-blocks.ts | 2026-06-25 |
+| gs-033 | redactText() returns the original string unchanged when entities array is empty | phi_pii_compliance | redact-text.ts | 2026-06-25 |
+| gs-034 | mergeEntities() preserves both entries when PHI and PII spans do not overlap | phi_pii_compliance | merge-entities.ts | 2026-06-25 |
 
 ## Coverage status
 
 | Stage | Status | Count |
 |-------|--------|-------|
-| 1 — Golden Sets | Active | 22 (15 original + 7 Roadmap 3) |
+| 1 — Golden Sets | Active | 34 (15 original + 7 Roadmap 3 + 5 Roadmap 4 + 7 Roadmap 5) |
 | 2 — Labeled Scenarios | Not started | — |
 | 3 — Replay Harnesses | Not started | — |
 | 4 — Rubrics | Not started | — |

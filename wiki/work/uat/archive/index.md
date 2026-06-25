@@ -35,3 +35,16 @@ Terminal UAT files (`passed`, `skipped`, or `trashed`) moved here by `/wiki-arch
 | [[UAT-029]] | UAT: Attorney Annotation UI — Zone Review and Confirmation Page | passed | 2026-06-24 |
 | [[UAT-030]] | UAT: Delimiter Tag Injection — Inject {field_name} Tags, Save to S3, and Enumerate Slots via InspectModule | passed | 2026-06-24 |
 | [[UAT-031]] | UAT: ROADMAP-002 End-to-End Verification — Zone Detection Pipeline Smoke Test | passed | 2026-06-24 |
+| [[UAT-038]] | UAT: field-schema.ts Canonical Field Mapping | passed | 2026-06-24 |
+| [[UAT-036]] | UAT: Generation data builder: assemble docxtemplater data object from extracted_fields | passed | 2026-06-24 |
+| [[UAT-037]] | UAT: Sufficiency Pre-check for Generation Gate | passed | 2026-06-24 |
+| [[UAT-044]] | UAT: docxtemplater render: load tagged template DOCX from S3 and render with data object | passed | 2026-06-25 |
+| [[UAT-048]] | UAT: Wire renderTemplate into post-jobs-generate.ts: upload DOCX to S3 and set jobs.status = complete | passed | 2026-06-25 |
+| [[UAT-046]] | UAT: SSE Consumer — Frontend Progress Indicator | passed | 2026-06-25 |
+| [[UAT-053]] | UAT: redactText utility — replace PHI/PII entity spans with typed tokens | passed | 2026-06-25 |
+| [[UAT-051]] | UAT: Detect PHI entities per block via ComprehendMedical DetectPHI | passed | 2026-06-25 |
+| [[UAT-056]] | UAT: ESLint rule to flag direct console.log with block text in Lambda handlers | passed | 2026-06-25 |
+| [[UAT-055]] | UAT: Role-based block text redaction in GET /jobs/:id/blocks API | passed | 2026-06-25 |
+| [[UAT-054]] | UAT: Fail-closed detection policy and log scrubbing in SNS Textract handler | passed | 2026-06-25 |
+| [[UAT-058]] | UAT: Phase 4 — Storage security confirmation — RDS KMS, S3 SSE-KMS, CloudTrail, AWS Config | passed | 2026-06-25 |
+| [[UAT-059]] | UAT: Phase 5 End-to-end compliance verification — PHI redaction, detection failure, attorney vs developer roles | passed | 2026-06-25 |

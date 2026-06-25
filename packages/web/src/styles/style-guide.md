@@ -140,6 +140,48 @@ linear-gradient(0deg, #ABDFD4 0%, #D6ECE2 30%, #EFF2E9 80%, #F5F5EE 100%)
 | Padding | `8px 20px 7px` |
 | Font size | `12px` |
 | Font weight | `400` |
+| Text transform | `uppercase` |
+| Letter spacing | `0.25px` |
+
+---
+
+## Eyebrow / Label
+
+Small uppercase callout that sits above a heading to categorise the section (e.g. "Deferred Payment Solutions for Every Firm").
+
+| Property | Value |
+|----------|-------|
+| Color | `#A18050` (primary-gold) |
+| Font size | `12px` |
+| Font weight | `400` |
+| Text transform | `uppercase` |
+| Letter spacing | `1px` (wider than buttons — creates label distinction) |
+| Font family | Body / sans (Apercu → Inter fallback) |
+
+Tailwind utility shorthand:
+```
+text-[12px] font-normal tracking-[1px] uppercase text-primary-gold
+```
+
+---
+
+## Products / Services Reference
+
+Steno's live navigation as of 2026-06-25. Use when naming features or sections in the app UI to stay on-brand.
+
+**What We Do (Services)**
+- Court Reporting
+- Remote Depositions
+- DelayPay
+- Legal Technology
+- Litigation Support Services (CA)
+
+**Technology & Integrations**
+- Transcript Genius
+- Steno Connect for Zoom
+- Firm Dashboard
+- Clio Integration
+- Litify Integration
 
 ---
 

@@ -13,4 +13,6 @@ Entry format: `- [UAT-NNN — Title](UAT-NNN-slug.md) — verifies TASK-NNN · s
 - [UAT-033 — UAT: ROADMAP-003 Phase 3 — Grounded Extraction](UAT-033-grounded-extraction-phase-3.md) — verifies TASK-033 · pending
 - [UAT-034 — UAT: ROADMAP-003 Phase 4 — Sufficiency Gate & Gap Report](UAT-034-sufficiency-gate-gap-report.md) — verifies TASK-034 · pending
 - [UAT-035 — UAT: ROADMAP-003 Phase 5 — End-to-End Verification](UAT-035-roadmap-003-phase-5-e2e-verification.md) — verifies TASK-035 · pending
-
+- [UAT-060 — UAT: refinements DB table — Prisma model + migration](UAT-060-refinements-db-table.md) — verifies TASK-060 · pending
+- [UAT-062 — UAT: PATCH accept/reject refinement endpoints — update jobs.output_text on accept](UAT-062-patch-refinement-accept-reject.md) — verifies TASK-062 · pending
+- [UAT-081 — UAT: Verify track-changes view shows each edit with correct author and timestamp](UAT-081-track-changes-author-timestamp-verify.md) — verifies TASK-081 · pending

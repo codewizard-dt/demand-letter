@@ -1,0 +1,17 @@
+- generic [ref=e19]:
+  - banner [ref=e20]:
+    - link "Steno STENO" [ref=e21] [cursor=pointer]:
+      - /url: /
+      - img "Steno" [ref=e22]
+      - generic [ref=e23]: STENO
+    - button "Open user menu" [ref=e25] [cursor=pointer]: D
+  - main [ref=e26]:
+    - generic [ref=e42]:
+      - paragraph [ref=e43]: Your profile
+      - heading "Account" [level=1] [ref=e44]
+      - generic [ref=e45]:
+        - generic [ref=e46]: D
+        - generic [ref=e47]:
+          - paragraph [ref=e48]: david
+          - paragraph [ref=e49]: david@steno.com
+      - button "Sign out" [ref=e50] [cursor=pointer]

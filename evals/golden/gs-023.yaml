@@ -1,0 +1,20 @@
+- id: "gs-023"
+  description: "buildDataObject() maps snake_case dbName to camelCase tagName key in the result object"
+  query: |
+    Input: extractedFields = [{ fieldName: 'claimant_name', value: 'Jane Smith',
+    isNull: false, acceptMissing: false }]
+    Call: buildDataObject(jobId)
+    Expected: result contains key 'claimantName' with value 'Jane Smith' —
+    not the raw db key 'claimant_name'
+  tested_files:
+    - packages/api/src/lib/generation-data-builder.ts
+    - packages/api/src/lib/field-schema.ts
+  expected_tools:
+    - buildDataObject
+    - dbNameToTagName
+  must_contain:
+    - '"claimantName"'
+    - '"Jane Smith"'
+  must_not_contain:
+    - '"claimant_name"'
+    - "undefined"

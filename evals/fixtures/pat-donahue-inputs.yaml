@@ -1,0 +1,235 @@
+# Template inputs for: AAA-Insurance_Time-Limited-Policy-Limits-Demand_Pat-Donahue.docx
+# These values, substituted into the demand letter template, reproduce the original document exactly.
+
+# ── Header ──────────────────────────────────────────────────────────────────
+letterDate: "May 29, 2026"
+
+adjusterEmail: "collins.elaine@ace.aaa.com"
+adjusterName: "Elaine Collins"
+adjusterLastName: "Collins"
+adjusterSalutation: "Ms."
+
+insuranceCompany: "Interinsurance Exchange of the Automobile Club"
+insurancePOBox: "P.O. Box 25210"
+insuranceCityStateZip: "Santa Ana, CA 92799"
+
+# ── Re: block ────────────────────────────────────────────────────────────────
+clientName: "Patrick Donahue"
+clientLastName: "Donahue"
+clientHonorific: "Mr."
+claimNumber: "017204635"
+insuredName: "Carol Bush"
+dateOfLoss: "June 6, 2025"
+
+# ── Demand title / expiry ────────────────────────────────────────────────────
+demandExpiryDateUpper: "JUNE 29, 2026"   # all-caps form used in heading
+demandExpiryDate: "June 29, 2026"        # mixed-case form used in body
+demandExpiryTime: "12:00 p.m. PST"
+demandExpiryTimeUpper: "12 P.M. PST"     # heading form
+
+# ── Liability ────────────────────────────────────────────────────────────────
+atFaultPartyName: "Larry L. Lawhorn"
+atFaultPartyLastName: "Lawhorn"
+incidentDate: "June 6, 2025"
+incidentTime: "4:20 PM"
+incidentLocation: >-
+  the far-right lane preparing to merge onto the on-ramp from Highway 67 to
+  Highway 8 East in El Cajon, California
+atFaultVehicleYear: "2013"
+atFaultVehicleMake: "Ford"
+clientVehicle: "Prius"
+liabilityAccepted: "100%"
+
+# ── Primary treating physician ───────────────────────────────────────────────
+primaryPhysicianName: "Dr. Ankush Kumar Bansal, M.D."
+primaryPhysicianLastName: "Bansal"
+primaryPhysicianFacility: "Coastal Pain and Spinal Diagnostics"
+painEvalDate1: "February 17, 2026"
+followUpDate: "April 16, 2026"
+
+# ── Chiropractor ─────────────────────────────────────────────────────────────
+chiropractorName: "Dr. Michael P. Kelly, D.C."
+chiropractorLastName: "Kelly"
+chiropractorFacility: "Santee Chiropractic Clinic"
+chiropractorStartDate: "June 9, 2025"
+chiropractorEndDate: "July 9, 2025"
+chiropractorVisits: "12"
+
+# ── MRI ──────────────────────────────────────────────────────────────────────
+mriFacility: "MAX MRI Radiology"
+mriDate: "March 25, 2026"
+mriRadiologistName: "Dr. Voci"
+mriRadiologistLastName: "Voci"
+
+# ── Future care ──────────────────────────────────────────────────────────────
+recommendedProcedure: >-
+  right lumbar medial branch block targeting the L4-5 and L5-S1 facets
+  with fluoroscopic guidance for diagnostic evaluation of facet-mediated pain
+procedureCostClinic: "$5,000.00 to $6,000.00"
+procedureCostSurgeryCenter: "$6,000.00 to $8,000.00"
+procedureSurgeryCenterCity: "Carlsbad"
+futureMedicalReserve: "$50,000.00"
+
+# ── Client background (pain & suffering) ────────────────────────────────────
+clientOccupation: "RV technician"
+clientOccupationDescription: >-
+  work underneath recreational vehicles to perform his duties
+
+# ── Specials (line items) ────────────────────────────────────────────────────
+specials:
+  - provider: "Santee Chiropractic Clinic"
+    amount: "$2,739.00"
+  - provider: "San Diego Chiropractic And Massage Center"
+    amount: "Pending Bill"
+  - provider: "Coastal Pain and Spinal Diagnostics"
+    amount: "$2,386.58"
+  - provider: "MAX MRI Radiology"
+    amount: "$3,500.00"
+
+totalMedicalExpenses: "$8,625.58"
+futureMedicalExpenses: "$50,000.00"
+generalDamages: "$100,000.00"
+
+# ── Firm / signing attorney ──────────────────────────────────────────────────
+firmName: "STALWART LAW GROUP, APC"
+firmNameMixed: "Stalwart Law Group"
+firmAddress: "1327 N. Broadway Santa Ana, CA 92706"
+signingAttorneyName: "Faby Rivera, Esq."
+
+# ── LLM-generated narrative sections ────────────────────────────────────────
+# These are the long prose blocks written by the LLM from medical records.
+# They are included here verbatim for fixture/reproduction purposes.
+
+diagnosisNarrative: >-
+  As a direct result of your insured's negligence, Mr. Donahue's diagnosed
+  conditions resulting from this collision include sprain of the ligaments of
+  the cervical spine, strain of the muscle, fascia, and tendon at the neck
+  level, sprain of the ligaments of the thoracic spine, sprain of the lumbar
+  spine and pelvis, muscle spasm, bilateral low back pain with right-sided
+  sciatica, right-sided thoracic pain, neck pain, myalgia, and lumbar facet
+  joint pain. Dr. Ankush Kumar Bansal, M.D., of Coastal Pain and Spinal
+  Diagnostics, assessed Mr. Donahue's neck pain as consistent with cervical
+  myofascial strain, cervical facet joint sprain on the right, cervical
+  ligamentous sprain, and possible cervical disc injuries with posterior
+  protrusion causing cervical radiculitis. Dr. Bansal further assessed
+  Mr. Donahue's right-sided mid back pain as consistent with thoracic
+  myofascial strain, ligamentous sprain, and facet joint capsular sprain on
+  the right, as well as a possible thoracic disc injury. His lower back pain
+  radiating to the right buttock was assessed as consistent with lumbar
+  myofascial strain, ligamentous sprain, and facet joint capsular sprain
+  bilaterally, and possible lumbar disc injury with posterior protrusion
+  causing right-sided lumbar radiculitis.
+
+chiropractorNarrative: >-
+  Following the accident, Mr. Donahue initiated chiropractic care with
+  Dr. Michael P. Kelly, D.C., at Santee Chiropractic Clinic, receiving
+  treatment from June 9, 2025, through July 9, 2025, for a total of 12
+  visits. Dr. Kelly's examination on June 9, 2025, revealed restricted
+  cervical and thoracolumbar range of motion, bilateral posterior cervical
+  muscle spasm, lumbar paraspinal muscle spasm, and a positive Spurling's
+  test on the left. Mr. Donahue's treatment at Santee Chiropractic included
+  spinal manipulation, electrical muscle stimulation, therapeutic ultrasound,
+  and bilateral orthotics.
+
+painManagementNarrative: >-
+  Due to persistent symptoms, Mr. Donahue was evaluated by Dr. Bansal at
+  Coastal Pain and Spinal Diagnostics on February 17, 2026. At that
+  evaluation, Dr. Bansal documented that Mr. Donahue continued to experience
+  right-sided mid back pain radiating to his right low back and right buttock,
+  as well as neck soreness with restricted range of motion. Physical
+  examination revealed mild straightening of the cervical lordosis, forward
+  head posture, tenderness along the medial scapular border on the right,
+  restricted cervical rotation, a limited Spurling's test, loss of lumbar
+  lordosis, tenderness of the right lumbar paraspinal muscles at L1-L3,
+  limited lumbar flexion and extension, facet loading positive bilaterally,
+  and a positive straight leg raise on the right for buttock pain. Dr. Bansal
+  ordered MRI studies of the lumbar and thoracic spine, referred Mr. Donahue
+  to physical therapy, and prescribed conservative pain management measures.
+
+thoracicMriNarrative: >-
+  Mr. Donahue underwent MRI imaging of both the lumbar and thoracic spine at
+  MAX MRI Radiology on March 25, 2026. The thoracic spine MRI revealed
+  straightening of the normal thoracic kyphosis associated with underlying
+  muscle spasm, strain or sprain, and musculoligamentous or disc injury in the
+  setting of a whiplash injury; a left paracentral disc protrusion at T4-T5
+  measuring 6 x 3 mm with flattening of the left ventral cord and moderate
+  left paracentral canal stenosis (AP dimension 7 mm); central disc
+  protrusions at T5-T6 and T6-T7 each measuring 5 x 3 mm with indentation of
+  the ventral cord and mild canal stenosis (AP dimension 9-10 mm); posterior
+  annular bulges at T10-T11 and T11-T12 measuring 3 mm with mild canal
+  stenosis; and a right paracentral broad-based subligamentous disc extrusion
+  at T12-L1 measuring 5 x 6 x 3 mm with indentation and effacement of the
+  right ventral thecal sac. Dr. Voci also noted disc bulges and extrusions in
+  the mid to lower cervical spine and recommended a dedicated cervical spine
+  MRI for further evaluation.
+
+lumbarMriNarrative: >-
+  The lumbar spine MRI revealed mild to moderate dextroscoliosis centered in
+  the mid lumbar spine; a broad-based subligamentous disc extrusion at L5-S1
+  measuring 9 x 10 x 5 mm with significant crowding and effacement of the
+  descending S1 nerve roots and 4-5 mm retrolisthesis of L5 on S1; a
+  biforaminal subligamentous disc extrusion at L4-L5 most significant at the
+  left foramina measuring 10 x 4 mm with a probability of impingement of the
+  exiting left nerve root and moderate to severe left and moderate right
+  foraminal compromise; a bilobed posterior annular bulge at L3-L4 of 3 mm
+  with moderate foraminal compromise and crowding of the exiting nerve roots;
+  and a broad-based subligamentous disc extrusion at L2-L3 measuring 7 x 4 mm
+  with moderate foraminal compromise and mild to moderate canal stenosis.
+  Dr. Voci noted that the spinal curvature changes were associated with
+  underlying muscle spasm, strain or sprain, and musculoligamentous or disc
+  injury in the setting of a possible whiplash injury.
+
+followUpNarrative: >-
+  At his follow-up appointment with Dr. Bansal on April 16, 2026, Mr. Donahue
+  continued to present with mid and low back pain on the right side, neck pain
+  on the right, and radiating pain to the right buttock. Dr. Bansal updated
+  his assessment to reflect the MRI findings, noting that the multilevel
+  lumbar disc herniations and bulges, most notably at L4-5 and L5-S1, were
+  contributing to axial discogenic pain and lumbar radicular pain due to
+  narrowing of the subarticular space and neuroforamen. Dr. Bansal determined
+  that Mr. Donahue had tried and failed conservative treatment options and was
+  experiencing persistent pain that was debilitating and affecting his function
+  and quality of life.
+
+futureCareParagraph: >-
+  Based on his evaluation, Dr. Bansal recommended a right lumbar medial branch
+  block targeting the L4-5 and L5-S1 facets with fluoroscopic guidance for
+  diagnostic evaluation of facet-mediated pain. The estimated cost of this
+  procedure is $5,000.00 to $6,000.00 if performed at a clinic location, and
+  $6,000.00 to $8,000.00 if performed at the surgery center in Carlsbad.
+  Additionally, a physical therapy referral has been placed, and a dedicated
+  MRI of the cervical spine has been ordered to further evaluate the cervical
+  pathology identified on the thoracic MRI. Therefore, at least $50,000.00
+  should be reserved for Mr. Donahue's future medical care, with additional
+  costs for physical therapy and cervical imaging still to be determined.
+
+painSufferingNarrative1: >-
+  Mr. Donahue works as an RV technician, a physically demanding occupation
+  that requires him to work underneath recreational vehicles to perform his
+  duties. As a direct result of the injuries sustained in this collision,
+  Mr. Donahue has experienced significant difficulty performing the core
+  functions of his job. He has reported that it is hard to lay down and then
+  get back up, a movement integral to his work as an RV technician. Dr. Bansal
+  documented that Mr. Donahue's pain is aggravated by working, bending,
+  walking, and standing for prolonged periods of time, all of which are
+  essential components of his daily occupational demands. The pain is only
+  alleviated with rest, forcing Mr. Donahue to constantly manage the conflict
+  between the physical requirements of his work and the persistent limitations
+  caused by his injuries.
+
+painSufferingNarrative2: >-
+  Beyond the occupational impact, this collision has affected virtually every
+  aspect of Mr. Donahue's daily activities. At his initial pain management
+  evaluation in February 2026, nearly eight months after the accident,
+  Dr. Bansal documented that Mr. Donahue experienced mild pain when sitting at
+  rest that became severe with any movement. By his April 2026 follow-up, he
+  continued to experience an intermittent aching and discomforting sensation
+  that worsened in the afternoon, with standing, walking, and over-exertion.
+  Despite undergoing 12 sessions of chiropractic care, two pain management
+  evaluations, and MRI imaging, Mr. Donahue continues to experience multilevel
+  spinal disc herniations and persistent pain that, in Dr. Bansal's
+  assessment, is debilitating and affecting his function and quality of life.
+  The ongoing nature of Mr. Donahue's injuries and the need for additional
+  interventional treatment, including the recommended lumbar medial branch
+  block and physical therapy, underscore the profound and lasting impact this
+  collision has had on his life.

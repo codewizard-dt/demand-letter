@@ -1,3 +1,130 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,100;0,400;0,500;0,600;0,700;1,400&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  :root {
+    --color-primary: #193D3D;
+    --color-primary-gold: #A18050;
+    --color-secondary: #346E4A;
+    --color-secondary-steel: #27455C;
+    --color-bg: #F0F1E8;
+    --color-surface: #F9FFFA;
+    --color-border: #E8E5DC;
+    --color-accent: #ABDFD4;
+    --color-error: #B5006A;
+    --color-text-muted: #696969;
+    --gradient-hero: linear-gradient(80deg, #CE11A4 0%, #B5006A 30%, #493087 76%, #2F317C 93%);
+  }
+
+  html {
+    background-color: var(--color-bg);
+    color: var(--color-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    font-size: 1rem;
+    line-height: 1.618;
+    font-weight: 400;
+    min-height: 100dvh;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: 'Playfair Display', ui-serif, Georgia, serif;
+    font-weight: 400;
+    letter-spacing: 0.25px;
+    line-height: 1.2;
+  }
+
+  img,
+  picture,
+  video,
+  canvas,
+  svg {
+    display: block;
+    max-width: 100%;
+  }
+
+  input,
+  button,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  p,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    overflow-wrap: break-word;
+  }
+
+  #root {
+    isolation: isolate;
+  }
+
+  ::selection {
+    background-color: rgba(161, 128, 80, 0.2);
+    color: var(--color-primary);
+  }
+}
+
+/* TipTap / ProseMirror editor styles */
+.tiptap-editor .ProseMirror {
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  padding: 1rem;
+  min-height: 400px;
+  outline: none;
+}
+.tiptap-editor .ProseMirror:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+.boilerplate-zone {
+  background-color: #f3f4f6;
+  border-left: 3px solid #9ca3af;
+  padding-left: 0.25rem;
+  cursor: not-allowed;
+  user-select: none;
+}
+
+/* ── Track-Changes marks ──────────────────────────────────────── */
+.track-insert {
+  text-decoration: underline;
+  text-decoration-color: #16a34a;
+  background-color: rgba(22, 163, 74, 0.1);
+}
+.track-delete {
+  text-decoration: line-through;
+  text-decoration-color: #dc2626;
+  background-color: rgba(220, 38, 38, 0.1);
+  color: #dc2626;
+}
+.track-insert[data-user-name],
+.track-delete[data-user-name] {
+  cursor: help;
+}

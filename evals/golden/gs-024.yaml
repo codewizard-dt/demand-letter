@@ -1,0 +1,20 @@
+- id: "gs-024"
+  description: "buildDataObject() omits isNull=true fields when acceptMissing=false — not set to empty string"
+  query: |
+    Input: extractedFields = [{ fieldName: 'claimant_name', value: null,
+    isNull: true, acceptMissing: false }]
+    Call: buildDataObject(jobId)
+    Expected: result does NOT contain key 'claimantName' at all —
+    the key must be absent so docxtemplater's nullGetter fires if the template
+    references it, rather than silently writing an empty field
+  tested_files:
+    - packages/api/src/lib/generation-data-builder.ts
+  expected_tools:
+    - buildDataObject
+  must_contain:
+    - "key absent"
+    - "omitted from result"
+  must_not_contain:
+    - '"claimantName": ""'
+    - '"claimantName": null'
+    - '"claimant_name"'
