@@ -160,4 +160,4 @@ flowchart TD
 - Related concepts: [[../../knowledge/concepts/demand-letter-input-contract.md|Demand Letter Input Contract]], [[../../knowledge/concepts/template-driven-generation.md|Template-Driven Generation]], [[../../knowledge/concepts/ai-document-generation.md|AI Document Generation]]
 - Research: `raw/research/template-zone-detection/index.md`
 - Follow-on decision (to create): persistence substrate (content controls vs delimiter tags) + docx parsing library
-- Source task(s): _(none yet — `/task-add` after finalize)_
+- Source task(s): [[TASK-028: LLM Zone Classification — Claude on Bedrock Classifies Zones as Boilerplate or Variable]] — implemented 2026-06-24; [[TASK-029: Attorney Annotation UI — Zone Review and Confirmation Page]] — implemented 2026-06-24

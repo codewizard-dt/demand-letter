@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
@@ -10,13 +11,22 @@ datasource db {
 model Job {
   id        String   @id @default(cuid())
   status    String   @default("pending")
+  output    String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  files     File[]
+  files           File[]
+  templates       Template[]
+  sourceFiles     SourceFile[]
+  extractedFields ExtractedField[]
 
   @@index([status])
   @@index([createdAt])
   @@map("jobs")
+}
+
+enum FileRole {
+  template
+  case_doc
 }
 
 model File {
@@ -24,10 +34,140 @@ model File {
   jobId     String
   job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
   s3Key     String
-  type      String
-  name      String
+  mimeType  String
+  role      FileRole
+  fileName  String
   createdAt DateTime @default(now())
 
   @@index([jobId])
   @@map("files")
+}
+
+enum LlmFeature {
+  zone_classification
+  case_extraction
+  medical_narrative
+  refinement
+  skeleton_generation
+}
+
+model LlmAuditLog {
+  id               String     @id @default(cuid())
+  userId           String
+  feature          LlmFeature
+  model            String
+  provider         String
+  inputTokens      Int
+  outputTokens     Int
+  estimatedCostUsd Decimal    @db.Decimal(10, 6)
+  durationMs       Int
+  createdAt        DateTime   @default(now())
+
+  @@index([userId])
+  @@index([feature, createdAt])
+  @@index([createdAt])
+}
+
+enum ZoneType {
+  boilerplate_verbatim
+  variable_populated
+}
+
+model Template {
+  id              String   @id @default(cuid())
+  jobId           String
+  job             Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  s3KeyOriginal   String
+  s3KeyTagged     String?
+  slotCount       Int?
+  ingestedAt      DateTime @default(now())
+  zones           Zone[]
+  slots           TemplateSlot[]
+
+  @@index([jobId])
+  @@map("templates")
+}
+
+model Zone {
+  id                 String    @id @default(cuid())
+  templateId         String
+  template           Template  @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  zoneIndex          Int
+  type               ZoneType?
+  runPath            Json
+  textContent        String
+  suggestedFieldName String?
+  confirmed          Boolean   @default(false)
+  confirmedBy        String?
+  confirmedAt        DateTime?
+
+  @@unique([templateId, zoneIndex])
+  @@index([templateId])
+  @@map("zones")
+}
+
+model TemplateSlot {
+  id         String   @id @default(cuid())
+  templateId String
+  template   Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  slotName   String
+  required   Boolean  @default(true)
+
+  @@unique([templateId, slotName])
+  @@index([templateId])
+  @@map("template_slots")
+}
+
+model ExtractedField {
+  id          String   @id @default(cuid())
+  jobId       String
+  job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  fieldName   String
+  value       String?
+  blockIds    Json     @default("[]")
+  confidence  Float    @default(0)
+  isNull      Boolean  @default(false)
+  nullReason    String?
+  source        String?   // null = grounded extraction; "attorney-judgment" = attorney override
+  acceptMissing Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([jobId, fieldName])
+  @@index([jobId])
+  @@map("extracted_fields")
+}
+
+model SourceFile {
+  id            String    @id @default(cuid())
+  jobId         String
+  job           Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  s3Key         String
+  type          String    // "pdf-native" | "pdf-scanned" | "docx"
+  textractJobId String?   // null if not a scanned PDF
+  status        String    @default("pending") // "pending" | "processing" | "complete" | "error"
+  errorMessage  String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  blocks        Block[]
+
+  @@index([jobId])
+  @@index([textractJobId])
+}
+
+model Block {
+  id           String     @id @default(cuid())
+  sourceFileId String
+  sourceFile   SourceFile @relation(fields: [sourceFileId], references: [id], onDelete: Cascade)
+  type         String     // "LINE" | "WORD" | "CELL" | "PARAGRAPH" | etc.
+  text         String
+  page         Int
+  bbox         Json       // { left: number, top: number, width: number, height: number }
+  confidence   Float?
+  phiOffsets   Json?      // ROADMAP-005: detection metadata (empty for now)
+  createdAt    DateTime   @default(now())
+
+  @@index([sourceFileId])
+  @@index([page])
 }

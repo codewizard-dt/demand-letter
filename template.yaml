@@ -11,6 +11,13 @@ Globals:
       Variables:
         NODE_ENV: !Ref Stage
         DATABASE_URL: !Sub '{{resolve:ssm:/${Stage}/demand-letter/db/url}}'
+  Api:
+    BinaryMediaTypes:
+      - multipart/form-data
+    Cors:
+      AllowMethods: "'GET,POST,PATCH,OPTIONS'"
+      AllowHeaders: "'Content-Type'"
+      AllowOrigin: !Sub "'${WebAppOrigin}'"
 
 Parameters:
   Stage:
@@ -34,6 +41,11 @@ Parameters:
     Type: String
     Default: 'http://localhost:5173'
     Description: Allowed CORS origin for S3 pre-signed URL uploads
+
+  TextractCompletionTopicArn:
+    Type: String
+    Description: ARN of the SNS topic for Textract job completion notifications
+    Default: ''
 
 Resources:
   # Placeholder — Phase 1 resources (S3, RDS) added by TASK-003, TASK-004
@@ -69,9 +81,13 @@ Resources:
   RdsSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: RDS PostgreSQL access — Demand Letter Generator
+      GroupDescription: RDS PostgreSQL access - Demand Letter Generator
       VpcId: !Ref VpcId
-      SecurityGroupIngress: []
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: 0.0.0.0/0  # dev only — lock down for production
 
   RdsSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
@@ -95,13 +111,13 @@ Resources:
       StorageEncrypted: true
       KmsKeyId: !Ref DemandLetterKmsKey
       MasterUsername: !Sub '{{resolve:ssm:/${Stage}/demand-letter/db/username}}'
-      MasterUserPassword: !Sub '{{resolve:ssm:/${Stage}/demand-letter/db/password:1}}'
+      MasterUserPassword: !Sub '{{resolve:ssm-secure:/${Stage}/demand-letter/db/password:1}}'
       DBSubnetGroupName: !Ref RdsSubnetGroup
       VPCSecurityGroups:
         - !Ref RdsSecurityGroup
       BackupRetentionPeriod: 7
       MultiAZ: false
-      PubliclyAccessible: false
+      PubliclyAccessible: true  # dev only
       EnablePerformanceInsights: true
 
   DocumentsBucket:
@@ -153,6 +169,403 @@ Resources:
             Condition:
               Bool:
                 'aws:SecureTransport': 'false'
+
+  DbLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub '${Stage}-demand-letter-db'
+      ContentUri: packages/db/
+      CompatibleRuntimes:
+        - nodejs20.x
+      RetentionPolicy: Delete
+    Metadata:
+      BuildMethod: nodejs20.x
+
+  GetJobsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: get-jobs.handler
+      Runtime: nodejs20.x
+      Layers:
+        - !Ref DbLayer
+      Events:
+        GetJobsApi:
+          Type: Api
+          Properties:
+            Path: /jobs
+            Method: get
+      Policies:
+        - AWSLambdaBasicExecutionRole
+
+  PostJobsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: post-jobs.handler
+      Runtime: nodejs20.x
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+                - bedrock:InvokeModelWithResponseStream
+              Resource: '*'
+      Layers:
+        - !Ref DbLayer
+      Events:
+        PostJobsApi:
+          Type: Api
+          Properties:
+            Path: /jobs
+            Method: post
+
+  PostJobsFilesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: post-jobs-files.handler
+      Runtime: nodejs20.x
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+                - bedrock:InvokeModelWithResponseStream
+              Resource: '*'
+      Layers:
+        - !Ref DbLayer
+      Events:
+        PostJobsFilesApi:
+          Type: Api
+          Properties:
+            Path: /jobs/{id}/files
+            Method: post
+      Environment:
+        Variables:
+          DOCUMENTS_BUCKET: !Ref DocumentsBucket
+
+  GetAdminLlmCostsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: get-admin-llm-costs.handler
+      Runtime: nodejs20.x
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+                - bedrock:InvokeModelWithResponseStream
+              Resource: '*'
+      Layers:
+        - !Ref DbLayer
+      Events:
+        GetAdminLlmCostsApi:
+          Type: Api
+          Properties:
+            Path: /admin/llm-costs
+            Method: get
+
+  PostJobsGenerateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: post-jobs-generate.handler
+      Runtime: nodejs20.x
+      Timeout: 300
+      Layers:
+        - !Ref DbLayer
+      Events:
+        PostJobsGenerateApi:
+          Type: Api
+          Properties:
+            Path: /jobs/{id}/generate
+            Method: post
+      Environment:
+        Variables:
+          DOCUMENTS_BUCKET: !Ref DocumentsBucket
+          BEDROCK_MODEL_ID: !Sub '{{resolve:ssm:/${Stage}/demand-letter/bedrock-model-id}}'
+
+  GetJobsOutputFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: get-jobs-output.handler
+      Runtime: nodejs20.x
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+                - bedrock:InvokeModelWithResponseStream
+              Resource: '*'
+      Layers:
+        - !Ref DbLayer
+      Events:
+        GetJobsOutputApi:
+          Type: Api
+          Properties:
+            Path: /jobs/{id}/output
+            Method: get
+
+  GetJobsTemplateZonesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: get-jobs-template-zones.handler
+      Runtime: nodejs20.x
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+                - bedrock:InvokeModelWithResponseStream
+              Resource: '*'
+      Layers:
+        - !Ref DbLayer
+      Events:
+        GetJobsTemplateZonesApi:
+          Type: Api
+          Properties:
+            Path: /jobs/{id}/templates/{templateId}/zones
+            Method: get
+
+  PatchJobsTemplateZonesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: patch-jobs-template-zones.handler
+      Runtime: nodejs20.x
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+                - bedrock:InvokeModelWithResponseStream
+              Resource: '*'
+      Layers:
+        - !Ref DbLayer
+      Events:
+        PatchJobsTemplateZonesApi:
+          Type: Api
+          Properties:
+            Path: /jobs/{id}/templates/{templateId}/zones
+            Method: patch
+
+  PostJobsTemplatesClassifyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: post-jobs-templates-classify.handler
+      Runtime: nodejs20.x
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+                - bedrock:InvokeModelWithResponseStream
+              Resource: '*'
+      Layers:
+        - !Ref DbLayer
+      Events:
+        PostJobsTemplatesClassifyApi:
+          Type: Api
+          Properties:
+            Path: /jobs/{id}/templates/{templateId}/classify
+            Method: post
+      Environment:
+        Variables:
+          BEDROCK_MODEL_ID: !Sub '{{resolve:ssm:/${Stage}/demand-letter/bedrock-model-id}}'
+
+  PostJobsTemplatesInjectFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: post-jobs-templates-inject.handler
+      Runtime: nodejs20.x
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
+      Layers:
+        - !Ref DbLayer
+      Events:
+        PostJobsTemplatesInjectApi:
+          Type: Api
+          Properties:
+            Path: /jobs/{id}/templates/{templateId}/inject
+            Method: post
+      Environment:
+        Variables:
+          DOCUMENTS_BUCKET: !Ref DocumentsBucket
+
+  GetJobsTemplateSlotsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: get-jobs-template-slots.handler
+      Runtime: nodejs20.x
+      Layers:
+        - !Ref DbLayer
+      Events:
+        GetJobsTemplateSlotsApi:
+          Type: Api
+          Properties:
+            Path: /jobs/{id}/templates/{templateId}/slots
+            Method: get
+
+  PostJobsDocumentsIngestFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: post-jobs-documents-ingest.handler
+      Runtime: nodejs20.x
+      Timeout: 300
+      MemorySize: 512
+      Layers:
+        - !Ref DbLayer
+      Events:
+        PostJobsDocumentsIngestApi:
+          Type: Api
+          Properties:
+            Path: /jobs/{id}/documents/ingest
+            Method: post
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:ListBucket
+              Resource:
+                - !GetAtt DocumentsBucket.Arn
+                - !Sub '${DocumentsBucket.Arn}/*'
+            - Effect: Allow
+              Action:
+                - textract:StartDocumentAnalysis
+              Resource: '*'
+      Environment:
+        Variables:
+          DOCUMENTS_BUCKET: !Ref DocumentsBucket
+
+  SnsTextractCompletionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: sns-textract-completion.handler
+      Runtime: nodejs20.x
+      Timeout: 300
+      MemorySize: 512
+      Layers:
+        - !Ref DbLayer
+      Events:
+        TextractCompletionSns:
+          Type: SNS
+          Properties:
+            Topic: !Ref TextractCompletionTopicArn
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Statement:
+            - Effect: Allow
+              Action:
+                - textract:GetDocumentAnalysis
+              Resource: '*'
+
+  GetJobsBlocksFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: get-jobs-blocks.handler
+      Runtime: nodejs20.x
+      Timeout: 30
+      MemorySize: 256
+      Layers:
+        - !Ref DbLayer
+      Events:
+        GetJobsBlocksApi:
+          Type: Api
+          Properties:
+            Path: /jobs/{id}/blocks
+            Method: get
+      Policies:
+        - AWSLambdaBasicExecutionRole
+
+  PostJobsExtractFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: post-jobs-extract.handler
+      Runtime: nodejs20.x
+      Timeout: 300
+      Layers:
+        - !Ref DbLayer
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+              Resource: !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/*'
+      Events:
+        PostJobsExtract:
+          Type: Api
+          Properties:
+            Path: /jobs/{id}/extract
+            Method: post
+      Environment:
+        Variables:
+          BEDROCK_MODEL_ID: !Sub '{{resolve:ssm:/${Stage}/demand-letter/bedrock-model-id}}'
+
+  GetJobsGapReportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: get-jobs-gap-report.handler
+      Runtime: nodejs20.x
+      Timeout: 30
+      MemorySize: 256
+      Layers:
+        - !Ref DbLayer
+      Events:
+        GetJobsGapReport:
+          Type: Api
+          Properties:
+            Path: /jobs/{id}/gap-report
+            Method: get
+      Policies:
+        - AWSLambdaBasicExecutionRole
+
+  PostJobsAttorneyJudgmentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: post-jobs-attorney-judgment.handler
+      Runtime: nodejs20.x
+      Timeout: 30
+      MemorySize: 256
+      Layers:
+        - !Ref DbLayer
+      Events:
+        PostJobsAttorneyJudgment:
+          Type: Api
+          Properties:
+            Path: /jobs/{id}/attorney-judgment
+            Method: post
+      Policies:
+        - AWSLambdaBasicExecutionRole
 
 Outputs:
   DbInstanceEndpoint:

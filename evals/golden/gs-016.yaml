@@ -1,0 +1,15 @@
+- id: "gs-016"
+  description: "detectDocumentType() classifies a .docx filename as 'docx' without reading the buffer"
+  query: |
+    Call: detectDocumentType(buffer, "medical_records.docx")
+    (buffer contents are arbitrary — .docx classification is extension-only)
+  tested_files:
+    - packages/api/src/lib/document-type-detector.ts
+  expected_tools:
+    - detectDocumentType
+  must_contain:
+    - '"docx"'
+  must_not_contain:
+    - '"pdf-native"'
+    - '"pdf-scanned"'
+    - "Unsupported file type"

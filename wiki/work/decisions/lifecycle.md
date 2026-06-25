@@ -51,7 +51,7 @@ proposed ──▶ accepted ──▶ superseded
 | [DEC-0002-docx-persistence-substrate.md](archive/DEC-0002-docx-persistence-substrate.md) | D1       | Persist the zone map as delimiter tags filled by docxtemplater                           | persistence-substrate, template-fill   | accepted | 2026-06-22 | David Taylor | —          | —             |
 | [DEC-0003-source-document-ingestion.md](archive/DEC-0003-source-document-ingestion.md)   | D1       | Adopt a hybrid Textract → Claude ingestion pipeline with bbox-level provenance           | source-ingestion, provenance, ocr      | accepted | 2026-06-22 | David Taylor | —          | —             |
 | [DEC-0003-source-document-ingestion.md](archive/DEC-0003-source-document-ingestion.md)   | D2       | Run Claude inference on Amazon Bedrock for PHI residency                                 | phi, data-residency, bedrock           | accepted | 2026-06-22 | David Taylor | —          | —             |
-| [DEC-0004-phi-pii-scrubbing-engine.md](DEC-0004-phi-pii-scrubbing-engine.md)             | D1       | Use AWS Comprehend Medical + Amazon Comprehend with a custom redaction step              | phi, pii, de-identification, redaction | accepted | 2026-06-22 | David Taylor | —          | —             |
+| [DEC-0004-phi-pii-scrubbing-engine.md](archive/DEC-0004-phi-pii-scrubbing-engine.md)     | D1       | Use AWS Comprehend Medical + Amazon Comprehend with a custom redaction step              | phi, pii, de-identification, redaction | accepted | 2026-06-22 | David Taylor | —          | —             |
 
 ---
 

@@ -1,0 +1,24 @@
+- id: "gs-015"
+  description: "injectDelimiters() assigns distinct {field_name} tags to each confirmed zone — no cross-contamination between zones"
+  query: |
+    Input: DOCX buffer with three paragraphs.
+    Paragraph index 0: "[CLIENT FULL NAME]"
+    Paragraph index 1: "This firm represents the above-named claimant."  ← boilerplate
+    Paragraph index 2: "[$DEMAND_AMOUNT]"
+    confirmedZones: [
+      { zoneIndex: 0, suggestedFieldName: "claimant_name" },
+      { zoneIndex: 2, suggestedFieldName: "demand_amount" }
+    ]
+    Call: injectDelimiters(buffer, confirmedZones)
+  tested_files:
+    - packages/api/src/lib/docx-injector.ts
+  expected_tools:
+    - injectDelimiters
+  must_contain:
+    - "{claimant_name}"
+    - "{demand_amount}"
+    - "This firm represents the above-named claimant."
+  must_not_contain:
+    - "[CLIENT FULL NAME]"
+    - "[$DEMAND_AMOUNT]"
+    - "I don't know"

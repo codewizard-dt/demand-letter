@@ -1,0 +1,17 @@
+- id: "gs-004"
+  description: "Date of loss placeholder maps to canonical field name date_of_loss, not a hallucinated variant"
+  query: |
+    Zone 7: "[DATE OF INCIDENT]"
+  tested_files:
+    - packages/api/src/lib/zone-classifier.ts
+    - packages/api/src/lib/zone-field-schema.ts
+  expected_tools:
+    - invokeModel
+  must_contain:
+    - '"type": "variable_populated"'
+    - '"suggestedFieldName": "date_of_loss"'
+  must_not_contain:
+    - '"suggestedFieldName": "date"'
+    - '"suggestedFieldName": "loss_date"'
+    - '"suggestedFieldName": "incident_date_of_loss"'
+    - '"boilerplate_verbatim"'

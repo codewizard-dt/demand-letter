@@ -1,0 +1,20 @@
+- id: "gs-019"
+  description: "computeGapReport() adds a slot to gaps when extracted confidence is below the 0.80 threshold"
+  query: |
+    DB state:
+      templateSlot rows: [{ slotName: "claimant_name" }, { slotName: "incident_date" }]
+      extractedField rows:
+        - { fieldName: "claimant_name", isNull: false, confidence: 0.95, acceptMissing: false }
+        - { fieldName: "incident_date",  isNull: false, confidence: 0.62, acceptMissing: false }
+    Call: computeGapReport(jobId)
+  tested_files:
+    - packages/api/src/lib/sufficiency-gate.ts
+  expected_tools:
+    - computeGapReport
+  must_contain:
+    - '"covered": 1'
+    - '"total": 2'
+    - '"fieldName": "incident_date"'
+  must_not_contain:
+    - '"fieldName": "claimant_name"'
+    - '"gaps": []'

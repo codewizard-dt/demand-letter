@@ -3,7 +3,7 @@ id: ROADMAP-004
 title: Generation Engine
 status: active
 created: 2026-06-22
-updated: 2026-06-22
+updated: 2026-06-24
 owner: David Taylor
 linked_decisions: [DEC-0001, DEC-0002, DEC-0003]
 tags: [generation, docxtemplater, grounded, medical-narrative, sse]
@@ -17,25 +17,25 @@ Replace the naive free-text Claude generation with a deterministic docxtemplater
 
 ### Phase 1 — Data Assembly & Sufficiency Pre-check
 
-- [ ] Generation data builder: assemble the docxtemplater `data` object from `extracted_fields` + attorney-judgment values for a given job
-- [ ] Sufficiency pre-check: fail fast with a 400 if any slot in `template_slots` (required = true) has no corresponding `extracted_fields` row with `is_null = false`
-- [ ] Map field names to docxtemplater tag names (e.g. `patient_name` → `{patientName}`); centralize this mapping in a `field-schema.ts` constant so it's a single source of truth
-- [ ] Handle loop fields (specials table per provider): `{#specials}…{/specials}` loop syntax; the data object carries an array of `{provider, amount, date}` objects
+- [ ] [[TASK-036: Generation data builder: assemble docxtemplater data object from extracted_fields]]
+- [ ] [[TASK-037: Sufficiency pre-check: fail fast with 400 if any required template slot is uncovered]]
+- [ ] [[TASK-038: field-schema.ts: centralize snake_case → camelCase docxtemplater tag mapping]]
+- [ ] [[TASK-039: Loop fields: handle {#specials}…{/specials} per-provider line items in data object]]
 
 ---
 
 ### Phase 2 — Medical Narrative Generation
 
-- [ ] Claude on Bedrock medical narrative prompt (`feature: "medical-narrative"`): given the extracted medical blocks (diagnoses, providers, imaging, treatment timeline), generate the narrative prose for §4 in the register and style of the template's sample narrative
-- [ ] Grounding constraint: every factual claim in the narrative must be supported by a cited block id; disallow invented diagnoses, medications, or provider names
-- [ ] SSE streaming: the medical narrative is the only Claude call; stream its output token-by-token to the frontend while the docxtemplater fill waits
-- [ ] Log to `LlmAuditLog` with `feature: "medical-narrative"`
+- [ ] [[TASK-040: Medical narrative Bedrock prompt: generate §4 prose from extracted medical blocks]]
+- [ ] [[TASK-041: Grounding constraint: validate medical narrative citations against provided block IDs]]
+- [ ] [[TASK-042: SSE streaming: stream medical narrative tokens to frontend while docxtemplater fill waits]]
+- [ ] [[TASK-043: LlmAuditLog: verify medical_narrative feature rows are written correctly]]
 
 ---
 
 ### Phase 3 — docxtemplater Render
 
-- [ ] Load tagged template DOCX from S3 (`templates.s3_key_tagged`)
+- [ ] [[TASK-044: docxtemplater render: load tagged template DOCX from S3 and render with data object]]
 - [ ] Set `nullGetter`: if a slot is unexpectedly missing from the data object, **fail closed** — throw a structured error rather than silently rendering an empty field
 - [ ] `render(data)`: insert all field values; boilerplate zones outside tags are reproduced byte-exact (no LLM routing); loops and conditionals (`{#hasLiens}…{/hasLiens}`) resolved from data
 - [ ] Catch docxtemplater structured errors (`unopened_tag`, `unclosed_tag`, `multi_error`) and return a 500 with the error payload — never emit a partially-filled document

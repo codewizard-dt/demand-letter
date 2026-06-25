@@ -1,0 +1,19 @@
+- id: "gs-014"
+  description: "enumerateSlots() returns the correct tag names from a DOCX buffer containing {claimant_name} and {demand_amount} tags"
+  query: |
+    Input: DOCX buffer produced by injectDelimiters() with two confirmed zones:
+      - paragraph 0: "{claimant_name}"
+      - paragraph 1: "{demand_amount}"
+    Call: enumerateSlots(taggedBuffer)
+  tested_files:
+    - packages/api/src/lib/docx-inspect.ts
+  expected_tools:
+    - enumerateSlots
+  must_contain:
+    - "claimant_name"
+    - "demand_amount"
+  must_not_contain:
+    - "{claimant_name}"
+    - "{demand_amount}"
+    - "I don't know"
+    - "[]"

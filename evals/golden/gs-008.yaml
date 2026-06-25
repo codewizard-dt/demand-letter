@@ -1,0 +1,16 @@
+- id: "gs-008"
+  description: "Claim number embedded in a Re: line is classified as variable_populated with field claim_number"
+  query: |
+    Zone 1: "Re: Claim No. [CLAIM NUMBER] / [INSURED NAME]"
+  tested_files:
+    - packages/api/src/lib/zone-classifier.ts
+    - packages/api/src/lib/zone-field-schema.ts
+  expected_tools:
+    - invokeModel
+  must_contain:
+    - '"type": "variable_populated"'
+    - '"suggestedFieldName": "claim_number"'
+  must_not_contain:
+    - '"boilerplate_verbatim"'
+    - '"suggestedFieldName": "reference_number"'
+    - '"suggestedFieldName": "case_number"'

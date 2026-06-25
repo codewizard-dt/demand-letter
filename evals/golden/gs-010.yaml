@@ -1,0 +1,17 @@
+- id: "gs-010"
+  description: "Adjuster salutation placeholder maps to adjuster_name, not claimant or insured name fields"
+  query: |
+    Zone 5: "Dear [ADJUSTER NAME]:"
+  tested_files:
+    - packages/api/src/lib/zone-classifier.ts
+    - packages/api/src/lib/zone-field-schema.ts
+  expected_tools:
+    - invokeModel
+  must_contain:
+    - '"type": "variable_populated"'
+    - '"suggestedFieldName": "adjuster_name"'
+  must_not_contain:
+    - '"boilerplate_verbatim"'
+    - '"suggestedFieldName": "claimant_name"'
+    - '"suggestedFieldName": "insured_name"'
+    - '"suggestedFieldName": "adjuster_title"'

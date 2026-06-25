@@ -1,0 +1,18 @@
+- id: "gs-011"
+  description: "injectDelimiters() leaves a boilerplate paragraph byte-exact when its index is not in confirmedZones"
+  query: |
+    Input: DOCX buffer with two paragraphs.
+    Paragraph index 0 text: "Pursuant to California Code of Civil Procedure Section 999, this letter constitutes a written offer to settle."
+    Paragraph index 1 text: "[CLIENT FULL NAME]"
+    confirmedZones: [{ zoneIndex: 1, suggestedFieldName: "claimant_name" }]
+    Call: injectDelimiters(buffer, confirmedZones)
+  tested_files:
+    - packages/api/src/lib/docx-injector.ts
+  expected_tools:
+    - injectDelimiters
+  must_contain:
+    - "Pursuant to California Code of Civil Procedure Section 999"
+    - "{claimant_name}"
+  must_not_contain:
+    - '"{claimant_name}" in word/document.xml paragraph 0'
+    - "I don't know"

@@ -1,0 +1,20 @@
+- id: "gs-003"
+  description: "Multi-zone input with mixed types produces a valid JSON array — no prose, no partial output"
+  query: |
+    Zone 0: "Re: Claim No. [CLAIM NUMBER]"
+    Zone 1: "Dear [ADJUSTER NAME],"
+    Zone 2: "This firm represents the claimant in the above-referenced matter."
+  tested_files:
+    - packages/api/src/lib/zone-classifier.ts
+  expected_tools:
+    - invokeModel
+  must_contain:
+    - '"zoneIndex": 0'
+    - '"zoneIndex": 1'
+    - '"zoneIndex": 2'
+    - '"type":'
+  must_not_contain:
+    - "Here is the classification"
+    - "Sure,"
+    - "Based on"
+    - "I classified"

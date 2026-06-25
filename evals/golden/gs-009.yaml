@@ -1,0 +1,16 @@
+- id: "gs-009"
+  description: "Attorney name placeholder in signature block maps to attorney_name, not boilerplate"
+  query: |
+    Zone 44: "[ATTORNEY NAME], Esq."
+  tested_files:
+    - packages/api/src/lib/zone-classifier.ts
+    - packages/api/src/lib/zone-field-schema.ts
+  expected_tools:
+    - invokeModel
+  must_contain:
+    - '"type": "variable_populated"'
+    - '"suggestedFieldName": "attorney_name"'
+  must_not_contain:
+    - '"boilerplate_verbatim"'
+    - '"suggestedFieldName": "bar_affiliation"'
+    - '"suggestedFieldName": "firm_name"'

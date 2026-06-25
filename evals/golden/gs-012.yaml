@@ -1,0 +1,18 @@
+- id: "gs-012"
+  description: "injectDelimiters() replaces a confirmed variable zone's run content with a single {field_name} tag run"
+  query: |
+    Input: DOCX buffer with one paragraph.
+    Paragraph index 0 text: "[DEMAND AMOUNT]"
+    confirmedZones: [{ zoneIndex: 0, suggestedFieldName: "demand_amount" }]
+    Call: injectDelimiters(buffer, confirmedZones)
+  tested_files:
+    - packages/api/src/lib/docx-injector.ts
+  expected_tools:
+    - injectDelimiters
+  must_contain:
+    - "{demand_amount}"
+  must_not_contain:
+    - "[DEMAND AMOUNT]"
+    - "{DEMAND AMOUNT}"
+    - "{demand}"
+    - "I don't know"

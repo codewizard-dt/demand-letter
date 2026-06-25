@@ -1,0 +1,18 @@
+- id: "gs-022"
+  description: "runGroundedExtraction() sets is_null=true and provides a null_reason when a canonical field has no supporting blocks"
+  query: |
+    Input: blocks = [{ id: "blk-001", text: "Incident occurred at Main St on 2025-01-10", page: 1 }]
+    Call: runGroundedExtraction(jobId, userId)
+    For a field with no evidence in blocks (e.g. policy_limits, employer_name):
+      Expected: { is_null: true, null_reason: <non-empty string>, confidence: <below 0.5> }
+  tested_files:
+    - packages/api/src/lib/extraction-service.ts
+  expected_tools:
+    - invokeModelWithTools
+    - extract_case_fields
+  must_contain:
+    - '"is_null": true'
+    - '"null_reason":'
+  must_not_contain:
+    - '"is_null": true, "null_reason": null'
+    - '"is_null": true, "confidence": 0.9'

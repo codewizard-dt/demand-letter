@@ -1,0 +1,17 @@
+- id: "gs-013"
+  description: "injectDelimiters() with an empty confirmedZones array returns the original buffer byte-for-byte — no XML rewrite occurs"
+  query: |
+    Input: DOCX buffer containing text "This firm represents the claimant."
+    confirmedZones: []
+    Call: injectDelimiters(buffer, [])
+  tested_files:
+    - packages/api/src/lib/docx-injector.ts
+  expected_tools:
+    - injectDelimiters
+  must_contain:
+    - "This firm represents the claimant."
+  must_not_contain:
+    - "{}"
+    - "undefined"
+    - "null"
+    - "I don't know"

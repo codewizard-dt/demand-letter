@@ -1,0 +1,17 @@
+- id: "gs-001"
+  description: "Standard CCP §999 opening paragraph is classified as boilerplate_verbatim with no field name"
+  query: |
+    Zone 0: "Pursuant to California Code of Civil Procedure Section 999, this letter
+    constitutes a written offer to settle the above-referenced personal injury claim."
+  tested_files:
+    - packages/api/src/lib/zone-classifier.ts
+    - packages/api/src/lib/zone-field-schema.ts
+  expected_tools:
+    - invokeModel
+  must_contain:
+    - '"type": "boilerplate_verbatim"'
+    - '"suggestedFieldName": null'
+  must_not_contain:
+    - '"variable_populated"'
+    - "I don't know"
+    - "I cannot"

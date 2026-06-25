@@ -1,0 +1,17 @@
+- id: "gs-006"
+  description: "Demand amount placeholder maps to canonical field demand_amount"
+  query: |
+    Zone 18: "[$DEMAND_AMOUNT]"
+  tested_files:
+    - packages/api/src/lib/zone-classifier.ts
+    - packages/api/src/lib/zone-field-schema.ts
+  expected_tools:
+    - invokeModel
+  must_contain:
+    - '"type": "variable_populated"'
+    - '"suggestedFieldName": "demand_amount"'
+  must_not_contain:
+    - '"boilerplate_verbatim"'
+    - '"suggestedFieldName": "amount"'
+    - '"suggestedFieldName": "total_amount"'
+    - '"suggestedFieldName": "settlement_amount"'

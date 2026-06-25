@@ -1,0 +1,16 @@
+- id: "gs-002"
+  description: "Claimant name placeholder is classified as variable_populated with field name claimant_name"
+  query: |
+    Zone 3: "[CLIENT FULL NAME]"
+  tested_files:
+    - packages/api/src/lib/zone-classifier.ts
+    - packages/api/src/lib/zone-field-schema.ts
+  expected_tools:
+    - invokeModel
+  must_contain:
+    - '"type": "variable_populated"'
+    - '"suggestedFieldName": "claimant_name"'
+  must_not_contain:
+    - '"boilerplate_verbatim"'
+    - '"suggestedFieldName": null'
+    - "I don't know"

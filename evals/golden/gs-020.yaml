@@ -1,0 +1,18 @@
+- id: "gs-020"
+  description: "computeGapReport() does not surface a slot in gaps when acceptMissing is true, regardless of confidence"
+  query: |
+    DB state:
+      templateSlot rows: [{ slotName: "return_to_work_date" }]
+      extractedField rows:
+        - { fieldName: "return_to_work_date", isNull: true, confidence: 0.0, acceptMissing: true, nullReason: "claimant still off work" }
+    Call: computeGapReport(jobId)
+  tested_files:
+    - packages/api/src/lib/sufficiency-gate.ts
+  expected_tools:
+    - computeGapReport
+  must_contain:
+    - '"gaps": []'
+    - '"covered": 1'
+    - '"total": 1'
+  must_not_contain:
+    - '"fieldName": "return_to_work_date"'

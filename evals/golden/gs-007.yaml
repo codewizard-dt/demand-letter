@@ -1,0 +1,17 @@
+- id: "gs-007"
+  description: "Policy limits placeholder maps to canonical field policy_limits, not a monetary synonym"
+  query: |
+    Zone 21: "We hereby demand the policy limits of [POLICY LIMITS AMOUNT]."
+  tested_files:
+    - packages/api/src/lib/zone-classifier.ts
+    - packages/api/src/lib/zone-field-schema.ts
+  expected_tools:
+    - invokeModel
+  must_contain:
+    - '"type": "variable_populated"'
+    - '"suggestedFieldName": "policy_limits"'
+  must_not_contain:
+    - '"boilerplate_verbatim"'
+    - '"suggestedFieldName": "demand_amount"'
+    - '"suggestedFieldName": "coverage_limit"'
+    - '"suggestedFieldName": "insurance_limit"'

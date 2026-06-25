@@ -72,7 +72,7 @@ The wiki is split into two domains with opposite organizing laws:
 
 **Components**
 
-- [knowledge/entities/components/](knowledge/entities/components/) (this project's own modules, services, scripts — none yet)
+- [ROADMAP-001: End-to-End Skeleton — Implementation Guide](knowledge/entities/components/roadmap-001-end-to-end-skeleton.md) — Phase-by-phase walkthrough of the vertical slice: infra, LLM audit trail, backend job lifecycle, frontend upload→generate→download, and what each subsequent roadmap replaces
 
 ---
 

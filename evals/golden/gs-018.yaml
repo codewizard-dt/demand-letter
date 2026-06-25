@@ -1,0 +1,21 @@
+- id: "gs-018"
+  description: "computeGapReport() returns gaps:[] when every template slot has an extracted field with confidence ≥ 0.80"
+  query: |
+    DB state:
+      templateSlot rows: [{ slotName: "claimant_name" }, { slotName: "incident_date" }, { slotName: "demand_amount" }]
+      extractedField rows:
+        - { fieldName: "claimant_name", isNull: false, confidence: 0.95, source: "textract", acceptMissing: false }
+        - { fieldName: "incident_date",  isNull: false, confidence: 0.88, source: "textract", acceptMissing: false }
+        - { fieldName: "demand_amount",  isNull: false, confidence: 0.91, source: "textract", acceptMissing: false }
+    Call: computeGapReport(jobId)
+  tested_files:
+    - packages/api/src/lib/sufficiency-gate.ts
+  expected_tools:
+    - computeGapReport
+  must_contain:
+    - '"gaps": []'
+    - '"covered": 3'
+    - '"total": 3'
+  must_not_contain:
+    - '"fieldName"'
+    - '"nullReason"'

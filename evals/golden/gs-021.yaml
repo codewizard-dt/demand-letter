@@ -1,0 +1,19 @@
+- id: "gs-021"
+  description: "runGroundedExtraction() system prompt requires every field value to be supported by cited block IDs"
+  query: |
+    Input: blocks = [{ id: "blk-001", text: "Patient Jane Smith, DOB 1985-03-12", page: 1 }]
+    Call: runGroundedExtraction(jobId, userId)
+    Expected: the extract_case_fields tool call includes block_ids for any populated field
+  tested_files:
+    - packages/api/src/lib/extraction-service.ts
+  expected_tools:
+    - invokeModelWithTools
+    - extract_case_fields
+  must_contain:
+    - '"block_ids"'
+    - '"confidence"'
+    - '"is_null"'
+  must_not_contain:
+    - '"block_ids": []'
+    - "I cannot find"
+    - "hallucinated"

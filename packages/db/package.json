@@ -1,6 +1,6 @@
 {
   "name": "@demand-letter/db",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "main": "dist/index.js",
   "scripts": {
@@ -12,11 +12,11 @@
     "db:push": "prisma db push"
   },
   "dependencies": {
-    "@prisma/client": "^5.0.0"
+    "@prisma/client": "^5.0.0",
+    "prisma": "^5.0.0"
   },
   "devDependencies": {
     "@types/node": "*",
-    "prisma": "^5.0.0",
     "typescript": "*"
   }
 }
