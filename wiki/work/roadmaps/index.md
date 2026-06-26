@@ -1,6 +1,6 @@
 ---
 title: Roadmaps Index
-updated: 2026-06-11
+updated: 2026-06-26
 ---
 
 # Roadmaps — Active Items
@@ -9,4 +9,6 @@ Lists **only active** roadmaps (`active`). When a roadmap completes (`done`), de
 
 Entry format: `- [ROADMAP-NNN — Title](ROADMAP-NNN-slug.md) — one-line summary · N/M items checked`
 
-- [ROADMAP-007 — Stretch: Collaborative Editing & Word Export](ROADMAP-007-collaborative-editing-word-export.md) — TipTap editor; Y.js CRDT real-time collaboration; per-operation change log; Word export · 0/14 items checked
+| File | Title | Status | Progress | Owner | Linked PRD |
+|------|-------|--------|----------|-------|------------|
+| [ROADMAP-008](ROADMAP-008-api-test-suite.md) | Add API test suite (unit + integration) | active | 0/22 | David Taylor | — |

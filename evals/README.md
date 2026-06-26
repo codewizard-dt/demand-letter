@@ -42,12 +42,31 @@ Run on every commit. Zero LLM cost — assertions over recorded output.
 | gs-032 | GET /jobs/:id/blocks returns full unredacted text when X-Caller-Role is attorney | phi_pii_compliance | get-jobs-blocks.ts | 2026-06-25 |
 | gs-033 | redactText() returns the original string unchanged when entities array is empty | phi_pii_compliance | redact-text.ts | 2026-06-25 |
 | gs-034 | mergeEntities() preserves both entries when PHI and PII spans do not overlap | phi_pii_compliance | merge-entities.ts | 2026-06-25 |
+| gs-035 | estimateCostUsd() returns 0 for unrecognized model ID (graceful degradation) | llm_audit | ai.ts | 2026-06-25 |
+| gs-036 | estimateCostUsd() computes correct dollar amount for known Haiku model | llm_audit | ai.ts | 2026-06-25 |
+| gs-037 | estimateCostUsd() applies Opus-tier pricing ($5/$25) for Opus 4.x models | llm_audit | ai.ts | 2026-06-25 |
+| gs-038 | POST /jobs/:id/refine returns 400 missing_instruction when instruction absent | attorney_refinement | post-jobs-refine.ts | 2026-06-25 |
+| gs-039 | PATCH refine-accept sets accepted=true AND updates job.output in transaction | attorney_refinement | patch-jobs-refine-accept.ts | 2026-06-25 |
+| gs-040 | PATCH refine-reject does NOT update job.output (only marks accepted=false) | attorney_refinement | patch-jobs-refine-reject.ts | 2026-06-25 |
+| gs-041 | textRunFromNode() produces TextRun with bold=true for bold mark | word_export | prosemirror-to-docx.ts | 2026-06-25 |
+| gs-042 | textRunFromNode() applies D9D9D9 gray shading for boilerplateZone mark | word_export | prosemirror-to-docx.ts | 2026-06-25 |
+| gs-043 | GET /jobs/:id/export/docx returns 422 output_not_ready when job has no output | word_export | get-jobs-export-docx.ts | 2026-06-25 |
+| gs-044 | POST /jobs/:id/generate returns 400 sufficiency_precheck_failed when gap report has uncovered slots | generation_gate | post-jobs-generate.ts | 2026-06-25 |
+| gs-045 | GET /admin/llm-costs returns aggregates grouped by feature and recentRows list | llm_audit | get-admin-llm-costs.ts | 2026-06-25 |
+| gs-046 | GET /jobs/:id/refinements returns history list without beforeText/afterText payload | attorney_refinement | get-jobs-refinements.ts | 2026-06-25 |
+| gs-047 | DELETE /jobs/:id/changes/:changeId returns 403 change_job_mismatch for cross-job delete | collab_editing | delete-jobs-changes.ts | 2026-06-25 |
+| gs-048 | headingNodeToDocx() maps level 2 heading to Heading2 style (not Heading1 default) | word_export | prosemirror-to-docx.ts | 2026-06-25 |
+| gs-049 | GET /jobs/:id/changes returns change log with operationType and contentDelta fields | collab_editing | get-jobs-changes.ts | 2026-06-25 |
+| gs-050 | POST /jobs/:id/refine appends scope suffix to Bedrock message when scope is a named section | attorney_refinement | post-jobs-refine.ts | 2026-06-25 |
+| gs-051 | POST /jobs/:id/attorney-judgment upserts field with confidence=1.0 and source=attorney-judgment | attorney_judgment | post-jobs-attorney-judgment.ts | 2026-06-26 |
+| gs-052 | POST /jobs/:id/attorney-judgment sets acceptMissing=true with nullReason for dismissed slots | attorney_judgment | post-jobs-attorney-judgment.ts | 2026-06-26 |
+| gs-053 | GET /jobs/:id/gap-report returns 404 template_not_ready when no template classified yet | generation_gate | get-jobs-gap-report.ts | 2026-06-26 |
 
 ## Coverage status
 
 | Stage | Status | Count |
 |-------|--------|-------|
-| 1 — Golden Sets | Active | 34 (15 original + 7 Roadmap 3 + 5 Roadmap 4 + 7 Roadmap 5) |
+| 1 — Golden Sets | Active | 53 |
 | 2 — Labeled Scenarios | Not started | — |
 | 3 — Replay Harnesses | Not started | — |
 | 4 — Rubrics | Not started | — |

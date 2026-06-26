@@ -897,6 +897,21 @@ Resources:
             Path: /jobs/{id}/export/docx
             Method: post
 
+  GetJobsExportDocxFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: get-jobs-export-docx.handler
+      Runtime: nodejs20.x
+      Layers:
+        - !Ref DbLayer
+      Events:
+        GetJobsExportDocxApi:
+          Type: Api
+          Properties:
+            Path: /jobs/{id}/export/docx
+            Method: get
+
   WebSocketConnectIntegration:
     Type: AWS::ApiGatewayV2::Integration
     Properties:

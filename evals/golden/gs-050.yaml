@@ -1,0 +1,18 @@
+- id: "gs-050"
+  description: "POST /jobs/:id/refine appends scope suffix to user message when scope is a named section (not 'all')"
+  query: |
+    POST /jobs/job-1/refine
+    Body: { "instruction": "Make it more concise", "scope": "medical_narrative" }
+    job.output = "existing letter text"
+    Expected: user message sent to Bedrock contains the string:
+      'return only the revised text for the "medical_narrative" section'
+  tested_files:
+    - packages/api/src/handlers/post-jobs-refine.ts
+  expected_tools:
+    - post-jobs-refine
+  must_contain:
+    - '"medical_narrative"'
+    - 'return only the revised text for the'
+  must_not_contain:
+    - '"scope": "all"'
+    - '"error"'

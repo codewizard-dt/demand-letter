@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { diffLines } from 'diff';
-import { refineJob, acceptRefinement, rejectRefinement } from '../lib/api';
+import { useRefineJob, useAcceptRefinement, useRejectRefinement } from '../hooks/useJobMutations';
 
 const SCOPE_OPTIONS = ['all', 'medical_narrative', 'damages', 'liability', 'demand_amount'] as const;
 
@@ -13,56 +13,48 @@ interface RefinementPanelProps {
 export function RefinementPanel({ jobId, currentText, onAccepted }: RefinementPanelProps) {
   const [instruction, setInstruction] = useState('');
   const [scope, setScope] = useState('all');
-  const [isRefining, setIsRefining] = useState(false);
   const [refinedText, setRefinedText] = useState('');
   const [refinementId, setRefinementId] = useState<string | null>(null);
   const [showDiff, setShowDiff] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  async function handleRefine() {
-    setIsRefining(true);
+  const refineMutation = useRefineJob(jobId);
+  const acceptMutation = useAcceptRefinement(jobId);
+  const rejectMutation = useRejectRefinement(jobId);
+
+  function handleRefine() {
     setRefinedText('');
-    setError(null);
     setRefinementId(null);
     setShowDiff(false);
-
-    try {
-      const result = (await refineJob(
-        jobId,
+    refineMutation.mutate(
+      {
         instruction,
-        scope === 'all' ? undefined : scope,
-        (chunk) => setRefinedText((prev) => prev + chunk),
-      )) as unknown as { afterText: string; refinementId: string };
-      setRefinementId(result.refinementId);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Refinement failed');
-    } finally {
-      setIsRefining(false);
-    }
+        scope: scope === 'all' ? undefined : scope,
+        onChunk: (chunk) => setRefinedText((prev) => prev + chunk),
+      },
+      { onSuccess: (result) => setRefinementId(result.refinementId) },
+    );
   }
 
-  async function handleAccept() {
+  function handleAccept() {
     if (!refinementId) return;
-    try {
-      await acceptRefinement(jobId, refinementId);
-      onAccepted(refinedText);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Accept failed');
-    }
+    acceptMutation.mutate(refinementId, {
+      onSuccess: () => onAccepted(refinedText),
+    });
   }
 
-  async function handleRevert() {
+  function handleRevert() {
     if (!refinementId) return;
-    try {
-      await rejectRefinement(jobId, refinementId);
-      setRefinedText('');
-      setRefinementId(null);
-      setShowDiff(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Revert failed');
-    }
+    rejectMutation.mutate(refinementId, {
+      onSuccess: () => { setRefinedText(''); setRefinementId(null); setShowDiff(false); },
+    });
   }
 
+  const isRefining = refineMutation.isPending;
+  const error =
+    refineMutation.error?.message ??
+    acceptMutation.error?.message ??
+    rejectMutation.error?.message ??
+    null;
   const hasResult = refinedText.length > 0;
   const isComplete = hasResult && !isRefining;
 

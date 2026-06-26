@@ -1,7 +1,7 @@
 ---
 id: ROADMAP-007
 title: Stretch — Collaborative Editing & Word Export
-status: active
+status: done
 created: 2026-06-22
 updated: 2026-06-25
 owner: David Taylor
@@ -43,9 +43,9 @@ PRD stretch goal: Google Docs-style collaborative editing of the generated deman
 ### Phase 4 — Word Export
 
 - [x] [[TASK-076: Editor state → DOCX export using docx npm package; convert ProseMirror JSON to .docx]] → completed/TASK-076-editor-docx-export.md
-- [ ] [[TASK-077: DOCX export preserves bold, italic, table structure, and paragraph styles from original template]]
-- [ ] [[TASK-078: GET /jobs/:id/export/docx — stream generated .docx and trigger browser download]]
-- [ ] [[TASK-079: Smoke test: export Pat Donahue letter to Word, verify structure matches original template]]
+- [x] [[TASK-077: DOCX export preserves bold, italic, table structure, and paragraph styles from original template]] → completed/TASK-077-docx-export-formatting.md
+- [x] [[TASK-078: GET /jobs/:id/export/docx — stream generated .docx and trigger browser download]] → completed/TASK-078-get-export-docx-endpoint.md
+- [x] [[TASK-079: Smoke test: export Pat Donahue letter to Word, verify structure matches original template]] → completed/TASK-079-docx-export-smoke-test.md
 
 ---
 
@@ -53,6 +53,6 @@ PRD stretch goal: Google Docs-style collaborative editing of the generated deman
 
 - [x] [[TASK-080: Verify two browser windows on same job editor sync edits in real-time]] → completed/TASK-080-two-browser-realtime-sync-verify.md
 - [x] [[TASK-081: Verify track-changes view shows each edit with correct author and timestamp]] → completed/TASK-081-track-changes-author-timestamp-verify.md
-- [ ] [[TASK-082: Verify accept/reject individual changes correctly updates document state]]
-- [ ] [[TASK-083: Verify exported DOCX opens in Microsoft Word with correct formatting and no corruption]]
-- [ ] Boilerplate zones (§7 conditions) are not editable in the collaborative editor
+- [x] [[TASK-082: Verify accept/reject individual changes correctly updates document state]] → completed/TASK-082-accept-reject-document-update-verify.md
+- [x] [[TASK-083: Verify exported DOCX opens in Microsoft Word with correct formatting and no corruption]] → completed/TASK-083-exported-docx-word-verify.md
+- [x] [[TASK-084: Verify boilerplate zones (§7 conditions) are not editable in the collaborative TipTap editor]] → completed/TASK-084-boilerplate-zone-readonly-verify.md

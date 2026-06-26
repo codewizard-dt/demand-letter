@@ -13,9 +13,6 @@ Lists **only active** tasks (`todo`, `in-progress`). When a task leaves the acti
 
 | #   | Slug | Progress | UAT  | Flags | Objective |
 | --- | ---- | -------- | ---- | ----- | --------- |
-| 077 | docx-export-formatting | todo | — | — | Bold, italic, tables, paragraph styles in exported DOCX |
-| 078 | get-export-docx-endpoint | todo | — | — | GET /jobs/:id/export/docx + Export to Word button |
-| 079 | docx-export-smoke-test | todo | — | — | Pat Donahue export, verify structure in Word |
+| 079 | docx-export-smoke-test | 2/12 | — | [DEFERRED-TO-UAT] | Pat Donahue export, verify structure in Word |
 | 080 | two-browser-realtime-sync-verify | 3/4 | — | [DEFERRED-TO-UAT] | Two windows same job, edits appear in real-time |
-| 082 | accept-reject-document-update-verify | todo | — | — | Accept/reject correctly updates document state |
-| 083 | exported-docx-word-verify | todo | — | — | Exported DOCX opens in Word, no corruption |
+| 082 | accept-reject-document-update-verify | 2/3 | — | [DEFERRED-TO-UAT] | Accept/reject correctly updates document state |

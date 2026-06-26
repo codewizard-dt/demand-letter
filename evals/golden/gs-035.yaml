@@ -1,0 +1,17 @@
+- id: "gs-035"
+  description: "estimateCostUsd() returns 0 without throwing when model ID is absent from MODEL_PRICING"
+  query: |
+    Call: estimateCostUsd('openai.gpt-4-unknown', 1_000_000, 500_000)
+    'openai.gpt-4-unknown' is not a key in MODEL_PRICING.
+    Expected: function returns 0 (graceful degradation — unknown model is not fatal).
+  tested_files:
+    - packages/api/src/lib/ai.ts
+  expected_tools:
+    - estimateCostUsd
+  must_contain:
+    - "0"
+  must_not_contain:
+    - "NaN"
+    - "undefined"
+    - "Error"
+    - "throw"

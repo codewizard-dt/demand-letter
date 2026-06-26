@@ -1,0 +1,20 @@
+- id: "gs-039"
+  description: "PATCH refine-accept sets accepted=true AND updates job.output to afterText in one transaction"
+  query: |
+    DB state:
+      refinement row: { id: "ref-1", jobId: "job-1", afterText: "revised letter text", accepted: false }
+      job row: { id: "job-1", output: "original letter text" }
+    PATCH /jobs/job-1/refinements/ref-1/accept
+    Expected: { "ok": true }; refinement.accepted → true; job.output → "revised letter text".
+  tested_files:
+    - packages/api/src/handlers/patch-jobs-refine-accept.ts
+  expected_tools:
+    - patch-jobs-refine-accept
+  must_contain:
+    - '"ok": true'
+    - '"accepted": true'
+    - '"output": "revised letter text"'
+  must_not_contain:
+    - '"statusCode": 404'
+    - '"statusCode": 403'
+    - '"output": "original letter text"'

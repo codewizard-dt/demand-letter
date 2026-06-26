@@ -1,24 +1,12 @@
-import { useEffect, useState } from 'react';
-import { fetchLlmCosts, LlmCostAggregate, LlmAuditRow } from '../../lib/api';
+import { useLlmCosts } from '../../hooks/useJobQueries';
 
 export default function UsagePage() {
-  const [aggregates, setAggregates] = useState<LlmCostAggregate[]>([]);
-  const [recentRows, setRecentRows] = useState<LlmAuditRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, isLoading, error } = useLlmCosts(30);
+  const aggregates = data?.aggregates ?? [];
+  const recentRows = data?.recentRows ?? [];
 
-  useEffect(() => {
-    fetchLlmCosts(30)
-      .then(({ aggregates, recentRows }) => {
-        setAggregates(aggregates);
-        setRecentRows(recentRows);
-      })
-      .catch((e) => setError(String(e)))
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) return <p className="p-6 text-sm text-gray-500">Loading...</p>;
-  if (error) return <p className="p-6 text-sm text-red-500">{error}</p>;
+  if (isLoading) return <p className="p-6 text-sm text-gray-500">Loading...</p>;
+  if (error) return <p className="p-6 text-sm text-red-500">{String(error)}</p>;
 
   return (
     <div className="mx-auto max-w-5xl p-6 space-y-8">

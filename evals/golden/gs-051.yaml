@@ -1,0 +1,20 @@
+- id: "gs-051"
+  description: "POST /jobs/:id/attorney-judgment upserts fields with confidence=1.0 and source='attorney-judgment'"
+  query: |
+    POST /jobs/job-1/attorney-judgment
+    Body: { "fields": [{ "fieldName": "date_of_loss", "value": "2024-03-15" }] }
+    DB state: job row { id: "job-1" }
+    Expected: extractedField upserted with confidence: 1.0, isNull: false, source: "attorney-judgment".
+    Returns: { "ok": true }
+  tested_files:
+    - packages/api/src/handlers/post-jobs-attorney-judgment.ts
+  expected_tools:
+    - post-jobs-attorney-judgment
+  must_contain:
+    - '"ok": true'
+    - '"confidence": 1'
+    - '"source": "attorney-judgment"'
+  must_not_contain:
+    - '"statusCode": 404'
+    - '"statusCode": 400'
+    - '"isNull": true'

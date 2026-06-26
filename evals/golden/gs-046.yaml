@@ -1,0 +1,24 @@
+- id: "gs-046"
+  description: "GET /jobs/:id/refinements returns refinement history list ordered by createdAt desc"
+  query: |
+    DB state:
+      refinement rows: [
+        { id: "r1", jobId: "job-1", instruction: "Make it shorter", scope: "all", accepted: false },
+        { id: "r2", jobId: "job-1", instruction: "Add lost wages", scope: "medical_narrative", accepted: true }
+      ]
+    GET /jobs/job-1/refinements
+    Expected: { refinements: [{ id, instruction, scope, accepted, createdAt }, ...] }
+  tested_files:
+    - packages/api/src/handlers/get-jobs-refinements.ts
+  expected_tools:
+    - get-jobs-refinements
+  must_contain:
+    - '"refinements"'
+    - '"instruction"'
+    - '"scope"'
+    - '"accepted"'
+  must_not_contain:
+    - '"statusCode": 404'
+    - '"statusCode": 500'
+    - '"beforeText"'
+    - '"afterText"'

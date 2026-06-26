@@ -1,0 +1,17 @@
+- id: "gs-036"
+  description: "estimateCostUsd() computes the correct dollar amount for a known Haiku model"
+  query: |
+    Call: estimateCostUsd('us.anthropic.claude-haiku-4-5-20251001-v1:0', 1_000_000, 1_000_000)
+    MODEL_PRICING for this model: inputPerMTok $1.00, outputPerMTok $5.00
+    Expected: (1_000_000 / 1_000_000) × $1.00 + (1_000_000 / 1_000_000) × $5.00 = 6.0
+    parseFloat((6.0).toFixed(6)) = 6
+  tested_files:
+    - packages/api/src/lib/ai.ts
+  expected_tools:
+    - estimateCostUsd
+  must_contain:
+    - "6"
+  must_not_contain:
+    - "0"
+    - "NaN"
+    - "undefined"

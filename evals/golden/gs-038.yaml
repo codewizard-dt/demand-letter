@@ -1,0 +1,16 @@
+- id: "gs-038"
+  description: "POST /jobs/:id/refine returns 400 with missing_instruction when instruction is absent from body"
+  query: |
+    POST /jobs/job-abc/refine
+    Body: { "scope": "medical_narrative" }  (no "instruction" field)
+    Expected: 400 with error: "missing_instruction".
+  tested_files:
+    - packages/api/src/handlers/post-jobs-refine.ts
+  expected_tools:
+    - post-jobs-refine
+  must_contain:
+    - '"missing_instruction"'
+    - '"statusCode": 400'
+  must_not_contain:
+    - '"statusCode": 200'
+    - '"statusCode": 500'

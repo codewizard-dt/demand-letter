@@ -165,6 +165,22 @@ export async function exportDocx(id: string, doc: unknown): Promise<Blob> {
   return res.blob();
 }
 
+export async function downloadExportDocx(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/jobs/${id}/export/docx`, {
+    method: 'GET',
+  });
+  if (!res.ok) throw new Error(`Export failed: ${res.statusText}`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'demand-letter.docx';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export type Zone = {
   id: string;
   zoneIndex: number;
@@ -294,4 +310,26 @@ export async function fetchJobChanges(id: string): Promise<ChangeRow[]> {
 export async function deleteJobChange(jobId: string, changeId: string): Promise<void> {
   const res = await fetch(`${API_BASE}/jobs/${jobId}/changes/${changeId}`, { method: 'DELETE' });
   if (!res.ok && res.status !== 204) throw new Error(`DELETE /jobs/${jobId}/changes/${changeId} failed: ${res.status}`);
+}
+
+export async function submitAttorneyJudgment(
+  jobId: string,
+  fields: Array<{ fieldName: string; value: string }>,
+  acceptMissing: string[],
+): Promise<void> {
+  const res = await fetch(`${API_BASE}/jobs/${jobId}/attorney-judgment`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields, acceptMissing }),
+  });
+  if (!res.ok) throw new Error(`POST /jobs/${jobId}/attorney-judgment failed: ${res.status}`);
+}
+
+export async function triggerGenerateJob(jobId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/jobs/${jobId}/generate`, { method: 'POST' });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as { message?: string };
+    throw new Error(body.message ?? `HTTP ${res.status}`);
+  }
+  res.body?.cancel();
 }

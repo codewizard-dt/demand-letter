@@ -1,22 +1,25 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { getTemplateZones, patchTemplateZones, Zone } from '../lib/api';
+import { Zone } from '../lib/api';
+import { useTemplateZones } from '../hooks/useJobQueries';
+import { usePatchTemplateZones } from '../hooks/useJobMutations';
 
 type ZoneRow = Zone & { confirmed: boolean };
 
 export default function AnnotatePage() {
   const { id: jobId, templateId } = useParams<{ id: string; templateId: string }>();
   const [zones, setZones] = useState<ZoneRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+
+  const zonesQuery = useTemplateZones(jobId, templateId);
+  const patchMutation = usePatchTemplateZones(jobId!, templateId!);
 
   useEffect(() => {
-    getTemplateZones(jobId!, templateId!)
-      .then((data) => setZones(data as ZoneRow[]))
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, [jobId, templateId]);
+    if (zonesQuery.data) setZones(zonesQuery.data as ZoneRow[]);
+  }, [zonesQuery.data]);
+
+  const loading = zonesQuery.isLoading;
+  const error = zonesQuery.error ? String(zonesQuery.error) : patchMutation.error ? String(patchMutation.error) : null;
+  const submitting = patchMutation.isPending;
 
   function confirmAll() {
     setZones((prev) =>
@@ -30,16 +33,10 @@ export default function AnnotatePage() {
     setZones((prev) => prev.map((z) => (z.id === id ? { ...z, ...patch } : z)));
   }
 
-  async function handleSubmit() {
-    setSubmitting(true);
-    try {
-      await patchTemplateZones(jobId!, templateId!, zones);
-      alert('Zones saved successfully.');
-    } catch (e: unknown) {
-      setError((e as Error).message);
-    } finally {
-      setSubmitting(false);
-    }
+  function handleSubmit() {
+    patchMutation.mutate(zones, {
+      onSuccess: () => alert('Zones saved successfully.'),
+    });
   }
 
   if (loading) return <div className="p-8">Loading zones…</div>;

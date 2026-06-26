@@ -1,13 +1,13 @@
 ---
 id: TASK-078
 title: "GET /jobs/:id/export/docx — stream generated .docx and trigger browser download"
-status: todo
+status: in-progress
 created: 2026-06-25
 updated: 2026-06-25
 depends_on: [TASK-076]
 blocks: [TASK-079, TASK-083]
 parallel_safe_with: [TASK-077]
-uat: ""
+uat: "[[UAT-078]]"
 tags: [docx, word-export, api, lambda, download, frontend]
 ---
 
@@ -25,7 +25,7 @@ The GET handler fetches the job's stored `output_text` from the database (or rec
 
 ### 1. Create GET /jobs/:id/export/docx Lambda handler  <!-- agent: general-purpose -->
 
-- [ ] Create `packages/api/src/handlers/get-jobs-export-docx.ts`:
+- [x] Create `packages/api/src/handlers/get-jobs-export-docx.ts`: <!-- Completed: 2026-06-25 -->
   - Look up the `Job` by `id`; 404 if not found; 422 if `outputText` is null (no generated output)
   - Parse `job.outputText` as ProseMirror JSON (the stored output is plain text; if it is not valid JSON, wrap it as a single paragraph node: `{ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: outputText }] }] }`)
   - Call `prosemirrorToDocx(doc)` then `Packer.toBuffer(document)`
@@ -34,20 +34,20 @@ The GET handler fetches the job's stored `output_text` from the database (or rec
 
 ### 2. Add handler to build pipeline  <!-- agent: general-purpose -->
 
-- [ ] Add `get-jobs-export-docx` to the esbuild entrypoints in `packages/api/package.json`
-- [ ] Verify `.build/handlers/get-jobs-export-docx.js` is emitted
+- [x] Add `get-jobs-export-docx` to the esbuild entrypoints in `packages/api/package.json` <!-- Completed: 2026-06-25 -->
+- [x] Verify `.build/handlers/get-jobs-export-docx.js` is emitted <!-- Completed: 2026-06-25 -->
 
 ### 3. Update exportDocx API helper to support GET  <!-- agent: general-purpose -->
 
-- [ ] Read `packages/web/src/lib/api.ts`
-- [ ] Update or add `downloadExportDocx(id: string): Promise<void>` that:
+- [x] Read `packages/web/src/lib/api.ts` <!-- Completed: 2026-06-25 -->
+- [x] Update or add `downloadExportDocx(id: string): Promise<void>` that: <!-- Completed: 2026-06-25 -->
   - Calls `GET /jobs/:id/export/docx`
   - Creates a `Blob` from the response
   - Uses `URL.createObjectURL` + a temporary `<a>` click to trigger the browser download dialog
 
 ### 4. Add "Export to Word" button in EditorPage  <!-- agent: general-purpose -->
 
-- [ ] Edit `packages/web/src/pages/EditorPage.tsx`:
+- [x] Edit `packages/web/src/pages/EditorPage.tsx`: <!-- Completed: 2026-06-25 -->
   - Import `downloadExportDocx` from `../lib/api`
   - Add `[isExporting, setIsExporting]` state
   - Render a button in the editor toolbar area:
@@ -63,5 +63,5 @@ The GET handler fetches the job's stored `output_text` from the database (or rec
 
 ### 5. Typecheck  <!-- agent: general-purpose -->
 
-- [ ] `pnpm --filter @demand-letter/api typecheck` exits 0
-- [ ] `pnpm --filter @demand-letter/web typecheck` exits 0
+- [x] `pnpm --filter @demand-letter/api typecheck` exits 0 <!-- Completed: 2026-06-25 -->
+- [x] `pnpm --filter @demand-letter/web typecheck` exits 0 <!-- Completed: 2026-06-25 -->

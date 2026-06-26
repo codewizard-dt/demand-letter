@@ -1,0 +1,19 @@
+- id: "gs-053"
+  description: "GET /jobs/:id/gap-report returns 404 template_not_ready when no template has been classified for the job"
+  query: |
+    DB state:
+      job row: { id: "job-2" }
+      template rows: [] (no template for job-2)
+    GET /jobs/job-2/gap-report
+    Expected: 404 with error: "template_not_ready".
+  tested_files:
+    - packages/api/src/handlers/get-jobs-gap-report.ts
+  expected_tools:
+    - get-jobs-gap-report
+  must_contain:
+    - '"template_not_ready"'
+    - '"statusCode": 404'
+  must_not_contain:
+    - '"statusCode": 200'
+    - '"gaps"'
+    - '"statusCode": 500'

@@ -1,24 +1,11 @@
-import { useEffect, useState } from 'react';
-import { fetchRefinements, type RefinementRow } from '../lib/api';
+import { useRefinements } from '../hooks/useJobQueries';
 
 interface RefinementHistoryProps {
   jobId: string;
-  refreshTrigger: number;
 }
 
-export function RefinementHistory({ jobId, refreshTrigger }: RefinementHistoryProps) {
-  const [rows, setRows] = useState<RefinementRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-    fetchRefinements(jobId)
-      .then((data) => setRows(data))
-      .catch((e: Error) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, [jobId, refreshTrigger]);
+export function RefinementHistory({ jobId }: RefinementHistoryProps) {
+  const { data: rows = [], isLoading: loading, error } = useRefinements(jobId);
 
   const count = rows.length;
 
@@ -29,7 +16,7 @@ export function RefinementHistory({ jobId, refreshTrigger }: RefinementHistoryPr
       </summary>
       <div className="px-4 pb-4">
         {loading && <p className="text-sm text-gray-400 mt-2">Loading…</p>}
-        {error && <p className="text-sm text-red-500 mt-2">{error}</p>}
+        {error && <p className="text-sm text-red-500 mt-2">{String(error)}</p>}
         {!loading && !error && count === 0 && (
           <p className="text-sm text-gray-400 mt-2">No refinements yet.</p>
         )}

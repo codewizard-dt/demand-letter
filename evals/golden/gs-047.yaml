@@ -1,0 +1,18 @@
+- id: "gs-047"
+  description: "DELETE /jobs/:id/changes/:changeId returns 403 change_job_mismatch when changeId belongs to a different job"
+  query: |
+    DB state:
+      collaborativeChange row: { id: "chg-1", jobId: "job-A" }
+    DELETE /jobs/job-B/changes/chg-1
+    Expected: 403 with error: "change_job_mismatch" — change belongs to job-A, not job-B.
+  tested_files:
+    - packages/api/src/handlers/delete-jobs-changes.ts
+  expected_tools:
+    - delete-jobs-changes
+  must_contain:
+    - '"change_job_mismatch"'
+    - '"statusCode": 403'
+  must_not_contain:
+    - '"statusCode": 200'
+    - '"ok": true'
+    - '"statusCode": 404'

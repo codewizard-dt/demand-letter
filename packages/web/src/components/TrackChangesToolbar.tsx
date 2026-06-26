@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Editor } from '@tiptap/react';
 import { Node as ProseMirrorNode } from '@tiptap/pm/model';
-import { ChangeRow, fetchJobChanges, deleteJobChange } from '../lib/api';
+import { ChangeRow } from '../lib/api';
+import { useJobChanges } from '../hooks/useJobQueries';
+import { useDeleteJobChange } from '../hooks/useJobMutations';
 
 interface TrackChangesToolbarProps {
   editor: Editor;
@@ -11,49 +13,41 @@ interface TrackChangesToolbarProps {
 }
 
 export function TrackChangesToolbar({ editor, jobId, enabled, onToggle }: TrackChangesToolbarProps) {
-  const [changes, setChanges] = useState<ChangeRow[]>([]);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const marksAppliedRef = useRef(false);
 
+  const { data: changes = [], isLoading: loading } = useJobChanges(jobId, enabled);
+  const deleteMutation = useDeleteJobChange(jobId);
+
+  // Apply marks when Track Changes is enabled and data first arrives
   useEffect(() => {
-    if (enabled) {
-      setLoading(true);
-      fetchJobChanges(jobId)
-        .then((rows) => {
-          setChanges(rows);
-          // Apply marks for each change with a parseable contentDelta
-          for (const c of rows) {
-            try {
-              const delta = c.contentDelta as { from?: number; to?: number; text?: string };
-              if (typeof delta?.from !== 'number' || typeof delta?.to !== 'number') continue;
-              const { from, to } = delta;
-              const markName = c.operationType === 'delete' ? 'trackDelete' : 'trackInsert';
-              editor
-                .chain()
-                .setTextSelection({ from, to })
-                .setMark(markName, {
-                  changeId: c.id,
-                  userName: c.userName,
-                  createdAt: c.createdAt,
-                })
-                .run();
-            } catch {
-              // skip unparseable deltas
-            }
-          }
-        })
-        .catch((err) => {
-          console.error('Failed to fetch job changes:', err);
-        })
-        .finally(() => {
-          setLoading(false);
-        });
-    } else {
-      // Remove all track-change marks from the full document
+    if (!enabled) {
+      marksAppliedRef.current = false;
       editor.chain().selectAll().unsetMark('trackInsert').unsetMark('trackDelete').run();
-      setChanges([]);
+      return;
     }
-  }, [enabled, jobId]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!changes.length || marksAppliedRef.current) return;
+    marksAppliedRef.current = true;
+    for (const c of changes) {
+      try {
+        const delta = c.contentDelta as { from?: number; to?: number; text?: string };
+        if (typeof delta?.from !== 'number' || typeof delta?.to !== 'number') continue;
+        const { from, to } = delta;
+        const markName = c.operationType === 'delete' ? 'trackDelete' : 'trackInsert';
+        editor
+          .chain()
+          .setTextSelection({ from, to })
+          .setMark(markName, {
+            changeId: c.id,
+            userName: c.userName,
+            createdAt: c.createdAt,
+          })
+          .run();
+      } catch {
+        // skip unparseable deltas
+      }
+    }
+  }, [changes, enabled, editor]);
 
   function findMarkRanges(
     doc: ProseMirrorNode,
@@ -74,7 +68,7 @@ export function TrackChangesToolbar({ editor, jobId, enabled, onToggle }: TrackC
     return ranges;
   }
 
-  async function handleAccept(change: ChangeRow) {
+  function handleAccept(change: ChangeRow) {
     const isInsert =
       change.operationType === 'insert' || change.operationType === 'insertion';
     const isDelete =
@@ -83,39 +77,28 @@ export function TrackChangesToolbar({ editor, jobId, enabled, onToggle }: TrackC
 
     setError(null);
 
-    try {
-      await deleteJobChange(jobId, change.id);
-    } catch (err) {
-      console.error('Failed to accept change:', err);
-      setError('Failed to accept change. The mark has been kept in the document. Please try again.');
-      return;
-    }
-
-    // API succeeded — now apply the editor change and remove from local list
-    const ranges = findMarkRanges(editor.state.doc, markName, change.id);
-
-    if (isInsert) {
-      // Accept insert: keep the text, remove the mark
-      for (const { from, to } of ranges) {
-        editor
-          .chain()
-          .setTextSelection({ from, to })
-          .unsetMark(markName)
-          .run();
-      }
-    } else if (isDelete) {
-      // Accept delete: remove the marked text from the document
-      // Process ranges in reverse order so positions stay valid
-      const sorted = [...ranges].sort((a, b) => b.from - a.from);
-      for (const { from, to } of sorted) {
-        editor.chain().deleteRange({ from, to }).run();
-      }
-    }
-
-    setChanges((prev) => prev.filter((c) => c.id !== change.id));
+    deleteMutation.mutate(change.id, {
+      onSuccess: () => {
+        const ranges = findMarkRanges(editor.state.doc, markName, change.id);
+        if (isInsert) {
+          for (const { from, to } of ranges) {
+            editor.chain().setTextSelection({ from, to }).unsetMark(markName).run();
+          }
+        } else if (isDelete) {
+          const sorted = [...ranges].sort((a, b) => b.from - a.from);
+          for (const { from, to } of sorted) {
+            editor.chain().deleteRange({ from, to }).run();
+          }
+        }
+      },
+      onError: (err) => {
+        console.error('Failed to accept change:', err);
+        setError('Failed to accept change. The mark has been kept in the document. Please try again.');
+      },
+    });
   }
 
-  async function handleReject(change: ChangeRow) {
+  function handleReject(change: ChangeRow) {
     const isInsert =
       change.operationType === 'insert' || change.operationType === 'insertion';
     const isDelete =
@@ -124,45 +107,30 @@ export function TrackChangesToolbar({ editor, jobId, enabled, onToggle }: TrackC
 
     setError(null);
 
-    try {
-      await deleteJobChange(jobId, change.id);
-    } catch (err) {
-      console.error('Failed to reject change:', err);
-      setError('Failed to reject change. The mark has been kept in the document. Please try again.');
-      return;
-    }
-
-    // API succeeded — now apply the editor change and remove from local list
-    const ranges = findMarkRanges(editor.state.doc, markName, change.id);
-
-    if (isInsert) {
-      // Reject insert: remove the inserted text from the document
-      const sorted = [...ranges].sort((a, b) => b.from - a.from);
-      for (const { from, to } of sorted) {
-        editor.chain().deleteRange({ from, to }).run();
-      }
-    } else if (isDelete) {
-      // Reject delete: restore the deleted text by removing the mark (keep content)
-      const delta = change.contentDelta as { text?: string; from?: number } | null;
-      if (delta && typeof delta.text === 'string' && ranges.length === 0 && typeof delta.from === 'number') {
-        // The text is gone; re-insert it at the original position
-        editor
-          .chain()
-          .insertContentAt(delta.from, delta.text)
-          .run();
-      } else {
-        // The text is still present but marked — just remove the mark
-        for (const { from, to } of ranges) {
-          editor
-            .chain()
-            .setTextSelection({ from, to })
-            .unsetMark(markName)
-            .run();
+    deleteMutation.mutate(change.id, {
+      onSuccess: () => {
+        const ranges = findMarkRanges(editor.state.doc, markName, change.id);
+        if (isInsert) {
+          const sorted = [...ranges].sort((a, b) => b.from - a.from);
+          for (const { from, to } of sorted) {
+            editor.chain().deleteRange({ from, to }).run();
+          }
+        } else if (isDelete) {
+          const delta = change.contentDelta as { text?: string; from?: number } | null;
+          if (delta && typeof delta.text === 'string' && ranges.length === 0 && typeof delta.from === 'number') {
+            editor.chain().insertContentAt(delta.from, delta.text).run();
+          } else {
+            for (const { from, to } of ranges) {
+              editor.chain().setTextSelection({ from, to }).unsetMark(markName).run();
+            }
+          }
         }
-      }
-    }
-
-    setChanges((prev) => prev.filter((c) => c.id !== change.id));
+      },
+      onError: (err) => {
+        console.error('Failed to reject change:', err);
+        setError('Failed to reject change. The mark has been kept in the document. Please try again.');
+      },
+    });
   }
 
   return (

@@ -1,34 +1,24 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createJob, uploadFile } from '../lib/api';
+import { useUploadWorkflow } from '../hooks/useJobMutations';
 
 export default function UploadPage() {
   const navigate = useNavigate();
   const [templateFile, setTemplateFile] = useState<File | null>(null);
   const [caseFiles, setCaseFiles] = useState<File[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const uploadMutation = useUploadWorkflow();
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!templateFile || caseFiles.length === 0) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const { id } = await createJob();
-      await uploadFile(id, templateFile);
-      for (const pdfFile of caseFiles) {
-        await uploadFile(id, pdfFile);
-      }
-      navigate(`/jobs/${id}/generate`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed');
-    } finally {
-      setLoading(false);
-    }
+    uploadMutation.mutate(
+      { templateFile, caseFiles },
+      { onSuccess: (id) => navigate(`/jobs/${id}/generate`) },
+    );
   }
+
+  const loading = uploadMutation.isPending;
+  const error = uploadMutation.error ? String(uploadMutation.error) : null;
 
   return (
     <div style={{ maxWidth: 480, margin: '48px auto', padding: '0 16px' }}>

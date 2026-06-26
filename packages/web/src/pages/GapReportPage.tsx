@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { GapReport, GapItem, API_BASE, fetchExtractedFields, fetchBlocks, ExtractedFieldRow, BlockRow } from '../lib/api';
+import { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useGapReport, useExtractedFields, useBlocks } from '../hooks/useJobQueries';
+import { useSubmitAttorneyJudgment, useTriggerGenerateJob } from '../hooks/useJobMutations';
 
 const PRIORITY_SLOTS = new Set<string>([]);
 
@@ -9,95 +10,51 @@ export default function GapReportPage() {
   const { id: jobId } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const [report, setReport] = useState<GapReport | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const gapReportQuery = useGapReport(jobId);
+  const extractedFieldsQuery = useExtractedFields(jobId);
+  const blocksQuery = useBlocks(jobId);
+  const submitJudgmentMutation = useSubmitAttorneyJudgment(jobId!);
+  const triggerGenerateMutation = useTriggerGenerateJob();
+
   const [fillValues, setFillValues] = useState<Record<string, string>>({});
   const [acceptMissing, setAcceptMissing] = useState<Record<string, boolean>>({});
-  const [submitting, setSubmitting] = useState(false);
-  const [generating, setGenerating] = useState(false);
-  const [extractedFields, setExtractedFields] = useState<ExtractedFieldRow[]>([]);
-  const [blocks, setBlocks] = useState<BlockRow[]>([]);
   const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
   const blockRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  const fetchReport = useCallback(async () => {
-    if (!jobId) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`${API_BASE}/jobs/${jobId}/gap-report`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data: GapReport = await res.json();
-      setReport(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load gap report');
-    } finally {
-      setLoading(false);
-    }
-  }, [jobId]);
-
-  useEffect(() => { fetchReport(); }, [fetchReport]);
-  useEffect(() => {
-    if (!jobId) return;
-    Promise.all([fetchExtractedFields(jobId), fetchBlocks(jobId)])
-      .then(([fields, blks]) => {
-        setExtractedFields(fields);
-        setBlocks(blks);
-      })
-      .catch(() => {/* citation panel degrades gracefully — errors do not surface to the user */});
-  }, [jobId]);
+  const extractedFields = extractedFieldsQuery.data ?? [];
+  const blocks = blocksQuery.data ?? [];
 
   const hasAnyAction = Object.values(fillValues).some(v => v.trim() !== '') ||
     Object.values(acceptMissing).some(Boolean);
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!jobId) return;
-    setSubmitting(true);
-    try {
-      const fields = Object.entries(fillValues)
-        .filter(([, v]) => v.trim() !== '')
-        .map(([fieldName, value]) => ({ fieldName, value }));
-      const acceptList = Object.entries(acceptMissing)
-        .filter(([, checked]) => checked)
-        .map(([fieldName]) => fieldName);
-
-      const res = await fetch(`${API_BASE}/jobs/${jobId}/attorney-judgment`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fields, acceptMissing: acceptList }),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setFillValues({});
-      setAcceptMissing({});
-      await fetchReport();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to submit judgment');
-    } finally {
-      setSubmitting(false);
-    }
+    const fields = Object.entries(fillValues)
+      .filter(([, v]) => v.trim() !== '')
+      .map(([fieldName, value]) => ({ fieldName, value }));
+    const acceptList = Object.entries(acceptMissing)
+      .filter(([, checked]) => checked)
+      .map(([fieldName]) => fieldName);
+    submitJudgmentMutation.mutate(
+      { fields, acceptMissing: acceptList },
+      { onSuccess: () => { setFillValues({}); setAcceptMissing({}); } },
+    );
   };
 
-  const handleGenerate = async () => {
+  const handleGenerate = () => {
     if (!jobId) return;
-    setGenerating(true);
-    try {
-      const res = await fetch(`${API_BASE}/jobs/${jobId}/generate`, { method: 'POST' });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.message ?? `HTTP ${res.status}`);
-      }
-      navigate(`/jobs/${jobId}/output`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Generation failed');
-    } finally {
-      setGenerating(false);
-    }
+    triggerGenerateMutation.mutate(jobId, {
+      onSuccess: () => navigate(`/jobs/${jobId}/output`),
+    });
   };
 
-  if (loading) return <div style={{ padding: '2rem' }}>Loading gap report…</div>;
-  if (error) return <div style={{ padding: '2rem', color: 'red' }}>Error: {error}</div>;
-  if (!report) return null;
+  const submitting = submitJudgmentMutation.isPending;
+  const generating = triggerGenerateMutation.isPending;
+  const mutationError = submitJudgmentMutation.error?.message ?? triggerGenerateMutation.error?.message ?? null;
+
+  if (gapReportQuery.isLoading) return <div style={{ padding: '2rem' }}>Loading gap report…</div>;
+  if (gapReportQuery.isError) return <div style={{ padding: '2rem', color: 'red' }}>Error: {gapReportQuery.error.message}</div>;
+  const report = gapReportQuery.data!;
 
   const handleBlockClick = (blockId: string) => {
     setActiveBlockId(blockId);
@@ -115,6 +72,10 @@ export default function GapReportPage() {
             <strong>{report.covered} of {report.total}</strong> slots covered.
             {report.gaps.length === 0 && <span style={{ color: 'green' }}> All slots satisfied — ready to generate.</span>}
           </p>
+
+          {mutationError && (
+            <div style={{ color: 'red', marginBottom: '1rem' }}>{mutationError}</div>
+          )}
 
           {report.gaps.length > 0 && (
             <>

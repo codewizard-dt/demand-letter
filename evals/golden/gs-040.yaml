@@ -1,0 +1,19 @@
+- id: "gs-040"
+  description: "PATCH refine-reject sets accepted=false but does NOT update job.output (revert behavior)"
+  query: |
+    DB state:
+      refinement row: { id: "ref-2", jobId: "job-2", afterText: "revised letter text", accepted: false }
+      job row: { id: "job-2", output: "original letter text" }
+    PATCH /jobs/job-2/refinements/ref-2/reject
+    Expected: { "ok": true }; job.output remains "original letter text" (not replaced with afterText).
+  tested_files:
+    - packages/api/src/handlers/patch-jobs-refine-reject.ts
+  expected_tools:
+    - patch-jobs-refine-reject
+  must_contain:
+    - '"ok": true'
+    - '"output": "original letter text"'
+  must_not_contain:
+    - '"output": "revised letter text"'
+    - '"statusCode": 404'
+    - '"statusCode": 500'

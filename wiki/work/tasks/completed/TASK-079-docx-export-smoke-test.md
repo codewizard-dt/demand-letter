@@ -1,13 +1,13 @@
 ---
 id: TASK-079
 title: "Smoke test: export Pat Donahue letter to Word, verify structure matches original template"
-status: todo
+status: in-progress
 created: 2026-06-25
 updated: 2026-06-25
 depends_on: [TASK-076, TASK-077, TASK-078]
 blocks: []
 parallel_safe_with: []
-uat: ""
+uat: "[[UAT-079]]"
 tags: [docx, word-export, smoke-test, verification, pat-donahue]
 ---
 
@@ -25,42 +25,45 @@ This is a primarily manual verification task. The automated portion verifies the
 
 ### 1. Automated: verify export endpoint returns valid DOCX binary  <!-- agent: general-purpose -->
 
-- [ ] Using `curl` with a valid auth token against the local SAM or deployed endpoint:
+- [DEFERRED-TO-UAT] Using `curl` with a valid auth token against the local SAM or deployed endpoint:
   ```bash
   curl -s -H "Authorization: Bearer $TOKEN" \
     "$API_BASE/jobs/$PAT_DONAHUE_JOB_ID/export/docx" \
     -o /tmp/demand-letter-export.docx
   ```
-- [ ] Verify the response is a valid ZIP (OOXML) archive:
+- [DEFERRED-TO-UAT] Verify the response is a valid ZIP (OOXML) archive:
   ```bash
   unzip -l /tmp/demand-letter-export.docx | grep word/document.xml
   ```
   Expect `word/document.xml` to be present in the listing
+<!-- Updated: 2026-06-25 -->
 
 ### 2. Automated: verify document.xml contains expected content  <!-- agent: general-purpose -->
 
-- [ ] Extract and grep the document XML:
+- [DEFERRED-TO-UAT] Extract and grep the document XML:
   ```bash
   unzip -p /tmp/demand-letter-export.docx word/document.xml | grep -i "Donahue"
   ```
   Expect at least one match for the patient name
 
-- [ ] Verify the specials table is present:
+- [DEFERRED-TO-UAT] Verify the specials table is present:
   ```bash
   unzip -p /tmp/demand-letter-export.docx word/document.xml | grep -c "<w:tbl>"
   ```
   Expect count ≥ 1
+<!-- Updated: 2026-06-25 -->
 
 ### 3. Manual: open in Microsoft Word and verify visual fidelity  <!-- agent: general-purpose -->
 
-- [ ] Open `/tmp/demand-letter-export.docx` in Microsoft Word (or LibreOffice Writer)
-- [ ] Verify: document title / heading matches the original template format
-- [ ] Verify: specials table has correct column headers and provider rows
-- [ ] Verify: boilerplate §7 section appears with grey shading
-- [ ] Verify: no corruption warnings or "repair mode" dialog on open
-- [ ] Verify: bold and italic text preserved in narrative sections
+- [DEFERRED-TO-UAT] Open `/tmp/demand-letter-export.docx` in Microsoft Word (or LibreOffice Writer)
+- [DEFERRED-TO-UAT] Verify: document title / heading matches the original template format
+- [DEFERRED-TO-UAT] Verify: specials table has correct column headers and provider rows
+- [DEFERRED-TO-UAT] Verify: boilerplate §7 section appears with grey shading
+- [DEFERRED-TO-UAT] Verify: no corruption warnings or "repair mode" dialog on open
+- [DEFERRED-TO-UAT] Verify: bold and italic text preserved in narrative sections
+<!-- Updated: 2026-06-25 -->
 
 ### 4. Typecheck and build  <!-- agent: general-purpose -->
 
-- [ ] `pnpm --filter @demand-letter/api typecheck` exits 0
-- [ ] `pnpm --filter @demand-letter/web typecheck` exits 0
+- [x] `pnpm --filter @demand-letter/api typecheck` exits 0 <!-- Completed: 2026-06-25 -->
+- [x] `pnpm --filter @demand-letter/web typecheck` exits 0 <!-- Completed: 2026-06-25 -->

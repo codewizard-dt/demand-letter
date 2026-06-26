@@ -1,9 +1,9 @@
 {
   "summary": {
     "total": 22,
-    "passed": 21,
+    "passed": 22,
     "failed": 0,
-    "errors": 1,
+    "errors": 0,
     "skipped": 0,
     "regressions": 0,
     "fixes": 0
@@ -132,15 +132,14 @@
     {
       "case_id": "gs-011",
       "stage": "golden",
-      "status": "ERROR",
+      "status": "PASS",
       "checks": {
         "tool_selection": "n/a",
         "source_citation": "n/a",
         "must_contain": "n/a",
         "must_not_contain": "n/a",
-        "schema_valid": "fail"
-      },
-      "failure_detail": "Parse error: Unexpected scalar at node end at line 17, column 25:\n\n    - \"{claimant_name}\" in word/document.xml paragraph 0\n                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n"
+        "schema_valid": "pass"
+      }
     },
     {
       "case_id": "gs-012",

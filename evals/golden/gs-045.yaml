@@ -1,0 +1,17 @@
+- id: "gs-045"
+  description: "GET /admin/llm-costs returns aggregates grouped by feature and recentRows list in response body"
+  query: |
+    DB state: LlmAuditLog rows exist for features: ["zone_classification", "refinement"]
+    GET /admin/llm-costs?days=30
+    Expected: { aggregates: [...], recentRows: [...] } — both keys present in JSON body.
+  tested_files:
+    - packages/api/src/handlers/get-admin-llm-costs.ts
+  expected_tools:
+    - get-admin-llm-costs
+  must_contain:
+    - '"aggregates"'
+    - '"recentRows"'
+    - '"statusCode": 200'
+  must_not_contain:
+    - '"statusCode": 500'
+    - '"error"'

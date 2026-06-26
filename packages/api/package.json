@@ -1,10 +1,10 @@
 {
   "name": "@demand-letter/api",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc --project tsconfig.json && esbuild src/handlers/websocket-sync.ts --bundle --platform=node --target=node20 --external:@aws-sdk/client-dynamodb --external:@aws-sdk/client-apigatewaymanagementapi --outfile=../../.build/handlers/websocket-sync.js && esbuild src/handlers/get-jobs-changes.ts --bundle --platform=node --target=node20 --external:@prisma/client --external:@demand-letter/db --outfile=../../.build/handlers/get-jobs-changes.js && esbuild src/handlers/delete-jobs-changes.ts --bundle --platform=node --target=node20 --external:@prisma/client --external:@demand-letter/db --outfile=../../.build/handlers/delete-jobs-changes.js && esbuild src/handlers/post-jobs-export-docx.ts --bundle --platform=node --target=node20 --external:@prisma/client --external:@demand-letter/db --outfile=../../.build/handlers/post-jobs-export-docx.js",
+    "build": "tsc --project tsconfig.json && esbuild src/handlers/websocket-sync.ts --bundle --platform=node --target=node20 --external:@aws-sdk/client-dynamodb --external:@aws-sdk/client-apigatewaymanagementapi --outfile=../../.build/handlers/websocket-sync.js && esbuild src/handlers/get-jobs-changes.ts --bundle --platform=node --target=node20 --external:@prisma/client --external:@demand-letter/db --outfile=../../.build/handlers/get-jobs-changes.js && esbuild src/handlers/delete-jobs-changes.ts --bundle --platform=node --target=node20 --external:@prisma/client --external:@demand-letter/db --outfile=../../.build/handlers/delete-jobs-changes.js && esbuild src/handlers/post-jobs-export-docx.ts --bundle --platform=node --target=node20 --external:@prisma/client --external:@demand-letter/db --outfile=../../.build/handlers/post-jobs-export-docx.js && esbuild src/handlers/get-jobs-export-docx.ts --bundle --platform=node --target=node20 --external:@prisma/client --external:@demand-letter/db --outfile=../../.build/handlers/get-jobs-export-docx.js",
     "compliance-verify": "tsx src/lib/compliance-verify.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --max-warnings 50"

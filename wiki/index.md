@@ -29,6 +29,8 @@ The wiki is split into two domains with opposite organizing laws:
 - [Research — Template Zone-Detection Strategy](knowledge/sources/template-zone-detection.md) — Five techniques (LLM classify, multi-letter diff, delimiter markup, content controls, hybrid) for classifying boilerplate-verbatim vs variable-populated zones; backs DEC-0001
 - [Research — Docx Persistence Substrate](knowledge/sources/docx-persistence-substrate.md) — Delimiter tags (docxtemplater) vs content controls/SDTs for persisting the zone map; OSS maturity + InspectModule→sufficiency-gate; backs DEC-0002
 - [Research — Textract, SOC2, HIPAA, and AWS Compliance Solutions](knowledge/sources/textract-soc2-hipaa-aws-compliance.md) — Textract role + compliance status; encryption vs redaction at rest; PHI+PII log scrubbing; three-tier AWS compliance stack; Presidio vs Comprehend Medical
+- [Research — API Testing Strategy (Unit + Integration)](knowledge/sources/api-testing-strategy.md) — Vitest (node env) for packages/api; aws-sdk-client-mock for AWS SDK v3; vitest-mock-extended for Prisma; lib split: 18 pure + 8 AWS-dependent; Lambda handler scaffold
+- [Primary Sources — API Testing Strategy](knowledge/sources/api-testing-strategy-sources.md) — Bibliography register: 8 sources (2 codebase, 6 web) with verbatim excerpts backing the testing patterns
 
 ### Concepts
 
@@ -40,6 +42,7 @@ The wiki is split into two domains with opposite organizing laws:
 - [Demand Letter Input Contract](knowledge/concepts/demand-letter-input-contract.md) — Two-class input model (template + case record), three field origins, canonical ~40-field schema, sufficiency gate + gap report
 - [Docx Zone-Detection Pipeline](knowledge/concepts/docx-zone-detection-pipeline.md) — Classifying template spans as boilerplate-verbatim vs variable-populated; five techniques, the asymmetric failure mode, the chosen hybrid pipeline (DEC-0001)
 - [HIPAA and SOC 2 Compliance on AWS](knowledge/concepts/hipaa-soc2-compliance-aws.md) — Encryption vs redaction distinction; what each standard requires; PHI vs PII in logs; three-tier AWS compliance stack; Presidio vs AWS-native scrubbing
+- [Lambda Handler Testing (TypeScript)](knowledge/concepts/lambda-handler-testing.md) — Integration test scaffold for Lambda handlers: mock boundaries (AWS SDK + Prisma), test file pattern, pdfjs-dist constraint
 
 ### Entities
 
@@ -69,6 +72,9 @@ The wiki is split into two domains with opposite organizing laws:
 - [AWS Textract](knowledge/entities/tools/aws-textract.md) — OCR/layout extraction layer in the hybrid ingestion pipeline; returns Block objects (bbox+page+confidence); HIPAA-eligible and SOC 2-compliant
 - [AWS Comprehend Medical](knowledge/entities/tools/aws-comprehend-medical.md) — Managed PHI detection service (HIPAA 18 identifiers); native TS/Node SDK; detect-only (no redaction); pair with Amazon Comprehend for full PII coverage
 - [AWS KMS](knowledge/entities/tools/aws-kms.md) — Encryption key management for all storage tiers (RDS, S3, EBS); satisfies HIPAA and SOC 2 encryption-at-rest requirements
+- [Vitest](knowledge/entities/tools/vitest.md) — Test runner for both packages/web and packages/api; node environment for Lambda backend; jest-compatible API
+- [aws-sdk-client-mock](knowledge/entities/tools/aws-sdk-client-mock.md) — AWS-endorsed library for mocking SDK v3 clients in Vitest; intercepts client.send() without network calls
+- [vitest-mock-extended](knowledge/entities/tools/vitest-mock-extended.md) — Type-safe deep mocking for Vitest; primary use is mockDeep\<PrismaClient\>() for handler integration tests
 
 **Components**
 

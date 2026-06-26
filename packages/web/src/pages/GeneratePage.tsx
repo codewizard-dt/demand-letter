@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { generateJob, downloadOutput, fetchGapReport, GapReport } from '../lib/api';
+import { useGapReport } from '../hooks/useJobQueries';
+import { useGenerateJob, useDownloadOutput } from '../hooks/useJobMutations';
 
 import { RefinementPanel } from '../components/RefinementPanel';
 import { RefinementHistory } from '../components/RefinementHistory';
@@ -8,61 +9,41 @@ export default function GeneratePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [output, setOutput] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
   const [isDone, setIsDone] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [gapReport, setGapReport] = useState<GapReport | null>(null);
-  const [gapLoading, setGapLoading] = useState(true);
-  const [gapError, setGapError] = useState<string | null>(null);
-  const [refinementRefresh, setRefinementRefresh] = useState(0);
 
-  useEffect(() => {
-    if (!id) return;
-    setGapLoading(true);
-    fetchGapReport(id)
-      .then((report) => setGapReport(report))
-      .catch((e: Error) => setGapError(e.message))
-      .finally(() => setGapLoading(false));
-  }, [id]);
+  const gapReportQuery = useGapReport(id);
+  const generateMutation = useGenerateJob();
+  const downloadMutation = useDownloadOutput();
 
-  async function handleGenerate() {
-    setIsGenerating(true);
-    setError(null);
+  function handleGenerate() {
     setOutput('');
-    try {
-      await generateJob(id!, (chunk) => setOutput((prev) => prev + chunk));
-      setIsDone(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setIsGenerating(false);
-    }
+    generateMutation.mutate(
+      { jobId: id!, onChunk: (chunk) => setOutput((prev) => prev + chunk) },
+      { onSuccess: () => setIsDone(true) },
+    );
   }
 
-  async function handleDownload() {
-    setIsDownloading(true);
-    try {
-      const url = await downloadOutput(id!);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'demand-letter.docx';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    } finally {
-      setIsDownloading(false);
-    }
+  function handleDownload() {
+    downloadMutation.mutate(id!);
   }
 
-  const canGenerate = !gapLoading && !gapError && gapReport !== null && gapReport.gaps.length === 0;
-  const disabledReason = gapLoading
+  const canGenerate =
+    !gapReportQuery.isLoading &&
+    !gapReportQuery.isError &&
+    gapReportQuery.data !== undefined &&
+    gapReportQuery.data.gaps.length === 0;
+
+  const disabledReason = gapReportQuery.isLoading
     ? 'Checking sufficiency — please wait…'
-    : gapError
-      ? `Could not check gap report: ${gapError}`
-      : gapReport && gapReport.gaps.length > 0
-        ? `${gapReport.gaps.length} required slot${gapReport.gaps.length === 1 ? '' : 's'} still uncovered. Go to the Gap Report to fill or accept them before generating.`
+    : gapReportQuery.isError
+      ? `Could not check gap report: ${String(gapReportQuery.error)}`
+      : gapReportQuery.data && gapReportQuery.data.gaps.length > 0
+        ? `${gapReportQuery.data.gaps.length} required slot${gapReportQuery.data.gaps.length === 1 ? '' : 's'} still uncovered. Go to the Gap Report to fill or accept them before generating.`
         : null;
+
+  const isGenerating = generateMutation.isPending;
+  const isDownloading = downloadMutation.isPending;
+  const error = generateMutation.error ? String(generateMutation.error) : null;
 
   return (
     <div className="p-8 max-w-3xl mx-auto">
@@ -124,12 +105,12 @@ export default function GeneratePage() {
         <RefinementPanel
           jobId={id!}
           currentText={output}
-          onAccepted={(newText) => { setOutput(newText); setRefinementRefresh((n) => n + 1); }}
+          onAccepted={(newText) => setOutput(newText)}
         />
       )}
 
       {isDone && (
-        <RefinementHistory jobId={id!} refreshTrigger={refinementRefresh} />
+        <RefinementHistory jobId={id!} />
       )}
 
       {isDone && (

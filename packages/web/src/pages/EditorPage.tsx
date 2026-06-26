@@ -6,8 +6,8 @@ import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
 import { Collaboration } from '@tiptap/extension-collaboration';
 import { CollaborationCursor } from '@tiptap/extension-collaboration-cursor';
-import mammoth from 'mammoth';
-import { fetchOutputUrl } from '../lib/api';
+import { useOutputUrl, useDocxHtml } from '../hooks/useJobQueries';
+import { useDownloadExportDocx } from '../hooks/useJobMutations';
 import { BoilerplateZone } from '../lib/editor/boilerplateZoneMark';
 import { useAuth } from '../lib/auth';
 import { TrackInsert, TrackDelete } from '../lib/editor/trackChangeMarks';
@@ -24,11 +24,13 @@ import { TrackChangesToolbar } from '../components/TrackChangesToolbar';
 
 export default function EditorPage() {
   const { id } = useParams<{ id: string }>();
-  const [html, setHtml] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const [trackChangesEnabled, setTrackChangesEnabled] = useState(false);
 
   const { user } = useAuth();
+  const outputUrlQuery = useOutputUrl(id);
+  const docxHtmlQuery = useDocxHtml(id, outputUrlQuery.data);
+  const downloadMutation = useDownloadExportDocx();
+
   const userId = user?.email ?? 'anonymous';
   const userName = user?.name ?? 'Anonymous';
 
@@ -56,36 +58,9 @@ export default function EditorPage() {
 
   useEffect(() => () => { provider.destroy(); }, [provider]);
 
-  // Fetch DOCX from presigned URL and convert to HTML on mount
-  useEffect(() => {
-    if (!id) return;
-    async function loadDocx() {
-      try {
-        const url = await fetchOutputUrl(id!);
-        const resp = await fetch(url);
-        const buf = await resp.arrayBuffer();
-        const { value } = await mammoth.convertToHtml(
-          { arrayBuffer: buf },
-          {
-            styleMap: [
-              "p[style-name='Boilerplate'] => p.boilerplate-zone:fresh",
-              "r[style-name='Boilerplate'] => span.boilerplate-zone",
-            ],
-          }
-        );
-        setHtml(value);
-      } catch (err) {
-        console.error('Failed to load DOCX:', err);
-        setHtml('<p>Error loading document.</p>');
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadDocx();
-  }, [id]);
-
   // Seed Y.Doc from mammoth HTML once both editor and HTML are ready
   useEffect(() => {
+    const html = docxHtmlQuery.data ?? null;
     if (editor && html !== null) {
       // One-time seed: only apply if the Y.Doc fragment is empty
       const fragment = ydoc.getXmlFragment('default');
@@ -93,7 +68,9 @@ export default function EditorPage() {
         editor.commands.setContent(html, { emitUpdate: false }); // don't emit history step
       }
     }
-  }, [editor, html, ydoc]);
+  }, [editor, docxHtmlQuery.data, ydoc]);
+
+  const loading = outputUrlQuery.isLoading || docxHtmlQuery.isLoading;
 
   if (loading) {
     return (
@@ -128,6 +105,15 @@ export default function EditorPage() {
   return (
     <div className="p-8 max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">Edit Demand Letter</h1>
+      <div className="mb-4 flex justify-end">
+        <button
+          onClick={() => downloadMutation.mutate(id!)}
+          disabled={downloadMutation.isPending}
+          className="px-3 py-1 bg-indigo-600 text-white rounded text-sm disabled:opacity-50"
+        >
+          {downloadMutation.isPending ? 'Exporting…' : 'Export to Word'}
+        </button>
+      </div>
       {!import.meta.env.VITE_WS_API_URL && (
         <div className="mb-4 rounded-md bg-amber-50 border border-amber-300 px-4 py-3 text-amber-800 text-sm">
           Collaborative editing requires a deployed WebSocket server. Export to Word is still available.

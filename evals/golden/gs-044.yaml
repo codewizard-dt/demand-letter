@@ -1,0 +1,20 @@
+- id: "gs-044"
+  description: "POST /jobs/:id/generate returns 400 sufficiency_precheck_failed when gap report has uncovered slots"
+  query: |
+    DB state:
+      job row: { id: "job-1" }
+      file rows: [{ jobId: "job-1" }]
+      computeGapReport(job-1) returns: { gaps: [{ slotName: "date_of_loss" }], covered: 0, total: 1 }
+    POST /jobs/job-1/generate
+    Expected: 400 with error: "sufficiency_precheck_failed" and gaps array listing "date_of_loss".
+  tested_files:
+    - packages/api/src/handlers/post-jobs-generate.ts
+  expected_tools:
+    - post-jobs-generate
+  must_contain:
+    - '"sufficiency_precheck_failed"'
+    - '"date_of_loss"'
+    - '"statusCode": 400'
+  must_not_contain:
+    - '"statusCode": 200'
+    - '"status": "processing"'

@@ -5,10 +5,11 @@ import {
   Table,
   TableRow,
   TableCell,
-  HeadingLevel,
+
   ShadingType,
   WidthType,
   BorderStyle,
+  TableLayoutType,
 } from 'docx';
 
 // ProseMirror type definitions
@@ -106,8 +107,19 @@ function getTextRunsFromChildren(
  */
 function paragraphNodeToDocx(node: ProseMirrorNode): Paragraph {
   const runs = getTextRunsFromChildren(node.content);
+
+  const hasBoilerplateZone =
+    !!node.attrs?.boilerplateZone ||
+    (node.content ?? []).some((child) =>
+      (child.marks ?? []).some((m) => m.type === 'boilerplateZone'),
+    );
+
   return new Paragraph({
+    style: 'Normal',
     children: runs.length > 0 ? runs : [new TextRun('')],
+    ...(hasBoilerplateZone
+      ? { shading: { type: ShadingType.CLEAR, fill: 'F3F4F6' } }
+      : {}),
   });
 }
 
@@ -116,18 +128,18 @@ function paragraphNodeToDocx(node: ProseMirrorNode): Paragraph {
  */
 function headingNodeToDocx(node: ProseMirrorNode): Paragraph {
   const level = (node.attrs?.level as number) || 1;
-  const headingLevelMap: Record<number, typeof HeadingLevel[keyof typeof HeadingLevel]> = {
-    1: HeadingLevel.HEADING_1,
-    2: HeadingLevel.HEADING_2,
-    3: HeadingLevel.HEADING_3,
-    4: HeadingLevel.HEADING_4,
-    5: HeadingLevel.HEADING_5,
-    6: HeadingLevel.HEADING_6,
+  const headingStyleMap: Record<number, string> = {
+    1: 'Heading1',
+    2: 'Heading2',
+    3: 'Heading3',
+    4: 'Heading4',
+    5: 'Heading5',
+    6: 'Heading6',
   };
 
   const runs = getTextRunsFromChildren(node.content);
   return new Paragraph({
-    heading: headingLevelMap[level] || HeadingLevel.HEADING_1,
+    style: headingStyleMap[level] ?? 'Heading1',
     children: runs.length > 0 ? runs : [new TextRun('')],
   });
 }
@@ -152,8 +164,20 @@ function tableCellNodeToDocx(node: ProseMirrorNode): TableCell {
     children.push(new Paragraph({}));
   }
 
+  const borderOptions = {
+    style: BorderStyle.SINGLE,
+    size: 4,
+    color: '000000',
+  };
+
   return new TableCell({
     children,
+    borders: {
+      top: borderOptions,
+      bottom: borderOptions,
+      left: borderOptions,
+      right: borderOptions,
+    },
   });
 }
 
@@ -162,9 +186,13 @@ function tableCellNodeToDocx(node: ProseMirrorNode): TableCell {
  */
 function tableRowNodeToDocx(node: ProseMirrorNode): TableRow {
   const cells: TableCell[] = [];
+  let isHeaderRow = false;
   if (node.content) {
     for (const cell of node.content) {
-      if (cell.type === 'tableCell') {
+      if (cell.type === 'tableCell' || cell.type === 'tableHeader') {
+        if (cell.type === 'tableHeader') {
+          isHeaderRow = true;
+        }
         cells.push(tableCellNodeToDocx(cell));
       }
     }
@@ -172,6 +200,7 @@ function tableRowNodeToDocx(node: ProseMirrorNode): TableRow {
 
   return new TableRow({
     children: cells,
+    tableHeader: isHeaderRow,
   });
 }
 
@@ -180,16 +209,33 @@ function tableRowNodeToDocx(node: ProseMirrorNode): TableRow {
  */
 function tableNodeToDocx(node: ProseMirrorNode): Table {
   const rows: TableRow[] = [];
+  let columnCount = 1;
   if (node.content) {
     for (const row of node.content) {
       if (row.type === 'tableRow') {
+        // Count columns from the first row
+        if (rows.length === 0 && row.content) {
+          const colsInRow = row.content.filter(
+            (c) => c.type === 'tableCell' || c.type === 'tableHeader',
+          ).length;
+          if (colsInRow > 0) {
+            columnCount = colsInRow;
+          }
+        }
         rows.push(tableRowNodeToDocx(row));
       }
     }
   }
 
+  // Distribute 9638 twips (standard letter page minus margins) evenly across columns
+  const colWidth = Math.floor(9638 / columnCount);
+  const columnWidths = Array<number>(columnCount).fill(colWidth);
+
   return new Table({
     rows,
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    columnWidths,
+    layout: TableLayoutType.FIXED,
   });
 }
 

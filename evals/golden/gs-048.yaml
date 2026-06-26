@@ -1,0 +1,15 @@
+- id: "gs-048"
+  description: "headingNodeToDocx() maps level 2 heading node to Heading2 style (not Heading1 default)"
+  query: |
+    Call: headingNodeToDocx({ type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "Section II" }] })
+    Expected: Paragraph with style: "Heading2" — not "Heading1" (the fallback default).
+  tested_files:
+    - packages/api/src/lib/prosemirror-to-docx.ts
+  expected_tools:
+    - headingNodeToDocx
+  must_contain:
+    - '"style": "Heading2"'
+    - '"text": "Section II"'
+  must_not_contain:
+    - '"style": "Heading1"'
+    - '"style": "Heading3"'
