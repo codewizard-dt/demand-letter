@@ -1,13 +1,15 @@
 {
   "name": "@demand-letter/api",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "private": true,
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc --project tsconfig.json && esbuild src/handlers/websocket-sync.ts --bundle --platform=node --target=node20 --external:@aws-sdk/client-dynamodb --external:@aws-sdk/client-apigatewaymanagementapi --outfile=../../.build/handlers/websocket-sync.js && esbuild src/handlers/get-jobs-changes.ts --bundle --platform=node --target=node20 --external:@prisma/client --external:@demand-letter/db --outfile=../../.build/handlers/get-jobs-changes.js && esbuild src/handlers/delete-jobs-changes.ts --bundle --platform=node --target=node20 --external:@prisma/client --external:@demand-letter/db --outfile=../../.build/handlers/delete-jobs-changes.js && esbuild src/handlers/post-jobs-export-docx.ts --bundle --platform=node --target=node20 --external:@prisma/client --external:@demand-letter/db --outfile=../../.build/handlers/post-jobs-export-docx.js && esbuild src/handlers/get-jobs-export-docx.ts --bundle --platform=node --target=node20 --external:@prisma/client --external:@demand-letter/db --outfile=../../.build/handlers/get-jobs-export-docx.js",
     "compliance-verify": "tsx src/lib/compliance-verify.ts",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src --max-warnings 50"
+    "lint": "eslint src --max-warnings 50",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@aws-sdk/client-apigatewaymanagementapi": "^3.0.0",
@@ -39,8 +41,13 @@
     "@types/pizzip": "^3.1.2",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
+    "@vitest/coverage-v8": "^2.0.0",
+    "aws-sdk-client-mock": "^4.0.0",
+    "aws-sdk-client-mock-vitest": "^4.0.0",
     "eslint": "^8.56.0",
     "tsx": "^4.0.0",
-    "typescript": "*"
+    "typescript": "*",
+    "vitest": "^2.0.0",
+    "vitest-mock-extended": "^2.0.0"
   }
 }

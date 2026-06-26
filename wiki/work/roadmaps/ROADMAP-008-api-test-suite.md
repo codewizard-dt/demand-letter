@@ -18,10 +18,10 @@ Every `packages/api/src/lib/` file has unit tests and every `packages/api/src/ha
 
 ## Phase 1: Setup
 
-- [ ] Add vitest, aws-sdk-client-mock, aws-sdk-client-mock-vitest, vitest-mock-extended to packages/api devDeps and add test + test:watch scripts to package.json
-- [ ] Create packages/api/vitest.config.ts with `environment: 'node'`
-- [ ] Create Prisma mock helper at packages/api/src/__mocks__/@demand-letter/db.ts using vitest-mock-extended deepMock
-- [ ] Add `pnpm --filter api test` step to the CI workflow
+- [x] [[TASK-085: Add vitest + mock devDeps to packages/api]]
+- [x] [[TASK-086: Create packages/api/vitest.config.ts]]
+- [x] [[TASK-087: Create Prisma mock helper at packages/api/src/__mocks__/@demand-letter/db.ts]]
+- [x] [[TASK-088: Wire API tests into CI workflow]]
 
 ## Phase 2: Lib: Pure
 

@@ -16,3 +16,5 @@ Entry format: `- [UAT-NNN — Title](UAT-NNN-slug.md) — verifies TASK-NNN · s
 - [UAT-060 — UAT: refinements DB table — Prisma model + migration](UAT-060-refinements-db-table.md) — verifies TASK-060 · pending
 - [UAT-062 — UAT: PATCH accept/reject refinement endpoints — update jobs.output_text on accept](UAT-062-patch-refinement-accept-reject.md) — verifies TASK-062 · pending
 - [UAT-081 — UAT: Verify track-changes view shows each edit with correct author and timestamp](UAT-081-track-changes-author-timestamp-verify.md) — verifies TASK-081 · pending
+- [UAT-086 — UAT: Create packages/api/vitest.config.ts with node environment](UAT-086-api-vitest-config.md) — verifies TASK-086 · pending
+- [UAT-087 — UAT: Create Prisma Deep Mock Helper](UAT-087-api-prisma-mock-helper.md) — verifies TASK-087 · pending

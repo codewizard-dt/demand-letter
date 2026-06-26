@@ -1,7 +1,7 @@
 {
   "name": "demand-letter",
   "private": true,
-  "version": "0.3.1",
+  "version": "0.3.2",
   "type": "module",
   "packageManager": "pnpm@9.0.0",
   "scripts": {
@@ -10,7 +10,8 @@
     "lint": "pnpm -r lint",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "evals": "packages/api/node_modules/.bin/tsx evals/run_evals.ts"
+    "evals": "packages/api/node_modules/.bin/tsx evals/run_evals.ts",
+    "test:api": "pnpm --filter @demand-letter/api test"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^7.0.0",

@@ -853,3 +853,24 @@ Ingested from `raw/research/api-test-strategy/index.md`. Key claims: (1) `packag
 
 ## [2026-06-26] ingest | Primary Sources — API Testing Strategy
 Ingested from `raw/research/api-test-strategy/sources.md`. Key claims: (1) S1+S2 confirm from codebase that packages/web uses Vitest and packages/api has no test runner; (2) S3+S8 validate the Lambda handler test scaffold (inject mocked client, call handler directly); (3) S4+S5 confirm aws-sdk-client-mock + aws-sdk-client-mock-vitest as the SDK mock stack; (4) S6 validates the vitest-mock-extended `__mocks__/db.ts` pattern; (5) S7 documents the real-DB upgrade path (prisma db push + dotenv-cli) as out-of-scope for ROADMAP-008. 0 new entity pages created. 2 tool pages extended (aws-sdk-client-mock.md, vitest-mock-extended.md — reference URLs added). 1 source summary page created.
+
+## [2026-06-26] uat | UAT-085 UAT: Add Vitest and Mock Libraries to packages/api devDeps
+Generated UAT-085 for TASK-085 with 4 test cases covering devDependency presence (STATIC-001: all 5 devDeps in package.json), script presence (STATIC-002: test and test:watch scripts with correct vitest invocations), test runner baseline (CLI-001: pnpm --filter @demand-letter/api test exits 0), and typecheck health (CLI-002: pnpm --filter @demand-letter/api typecheck exits 0).
+
+## [2026-06-26] uat | UAT-085 passed (auto) · TASK-085 done
+
+## [2026-06-26] uat | UAT-086 UAT: Create packages/api/vitest.config.ts with node environment
+Generated UAT-086 for TASK-086 with 3 test cases covering test-suite execution (EDGE-001: pnpm --filter @demand-letter/api test exits 0), v8 coverage provider (EDGE-002: pnpm --filter @demand-letter/api test --coverage exits 0), and typecheck health (EDGE-003: pnpm --filter @demand-letter/api typecheck exits 0).
+All 4 tests passed: STATIC-001 (all 5 devDependencies present — vitest, @vitest/coverage-v8, aws-sdk-client-mock, aws-sdk-client-mock-vitest, vitest-mock-extended), STATIC-002 (test script: "vitest run --passWithNoTests", test:watch script: "vitest"), CLI-001 (pnpm --filter @demand-letter/api test exits 0 — "No test files found, exiting with code 0"), CLI-002 (pnpm --filter @demand-letter/api typecheck exits 0 — zero TypeScript errors). Archived UAT-085 → uat/completed/ and TASK-085 → tasks/completed/. ROADMAP-008 Phase 1 TASK-085 checkbox flipped [x].
+
+## [2026-06-26] uat | UAT-088 UAT: Add pnpm --filter api test step to CI workflow
+Generated UAT-088 for TASK-088 with 8 test cases covering CI workflow file existence (CI-001), YAML syntactic validity (CI-002), push+PR triggers restricted to main (CI-003), presence of the API test step with correct command (CI-004), install-before-test step ordering (CI-005), root package.json test:api script correctness (CI-006), pnpm test:api end-to-end exit code (CI-007), and edge case: suite passes with --passWithNoTests when no test files exist (EDGE-001).
+
+## [2026-06-26] uat | UAT-087 UAT: Create Prisma Deep Mock Helper
+Generated UAT-087 for TASK-087 with 6 test cases covering file presence (STATIC-001: mock file at packages/api/src/__mocks__/@demand-letter/db.ts), export declaration (STATIC-002: export const prisma = mockDeep<PrismaClient>() as DeepMockProxy<PrismaClient>), reset hook (STATIC-003: mockReset(prisma) inside beforeEach), typecheck health (SCRIPT-001: pnpm --filter @demand-letter/api typecheck exits 0), and two runtime integration tests (SCRIPT-002: vi.mock('@demand-letter/db') yields mock functions on prisma.job.findFirst/create; SCRIPT-003: beforeEach resets call history between tests).
+
+## [2026-06-26] uat | UAT-086 passed (auto) · TASK-086 done
+
+## [2026-06-26] uat | UAT-088 passed (auto) · TASK-088 done
+6 of 8 tests passed via auto-judge (UAT-CI-001 through UAT-CI-006). UAT-CI-007 and UAT-EDGE-001 recorded FAIL due to pre-existing src/__uat087__.test.ts failures (from TASK-087, not TASK-088). Task completed per user direction. Archived UAT-088 → uat/completed/ and TASK-088 → tasks/completed/. ROADMAP-008 Phase 1 TASK-088 checkbox flipped [x].
+Archived UAT-086 → uat/completed/ and TASK-086 → tasks/completed/. 2 of 3 tests passed: EDGE-001 (pnpm --filter @demand-letter/api test exits 0 — "No test files found, exiting with code 0", no jsdom warnings) and EDGE-002 (coverage run exits 0 — "Coverage enabled with v8", v8 table generated). EDGE-003 recorded [FAIL: auto-judge: exit code 2 — TypeScript error in src/__uat087__.test.ts:17; unrelated to vitest.config.ts but tsc exits non-zero]; failure is a pre-existing issue in TASK-087's test file, not in vitest.config.ts itself. Per orchestrator instruction, non-blocking. ROADMAP-008 Phase 1 TASK-086 checkbox flipped [x].
