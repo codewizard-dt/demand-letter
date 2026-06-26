@@ -1,6 +1,6 @@
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import { prisma } from '@demand-letter/db';
-import { corsHeaders } from '../lib/cors';
+import { getCorsHeaders } from '../lib/cors';
 
 export const handler: APIGatewayProxyHandler = async (event) => {
   try {
@@ -36,11 +36,11 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
   return {
     statusCode: 200,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
     body: JSON.stringify({ aggregates, recentRows }),
   };
   } catch (err) {
     console.error('llm-costs error', err);
-    return { statusCode: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'internal_server_error', message: 'An unexpected error occurred.' }) };
+    return { statusCode: 500, headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'internal_server_error', message: 'An unexpected error occurred.' }) };
   }
 };

@@ -2,10 +2,16 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUploadWorkflow } from '../hooks/useJobMutations';
 
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import WorkflowStepper from '../components/WorkflowStepper';
+
 export default function UploadPage() {
+  useDocumentTitle('Upload Documents — Steno');
   const navigate = useNavigate();
   const [templateFile, setTemplateFile] = useState<File | null>(null);
   const [caseFiles, setCaseFiles] = useState<File[]>([]);
+  const [templateDrag, setTemplateDrag] = useState(false);
+  const [caseDrag, setCaseDrag] = useState(false);
   const uploadMutation = useUploadWorkflow();
 
   function handleSubmit(e: React.FormEvent) {
@@ -21,61 +27,61 @@ export default function UploadPage() {
   const error = uploadMutation.error ? String(uploadMutation.error) : null;
 
   return (
-    <div style={{ maxWidth: 480, margin: '48px auto', padding: '0 16px' }}>
+    <div className="max-w-[480px] mx-auto mt-12 px-4">
+      <WorkflowStepper currentStep={0} />
       <h1>Upload Documents</h1>
 
       {error && (
         <div
-          style={{
-            background: '#fee2e2',
-            border: '1px solid #f87171',
-            color: '#b91c1c',
-            borderRadius: 6,
-            padding: '12px 16px',
-            marginBottom: 16,
-          }}
+          className="bg-red-100 border border-red-400 text-red-700 rounded-md px-4 py-3 mb-4"
         >
           {error}
         </div>
       )}
 
       <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: 20 }}>
-          <label htmlFor="template" style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>
-            Template (.docx)
-          </label>
-          <input
-            id="template"
-            type="file"
-            accept=".docx"
-            required
-            onChange={(e) => setTemplateFile(e.target.files?.[0] ?? null)}
-          />
+        <div className="mb-5">
+          <label className="block mb-1.5 font-semibold">Template (.docx)</label>
+          <div
+            className={`border-2 border-dashed rounded-lg px-4 py-6 text-center cursor-pointer transition-colors ${templateDrag ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/60'}`}
+            onDragOver={(e) => { e.preventDefault(); setTemplateDrag(true); }}
+            onDragLeave={() => setTemplateDrag(false)}
+            onDrop={(e) => { e.preventDefault(); setTemplateDrag(false); const f = e.dataTransfer.files[0]; if (f) setTemplateFile(f); }}
+            onClick={() => document.getElementById('template')?.click()}
+          >
+            <input id="template" type="file" accept=".docx" aria-hidden="true" className="hidden" onChange={(e) => setTemplateFile(e.target.files?.[0] ?? null)} />
+            {templateFile ? (
+              <p className="text-sm text-primary font-medium">{templateFile.name}</p>
+            ) : (
+              <p className="text-sm text-text-muted">Drag a .docx file here or <span className="text-primary underline">browse</span></p>
+            )}
+          </div>
         </div>
 
-        <div style={{ marginBottom: 24 }}>
-          <label htmlFor="caseDocs" style={{ display: 'block', marginBottom: 6, fontWeight: 600 }}>
-            Case Documents (.pdf)
-          </label>
-          <input
-            id="caseDocs"
-            type="file"
-            accept=".pdf"
-            multiple
-            required
-            onChange={(e) => setCaseFiles(Array.from(e.target.files ?? []))}
-          />
+        <div className="mb-6">
+          <label className="block mb-1.5 font-semibold">Case Documents (.pdf)</label>
+          <div
+            className={`border-2 border-dashed rounded-lg px-4 py-6 text-center cursor-pointer transition-colors ${caseDrag ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/60'}`}
+            onDragOver={(e) => { e.preventDefault(); setCaseDrag(true); }}
+            onDragLeave={() => setCaseDrag(false)}
+            onDrop={(e) => { e.preventDefault(); setCaseDrag(false); setCaseFiles(Array.from(e.dataTransfer.files)); }}
+            onClick={() => document.getElementById('caseDocs')?.click()}
+          >
+            <input id="caseDocs" type="file" accept=".pdf" multiple aria-hidden="true" className="hidden" onChange={(e) => setCaseFiles(Array.from(e.target.files ?? []))} />
+            {caseFiles.length > 0 ? (
+              <ul className="text-sm text-primary font-medium space-y-0.5">
+                {caseFiles.map((f) => <li key={f.name}>{f.name}</li>)}
+              </ul>
+            ) : (
+              <p className="text-sm text-text-muted">Drag .pdf files here or <span className="text-primary underline">browse</span></p>
+            )}
+          </div>
         </div>
 
         <button
           type="submit"
           disabled={loading}
-          style={{
-            padding: '10px 24px',
-            fontSize: 16,
-            cursor: loading ? 'not-allowed' : 'pointer',
-            opacity: loading ? 0.6 : 1,
-          }}
+          className={`px-6 py-2.5 text-base font-medium rounded-md bg-primary text-white transition-colors ${loading ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-primary/90'}`}
         >
           {loading ? 'Uploading...' : 'Upload & Continue'}
         </button>

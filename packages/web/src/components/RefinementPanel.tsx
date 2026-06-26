@@ -31,7 +31,12 @@ export function RefinementPanel({ jobId, currentText, onAccepted }: RefinementPa
         scope: scope === 'all' ? undefined : scope,
         onChunk: (chunk) => setRefinedText((prev) => prev + chunk),
       },
-      { onSuccess: (result) => setRefinementId(result.refinementId) },
+      {
+        onSuccess: (result) => {
+          setRefinementId(result.refinementId);
+          setShowDiff(true);
+        },
+      },
     );
   }
 

@@ -9,6 +9,7 @@ import {
   fetchBlocks,
   fetchJobChanges,
   fetchRefinements,
+  fetchJobs,
   getTemplateZones,
 } from '../lib/api';
 
@@ -98,5 +99,12 @@ export function useTemplateZones(jobId: string | undefined, templateId: string |
     queryKey: queryKeys.templateZones(jobId!, templateId!),
     queryFn: () => getTemplateZones(jobId!, templateId!),
     enabled: !!jobId && !!templateId,
+  });
+}
+
+export function useJobs() {
+  return useQuery({
+    queryKey: queryKeys.jobs(),
+    queryFn: fetchJobs,
   });
 }

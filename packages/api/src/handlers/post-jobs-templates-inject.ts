@@ -3,7 +3,7 @@ import { prisma, ZoneType } from '@demand-letter/db';
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { injectDelimiters } from '../lib/docx-injector';
 import { enumerateSlots } from '../lib/docx-inspect';
-import { corsHeaders } from '../lib/cors';
+import { getCorsHeaders } from '../lib/cors';
 
 const s3 = new S3Client({});
 const BUCKET = process.env.DOCUMENTS_BUCKET ?? '';
@@ -14,7 +14,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
   if (!templateId || !jobId) {
     return { statusCode: 400,
-      headers: { ...corsHeaders }, body: JSON.stringify({ error: 'missing_path_parameters', message: 'Required path parameters are missing.' }) };
+      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'missing_path_parameters', message: 'Required path parameters are missing.' }) };
   }
 
   try {
@@ -25,7 +25,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
     if (!template || template.jobId !== jobId) {
       return { statusCode: 404,
-      headers: { ...corsHeaders }, body: JSON.stringify({ error: 'template_not_found', message: 'The requested template does not exist.' }) };
+      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'template_not_found', message: 'The requested template does not exist.' }) };
     }
 
     // Only inject into confirmed variable_populated zones that have a field name
@@ -39,7 +39,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
     if (!s3Obj.Body) {
       return { statusCode: 502,
-      headers: { ...corsHeaders }, body: JSON.stringify({ error: 's3_empty_response', message: 'The S3 object returned no content.' }) };
+      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 's3_empty_response', message: 'The S3 object returned no content.' }) };
     }
 
     const chunks: Uint8Array[] = [];
@@ -82,12 +82,12 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
     return {
       statusCode: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
       body: JSON.stringify({ s3KeyTagged, slotCount: slots.length, slots }),
     };
   } catch (err) {
     console.error('inject error', err);
     return { statusCode: 500,
-      headers: { ...corsHeaders }, body: JSON.stringify({ error: 'internal_server_error', message: 'An unexpected error occurred.' }) };
+      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'internal_server_error', message: 'An unexpected error occurred.' }) };
   }
 };

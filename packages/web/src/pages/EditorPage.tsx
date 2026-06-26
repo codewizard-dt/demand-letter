@@ -12,6 +12,7 @@ import { BoilerplateZone } from '../lib/editor/boilerplateZoneMark';
 import { useAuth } from '../lib/auth';
 import { TrackInsert, TrackDelete } from '../lib/editor/trackChangeMarks';
 import { TrackChangesToolbar } from '../components/TrackChangesToolbar';
+import WorkflowStepper from '../components/WorkflowStepper';
 
 /**
  * EditorPage — loads a completed job's DOCX output, converts it to HTML via
@@ -22,9 +23,13 @@ import { TrackChangesToolbar } from '../components/TrackChangesToolbar';
  */
 // Real-time sync requires VITE_WS_API_URL to point to a deployed WebSocket API
 
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
+
 export default function EditorPage() {
+  useDocumentTitle('Editor — Steno');
   const { id } = useParams<{ id: string }>();
   const [trackChangesEnabled, setTrackChangesEnabled] = useState(false);
+  const [wsBannerDismissed, setWsBannerDismissed] = useState(false);
 
   const { user } = useAuth();
   const outputUrlQuery = useOutputUrl(id);
@@ -104,6 +109,7 @@ export default function EditorPage() {
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
+      <WorkflowStepper currentStep={3} />
       <h1 className="text-2xl font-bold mb-6">Edit Demand Letter</h1>
       <div className="mb-4 flex justify-end">
         <button
@@ -114,9 +120,16 @@ export default function EditorPage() {
           {downloadMutation.isPending ? 'Exporting…' : 'Export to Word'}
         </button>
       </div>
-      {!import.meta.env.VITE_WS_API_URL && (
-        <div className="mb-4 rounded-md bg-amber-50 border border-amber-300 px-4 py-3 text-amber-800 text-sm">
-          Collaborative editing requires a deployed WebSocket server. Export to Word is still available.
+      {!import.meta.env.VITE_WS_API_URL && !wsBannerDismissed && (
+        <div className="mb-4 rounded-md bg-amber-50 border border-amber-300 px-4 py-3 text-amber-800 text-sm flex justify-between items-center">
+          <span>Collaborative editing requires a deployed WebSocket server. Export to Word is still available.</span>
+          <button
+            onClick={() => setWsBannerDismissed(true)}
+            aria-label="Dismiss"
+            className="ml-4 text-amber-600 hover:text-amber-900 font-bold leading-none"
+          >
+            ×
+          </button>
         </div>
       )}
       {editor && (

@@ -155,6 +155,19 @@ export async function uploadFile(jobId: string, file: File): Promise<void> {
   if (!res.ok) throw new Error(`POST /jobs/${jobId}/files failed: ${res.status}`);
 }
 
+export interface JobSummary {
+  id: string;
+  status: string;
+  createdAt: string;
+}
+
+export async function fetchJobs(): Promise<JobSummary[]> {
+  const res = await fetch(`${API_BASE}/jobs`);
+  if (!res.ok) throw new Error(`GET /jobs failed: ${res.status}`);
+  const data = await res.json() as { jobs: JobSummary[] };
+  return data.jobs;
+}
+
 export async function exportDocx(id: string, doc: unknown): Promise<Blob> {
   const res = await fetch(`${API_BASE}/jobs/${id}/export/docx`, {
     method: 'POST',

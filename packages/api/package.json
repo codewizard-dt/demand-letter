@@ -1,6 +1,6 @@
 {
   "name": "@demand-letter/api",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "private": true,
   "main": "dist/index.js",
   "scripts": {
@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --max-warnings 50",
     "test": "vitest run --passWithNoTests",
+    "test:integration": "vitest run --config vitest.config.integration.ts",
     "test:watch": "vitest"
   },
   "dependencies": {

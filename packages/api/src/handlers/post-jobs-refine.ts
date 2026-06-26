@@ -1,7 +1,7 @@
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import { LlmFeature, prisma } from '@demand-letter/db';
 import { invokeModelStream } from '../lib/ai-provider';
-import { corsHeaders } from '../lib/cors';
+import { getCorsHeaders } from '../lib/cors';
 
 const MODEL_ID = process.env.BEDROCK_MODEL_ID ?? '';
 
@@ -9,7 +9,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   const jobId = event.pathParameters?.id;
   if (!jobId) {
     return { statusCode: 400,
-      headers: { ...corsHeaders }, body: JSON.stringify({ error: 'missing_job_id', message: 'Job ID is required.' }) };
+      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'missing_job_id', message: 'Job ID is required.' }) };
   }
 
   let instruction: string;
@@ -20,22 +20,22 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     scope = body.scope;
   } catch {
     return { statusCode: 400,
-      headers: { ...corsHeaders }, body: JSON.stringify({ error: 'invalid_json_body', message: 'Request body must be valid JSON.' }) };
+      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'invalid_json_body', message: 'Request body must be valid JSON.' }) };
   }
 
   if (!instruction) {
     return { statusCode: 400,
-      headers: { ...corsHeaders }, body: JSON.stringify({ error: 'missing_instruction', message: 'A refinement instruction is required.' }) };
+      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'missing_instruction', message: 'A refinement instruction is required.' }) };
   }
 
   const job = await prisma.job.findUnique({ where: { id: jobId } });
   if (!job) {
     return { statusCode: 404,
-      headers: { ...corsHeaders }, body: JSON.stringify({ error: 'job_not_found', message: 'The requested job does not exist.' }) };
+      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'job_not_found', message: 'The requested job does not exist.' }) };
   }
   if (!job.output) {
     return { statusCode: 422,
-      headers: { ...corsHeaders }, body: JSON.stringify({ error: 'Job output not yet generated' }) };
+      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'Job output not yet generated' }) };
   }
 
   const relevantText = job.output;
@@ -87,7 +87,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
     return {
       statusCode: 200,
-      headers: { ...corsHeaders,
+      headers: { ...getCorsHeaders(event.headers?.['origin']),
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'X-Accel-Buffering': 'no',
@@ -97,6 +97,6 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   } catch (err) {
     console.error('refine handler error', err);
     return { statusCode: 500,
-      headers: { ...corsHeaders }, body: JSON.stringify({ error: 'internal_server_error', message: 'An unexpected error occurred.' }) };
+      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'internal_server_error', message: 'An unexpected error occurred.' }) };
   }
 };

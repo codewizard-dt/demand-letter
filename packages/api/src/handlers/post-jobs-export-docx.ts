@@ -2,7 +2,7 @@ import { APIGatewayProxyHandler } from 'aws-lambda';
 import { prisma } from '@demand-letter/db';
 import { Packer } from 'docx';
 import { prosemirrorToDocx, type ProseMirrorDoc } from '../lib';
-import { corsHeaders } from '../lib/cors';
+import { getCorsHeaders } from '../lib/cors';
 
 export const handler: APIGatewayProxyHandler = async (event) => {
   try {
@@ -10,7 +10,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     if (!jobId) {
       return {
         statusCode: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
         body: JSON.stringify({ error: 'missing_job_id', message: 'Job ID is required.' }),
       };
     }
@@ -22,7 +22,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     } catch {
       return {
         statusCode: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
         body: JSON.stringify({ error: 'invalid_request_body', message: 'The request body is malformed or missing required fields.' }),
       };
     }
@@ -31,7 +31,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     if (!doc) {
       return {
         statusCode: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
         body: JSON.stringify({ error: 'missing_document', message: 'No document provided in the request.' }),
       };
     }
@@ -41,7 +41,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     if (!job) {
       return {
         statusCode: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
         body: JSON.stringify({ error: 'job_not_found', message: 'The requested job does not exist.' }),
       };
     }
@@ -56,7 +56,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     return {
       statusCode: 200,
       headers: {
-        ...corsHeaders,
+        ...getCorsHeaders(event.headers?.['origin']),
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         'Content-Disposition': 'attachment; filename="demand-letter.docx"',
       },
@@ -67,7 +67,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     console.error('export docx error', err);
     return {
       statusCode: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
       body: JSON.stringify({ error: 'internal_server_error' }),
     };
   }

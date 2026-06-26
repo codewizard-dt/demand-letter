@@ -6,9 +6,15 @@ import { usePatchTemplateZones } from '../hooks/useJobMutations';
 
 type ZoneRow = Zone & { confirmed: boolean };
 
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import ErrorCard from '../components/ErrorCard';
+
 export default function AnnotatePage() {
+  useDocumentTitle('Annotate Template — Steno');
   const { id: jobId, templateId } = useParams<{ id: string; templateId: string }>();
   const [zones, setZones] = useState<ZoneRow[]>([]);
+  const [saved, setSaved] = useState(false);
+  const [expandedZones, setExpandedZones] = useState<Record<string, boolean>>({});
 
   const zonesQuery = useTemplateZones(jobId, templateId);
   const patchMutation = usePatchTemplateZones(jobId!, templateId!);
@@ -35,12 +41,15 @@ export default function AnnotatePage() {
 
   function handleSubmit() {
     patchMutation.mutate(zones, {
-      onSuccess: () => alert('Zones saved successfully.'),
+      onSuccess: () => {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3000);
+      },
     });
   }
 
   if (loading) return <div className="p-8">Loading zones…</div>;
-  if (error) return <div className="p-8 text-red-600">Error: {error}</div>;
+  if (error) return <ErrorCard message={`Error: ${error}`} />;
 
   return (
     <div className="max-w-4xl mx-auto p-8">
@@ -60,6 +69,11 @@ export default function AnnotatePage() {
           {submitting ? 'Saving…' : 'Submit Annotations'}
         </button>
       </div>
+      {saved && (
+        <div className="mb-4 px-4 py-3 bg-teal-50 border border-teal-300 text-teal-800 rounded-md text-sm" role="status" aria-live="polite">
+          Zones saved successfully.
+        </div>
+      )}
       <div className="space-y-3">
         {zones.map((zone) => (
           <div
@@ -67,7 +81,20 @@ export default function AnnotatePage() {
             className={`border rounded p-4 ${zone.confirmed ? 'border-teal-400 bg-teal-50' : 'border-gray-200'}`}
           >
             <p className="text-sm text-gray-500 mb-1">Zone {zone.zoneIndex}</p>
-            <p className="font-mono text-sm mb-3 truncate">{zone.textContent}</p>
+            <div className="mb-3">
+              <p className={`font-mono text-sm ${expandedZones[zone.id] ? '' : 'line-clamp-2'}`}>
+                {zone.textContent}
+              </p>
+              {zone.textContent.length > 80 && (
+                <button
+                  type="button"
+                  onClick={() => setExpandedZones(prev => ({ ...prev, [zone.id]: !prev[zone.id] }))}
+                  className="text-xs text-primary-gold hover:underline mt-0.5"
+                >
+                  {expandedZones[zone.id] ? 'Show less' : 'Show more'}
+                </button>
+              )}
+            </div>
             <div className="flex gap-2 items-center flex-wrap">
               <button
                 onClick={() => updateZone(zone.id, { type: 'boilerplate_verbatim', confirmed: false })}

@@ -2,7 +2,7 @@ import { APIGatewayProxyHandler } from 'aws-lambda';
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { prisma } from '@demand-letter/db';
 import * as parser from 'lambda-multipart-parser';
-import { corsHeaders } from '../lib/cors';
+import { getCorsHeaders } from '../lib/cors';
 
 const s3 = new S3Client({ region: process.env.AWS_REGION ?? 'us-east-1' });
 const BUCKET = process.env.DOCUMENTS_BUCKET!;
@@ -17,13 +17,13 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   const jobId = event.pathParameters?.id;
   if (!jobId) {
     return { statusCode: 400,
-      headers: { ...corsHeaders }, body: JSON.stringify({ error: 'missing_job_id', message: 'Job ID is required.' }) };
+      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'missing_job_id', message: 'Job ID is required.' }) };
   }
 
   const job = await prisma.job.findUnique({ where: { id: jobId } });
   if (!job) {
     return { statusCode: 404,
-      headers: { ...corsHeaders }, body: JSON.stringify({ error: 'job_not_found', message: 'The requested job does not exist.' }) };
+      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'job_not_found', message: 'The requested job does not exist.' }) };
   }
 
   const result = await parser.parse(event);
@@ -31,7 +31,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
   if (!files?.length) {
     return { statusCode: 400,
-      headers: { ...corsHeaders }, body: JSON.stringify({ error: 'no_files_uploaded', message: 'At least one file is required.' }) };
+      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'no_files_uploaded', message: 'At least one file is required.' }) };
   }
 
   const created = [];
@@ -40,7 +40,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     if (!ALLOWED_MIME.has(mime)) {
       return {
         statusCode: 415,
-      headers: { ...corsHeaders },
+      headers: { ...getCorsHeaders(event.headers?.['origin']) },
         body: JSON.stringify({ error: 'unsupported_file_type', message: `File type '${mime}' is not accepted. Only PDF and DOCX files are allowed.` }),
       };
     }
@@ -65,11 +65,11 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
   return {
     statusCode: 201,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
     body: JSON.stringify({ files: created }),
   };
   } catch (err) {
     console.error('post-jobs-files error', err);
-    return { statusCode: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'internal_server_error', message: 'An unexpected error occurred.' }) };
+    return { statusCode: 500, headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'internal_server_error', message: 'An unexpected error occurred.' }) };
   }
 };

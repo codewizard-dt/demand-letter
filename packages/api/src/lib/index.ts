@@ -5,5 +5,5 @@ export { FIELD_SCHEMA, dbNameToTagName, tagNameToDbName, type FieldDef } from '.
 export { generateMedicalNarrative } from './medical-narrative';
 export { renderTemplate, TemplateRenderError } from './docx-renderer';
 export { redactText, type RedactableEntity } from './redact-text';
-export { corsHeaders } from './cors';
+export { corsHeaders, getCorsHeaders } from './cors';
 export { prosemirrorToDocx, type ProseMirrorDoc } from './prosemirror-to-docx';

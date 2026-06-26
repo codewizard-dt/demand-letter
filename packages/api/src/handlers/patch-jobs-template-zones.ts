@@ -1,6 +1,6 @@
 import { prisma } from '@demand-letter/db';
 import { APIGatewayProxyHandler } from 'aws-lambda';
-import { corsHeaders } from '../lib/cors';
+import { getCorsHeaders } from '../lib/cors';
 
 type ZonePatch = {
   id: string;
@@ -15,7 +15,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
   if (!jobId || !templateId) {
     return { statusCode: 400,
-      headers: { ...corsHeaders }, body: JSON.stringify({ error: 'missing_path_parameters', message: 'Both jobId and templateId are required.' }) };
+      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'missing_path_parameters', message: 'Both jobId and templateId are required.' }) };
   }
 
   let zones: ZonePatch[];
@@ -25,7 +25,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     if (!Array.isArray(zones)) throw new Error('zones must be an array');
   } catch {
     return { statusCode: 400,
-      headers: { ...corsHeaders }, body: JSON.stringify({ error: 'invalid_request_body', message: 'The request body is malformed or missing required fields.' }) };
+      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'invalid_request_body', message: 'The request body is malformed or missing required fields.' }) };
   }
 
   const updated = await Promise.all(
@@ -45,7 +45,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
   return {
     statusCode: 200,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
     body: JSON.stringify(updated),
   };
 };

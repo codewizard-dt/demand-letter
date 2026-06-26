@@ -1,7 +1,10 @@
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
+
 export default function ForgotPasswordPage() {
+  useDocumentTitle('Reset Password — Steno');
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
 

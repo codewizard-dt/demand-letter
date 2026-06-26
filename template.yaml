@@ -11,7 +11,7 @@ Globals:
       Variables:
         NODE_ENV: !Ref Stage
         DATABASE_URL: !Sub '{{resolve:ssm:/${Stage}/demand-letter/db/url}}'
-        CORS_ORIGIN: '*'
+        CORS_ORIGINS: !Sub '${WebAppOrigin},${WebAppOrigin2}'
   Api:
     BinaryMediaTypes:
       - multipart/form-data
@@ -40,8 +40,13 @@ Parameters:
 
   WebAppOrigin:
     Type: String
+    Default: 'http://localhost:5173'
+    Description: Primary allowed CORS origin for the web frontend
+
+  WebAppOrigin2:
+    Type: String
     Default: 'http://localhost:5174'
-    Description: Allowed CORS origin for the web frontend
+    Description: Secondary allowed CORS origin (e.g. alternate Vite dev-server port)
 
   TextractCompletionTopicArn:
     Type: String
@@ -142,7 +147,9 @@ Resources:
         CorsRules:
           - AllowedHeaders: ['*']
             AllowedMethods: [GET, PUT, POST, DELETE, HEAD]
-            AllowedOrigins: [!Ref WebAppOrigin]
+            AllowedOrigins:
+              - !Ref WebAppOrigin
+              - !Ref WebAppOrigin2
             MaxAge: 3600
       LifecycleConfiguration:
         Rules:

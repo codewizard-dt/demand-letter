@@ -11,3 +11,4 @@ Terminal roadmap files (`done`) moved here by `/wiki-archive` to reduce director
 | [[ROADMAP-005]] | PHI/PII Compliance Layer | done | 2026-06-25 |
 | [[ROADMAP-006]] | Attorney Refinement Loop | done | 2026-06-25 |
 | [[ROADMAP-007]] | Stretch — Collaborative Editing & Word Export | done | 2026-06-25 |
+| [[ROADMAP-009]] | UI/UX Polish — production-ready attorney-facing frontend | done | 2026-06-26 |

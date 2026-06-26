@@ -8,8 +8,11 @@ function initials(name: string): string {
     .join('');
 }
 
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
+
 export default function AccountPage() {
-  const { user, logout } = useAuth();
+  useDocumentTitle('Account — Steno');
+  const { user } = useAuth();
 
   return (
     <div className="max-w-lg mx-auto px-6 py-12">
@@ -27,13 +30,6 @@ export default function AccountPage() {
           <p className="text-sm text-text-muted">{user?.email}</p>
         </div>
       </div>
-
-      <button
-        onClick={logout}
-        className="border border-border rounded-lg px-5 py-2.5 text-[12px] uppercase tracking-[0.25px] text-primary font-normal hover:bg-border/40 transition-colors"
-      >
-        Sign out
-      </button>
     </div>
   );
 }

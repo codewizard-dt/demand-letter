@@ -8,6 +8,7 @@ import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import AccountPage from './pages/AccountPage';
 import UsagePage from './pages/admin/UsagePage';
 import UploadPage from './pages/UploadPage';
+import JobsListPage from './pages/JobsListPage';
 import GeneratePage from './pages/GeneratePage';
 import AnnotatePage from './pages/AnnotatePage';
 import GapReportPage from './pages/GapReportPage';
@@ -26,7 +27,8 @@ export default function App() {
           {/* Protected routes — require auth, render inside navbar layout */}
           <Route element={<ProtectedRoute />}>
             <Route element={<AuthLayout />}>
-              <Route path="/" element={<UploadPage />} />
+              <Route path="/" element={<JobsListPage />} />
+              <Route path="/upload" element={<UploadPage />} />
               <Route path="/account" element={<AccountPage />} />
               <Route path="/admin/usage" element={<UsagePage />} />
               <Route path="/jobs/:id/generate" element={<GeneratePage />} />

@@ -5,7 +5,7 @@ import { prisma } from '@demand-letter/db';
 import { detectDocumentType } from '../lib/document-type-detector';
 import { parseDocx, parsePdfNative } from '../lib/structured-parser';
 import { startTextractAnalysis } from '../lib/textract-client';
-import { corsHeaders } from '../lib/cors';
+import { getCorsHeaders } from '../lib/cors';
 
 const s3 = new S3Client({ region: process.env.AWS_REGION ?? 'us-east-1' });
 const BUCKET = process.env.DOCUMENTS_BUCKET!;
@@ -14,14 +14,14 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
   const jobId = event.pathParameters?.id;
   if (!jobId) {
     return { statusCode: 400,
-      headers: { ...corsHeaders }, body: JSON.stringify({ error: 'missing_job_id', message: 'Job ID is required.' }) };
+      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'missing_job_id', message: 'Job ID is required.' }) };
   }
 
   // Verify job exists
   const job = await prisma.job.findUnique({ where: { id: jobId } });
   if (!job) {
     return { statusCode: 404,
-      headers: { ...corsHeaders }, body: JSON.stringify({ error: 'job_not_found', message: 'The requested job does not exist.' }) };
+      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'job_not_found', message: 'The requested job does not exist.' }) };
   }
 
   // List uploaded files from S3 under the job prefix
@@ -107,7 +107,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
   return {
     statusCode: 200,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
     body: JSON.stringify({ processed, pending, blocks: totalBlocks }),
   };
 };

@@ -7,6 +7,8 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts'],
+    reporters: ['default', 'junit'],
+    outputFile: { junit: 'test-results/junit.xml' },
     coverage: {
       provider: 'v8',
       include: ['src/**'],

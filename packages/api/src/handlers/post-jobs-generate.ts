@@ -4,7 +4,7 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { renderTemplate, TemplateRenderError, buildDataObject } from '../lib';
 import { generateMedicalNarrative } from '../lib/medical-narrative';
 import { computeGapReport } from '../lib/sufficiency-gate';
-import { corsHeaders } from '../lib/cors';
+import { getCorsHeaders } from '../lib/cors';
 const MODEL_ID = process.env.BEDROCK_MODEL_ID!;
 const s3 = new S3Client({ region: process.env.AWS_REGION ?? 'us-east-1' });
 const BUCKET = process.env.DOCUMENTS_BUCKET!;
@@ -13,20 +13,20 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   const jobId = event.pathParameters?.id;
   if (!jobId) {
     return { statusCode: 400,
-      headers: { ...corsHeaders }, body: JSON.stringify({ error: 'missing_job_id', message: 'Job ID is required.' }) };
+      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'missing_job_id', message: 'Job ID is required.' }) };
   }
 
   const files = await prisma.file.findMany({ where: { jobId } });
   if (!files.length) {
     return { statusCode: 422,
-      headers: { ...corsHeaders }, body: JSON.stringify({ error: 'no_files_uploaded', message: 'This job has no uploaded files yet.' }) };
+      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'no_files_uploaded', message: 'This job has no uploaded files yet.' }) };
   }
 
   const gapReport = await computeGapReport(jobId);
   if (gapReport.gaps.length > 0) {
     return {
       statusCode: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
       body: JSON.stringify({
         error: 'sufficiency_precheck_failed',
         message: `${gapReport.gaps.length} required slot(s) are not covered. Run /jobs/:id/gap-report to see details.`,
@@ -72,7 +72,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
     return {
       statusCode: 200,
-      headers: { ...corsHeaders,
+      headers: { ...getCorsHeaders(event.headers?.['origin']),
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'X-Accel-Buffering': 'no',
@@ -84,7 +84,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       await prisma.job.update({ where: { id: jobId }, data: { status: 'failed' } });
       return {
         statusCode: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           error: 'template_render_failed',
           errors: err.errors,

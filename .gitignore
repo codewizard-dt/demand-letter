@@ -22,3 +22,6 @@ samconfig.local.toml
 
 # Playwright MCP artifacts
 .playwright-mcp/
+
+# Test result artifacts
+packages/api/test-results/

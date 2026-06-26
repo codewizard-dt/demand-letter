@@ -1,7 +1,7 @@
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import { prisma } from '@demand-letter/db';
 import { classifyZones } from '../lib/zone-classifier';
-import { corsHeaders } from '../lib/cors';
+import { getCorsHeaders } from '../lib/cors';
 
 export const handler: APIGatewayProxyHandler = async (event) => {
   const jobId = event.pathParameters?.id;
@@ -9,7 +9,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
   if (!jobId || !templateId) {
     return { statusCode: 400,
-      headers: { ...corsHeaders }, body: JSON.stringify({ error: 'missing_path_parameters', message: 'Both jobId and templateId are required.' }) };
+      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'missing_path_parameters', message: 'Both jobId and templateId are required.' }) };
   }
 
   const zones = await prisma.zone.findMany({
@@ -19,7 +19,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
   if (!zones.length) {
     return { statusCode: 404,
-      headers: { ...corsHeaders }, body: JSON.stringify({ error: 'no_zones_found', message: 'The template has no classified zones. Run classify first.' }) };
+      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'no_zones_found', message: 'The template has no classified zones. Run classify first.' }) };
   }
 
   let classifications;
@@ -28,7 +28,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   } catch (err) {
     if (err instanceof SyntaxError) {
       return { statusCode: 502,
-      headers: { ...corsHeaders }, body: JSON.stringify({ error: 'llm_invalid_json', message: 'The LLM returned an unparseable response. Please retry.' }) };
+      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'llm_invalid_json', message: 'The LLM returned an unparseable response. Please retry.' }) };
     }
     throw err;
   }
@@ -48,7 +48,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
   return {
     statusCode: 200,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
     body: JSON.stringify(updated.filter(Boolean)),
   };
 };

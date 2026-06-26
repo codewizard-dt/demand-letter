@@ -2,7 +2,7 @@
 title: Tasks Index
 updated: 2026-06-25
 last_task: TASK-083-exported-docx-word-verify.md
-next_task_number: '089'
+next_task_number: '109'
 ---
 
 # Tasks — Active Items

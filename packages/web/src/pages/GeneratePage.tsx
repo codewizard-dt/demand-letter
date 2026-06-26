@@ -5,7 +5,13 @@ import { useGenerateJob, useDownloadOutput } from '../hooks/useJobMutations';
 
 import { RefinementPanel } from '../components/RefinementPanel';
 import { RefinementHistory } from '../components/RefinementHistory';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
+
+import WorkflowStepper from '../components/WorkflowStepper';
+import ErrorCard from '../components/ErrorCard';
+
 export default function GeneratePage() {
+  useDocumentTitle('Generate — Steno');
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [output, setOutput] = useState('');
@@ -47,6 +53,7 @@ export default function GeneratePage() {
 
   return (
     <div className="p-8 max-w-3xl mx-auto">
+      <WorkflowStepper currentStep={2} />
       <h1 className="text-2xl font-bold mb-6">Generate Demand Letter</h1>
 
       {!isDone && (
@@ -91,14 +98,17 @@ export default function GeneratePage() {
         </div>
       )}
 
-      {error && (
-        <p className="mt-4 text-red-600">{error}</p>
-      )}
+      {error && <ErrorCard message={error} onRetry={handleGenerate} />}
 
       {output && (
-        <pre className="mt-6 whitespace-pre-wrap bg-gray-100 p-4 rounded text-sm">
+        <div
+          role="status"
+          aria-live="polite"
+          aria-atomic="false"
+          className="mt-6 whitespace-pre-wrap font-sans text-sm leading-relaxed bg-gray-50 p-4 rounded"
+        >
           {output}
-        </pre>
+        </div>
       )}
 
       {isDone && (
@@ -114,22 +124,21 @@ export default function GeneratePage() {
       )}
 
       {isDone && (
-        <button
-          onClick={handleDownload}
-          disabled={isDownloading}
-          className="mt-4 px-4 py-2 bg-green-600 text-white rounded disabled:opacity-50"
-        >
-          {isDownloading ? 'Preparing download…' : 'Download DOCX'}
-        </button>
-      )}
-
-      {isDone && (
-        <button
-          onClick={() => navigate(`/jobs/${id}/editor`)}
-          className="mt-4 ml-2 px-4 py-2 bg-purple-600 text-white rounded"
-        >
-          Open in Editor
-        </button>
+        <div className="mt-6 flex items-center gap-3">
+          <button
+            onClick={() => navigate(`/jobs/${id}/editor`)}
+            className="px-5 py-2.5 bg-primary text-white rounded-md text-sm font-medium hover:bg-primary/90 transition-colors"
+          >
+            Open in Editor
+          </button>
+          <button
+            onClick={handleDownload}
+            disabled={isDownloading}
+            className="px-5 py-2.5 border border-border rounded-md text-sm text-primary hover:bg-bg transition-colors disabled:opacity-50"
+          >
+            {isDownloading ? 'Preparing…' : 'Download DOCX'}
+          </button>
+        </div>
       )}
     </div>
   );

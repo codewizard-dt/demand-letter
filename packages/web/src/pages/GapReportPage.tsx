@@ -1,12 +1,15 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGapReport, useExtractedFields, useBlocks } from '../hooks/useJobQueries';
 import { useSubmitAttorneyJudgment, useTriggerGenerateJob } from '../hooks/useJobMutations';
 
-const PRIORITY_SLOTS = new Set<string>([]);
 
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import WorkflowStepper from '../components/WorkflowStepper';
+import ErrorCard from '../components/ErrorCard';
 
 export default function GapReportPage() {
+  useDocumentTitle('Gap Report — Steno');
   const { id: jobId } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
@@ -23,6 +26,11 @@ export default function GapReportPage() {
 
   const extractedFields = extractedFieldsQuery.data ?? [];
   const blocks = blocksQuery.data ?? [];
+
+  const blockMap = useMemo(
+    () => new Map(blocks.map((b) => [b.id, b])),
+    [blocks]
+  );
 
   const hasAnyAction = Object.values(fillValues).some(v => v.trim() !== '') ||
     Object.values(acceptMissing).some(Boolean);
@@ -52,8 +60,8 @@ export default function GapReportPage() {
   const generating = triggerGenerateMutation.isPending;
   const mutationError = submitJudgmentMutation.error?.message ?? triggerGenerateMutation.error?.message ?? null;
 
-  if (gapReportQuery.isLoading) return <div style={{ padding: '2rem' }}>Loading gap report…</div>;
-  if (gapReportQuery.isError) return <div style={{ padding: '2rem', color: 'red' }}>Error: {gapReportQuery.error.message}</div>;
+  if (gapReportQuery.isLoading) return <div className="p-8">Loading gap report…</div>;
+  if (gapReportQuery.isError) return <ErrorCard message={`Error: ${gapReportQuery.error.message}`} onRetry={() => gapReportQuery.refetch()} />;
   const report = gapReportQuery.data!;
 
   const handleBlockClick = (blockId: string) => {
@@ -63,53 +71,53 @@ export default function GapReportPage() {
   };
 
   return (
-    <div style={{ padding: '2rem' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: '2rem', alignItems: 'start' }}>
+    <div className="p-8">
+      <WorkflowStepper currentStep={1} />
+      <div className="grid grid-cols-[1fr_360px] gap-8 items-start">
         {/* Left column: existing gap-report table + submit form */}
-        <div style={{ maxWidth: '900px' }}>
+        <div className="max-w-[900px]">
           <h1>Gap Report</h1>
-          <p style={{ fontSize: '1.1rem', marginBottom: '1.5rem' }}>
+          <p className="text-lg mb-6">
             <strong>{report.covered} of {report.total}</strong> slots covered.
-            {report.gaps.length === 0 && <span style={{ color: 'green' }}> All slots satisfied — ready to generate.</span>}
+            {report.gaps.length === 0 && <span className="text-green-600"> All slots satisfied — ready to generate.</span>}
           </p>
 
           {mutationError && (
-            <div style={{ color: 'red', marginBottom: '1rem' }}>{mutationError}</div>
+            <div className="text-red-600 mb-4">{mutationError}</div>
           )}
 
           {report.gaps.length > 0 && (
             <>
-              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '1.5rem' }}>
+              <table className="w-full border-collapse mb-6">
                 <thead>
-                  <tr style={{ background: '#f0f0f0' }}>
-                    <th style={{ padding: '8px', textAlign: 'left', border: '1px solid #ccc' }}>Slot Name</th>
-                    <th style={{ padding: '8px', textAlign: 'left', border: '1px solid #ccc' }}>Null Reason</th>
-                    <th style={{ padding: '8px', textAlign: 'left', border: '1px solid #ccc' }}>Fill Value</th>
-                    <th style={{ padding: '8px', textAlign: 'center', border: '1px solid #ccc' }}>Accept Missing</th>
+                  <tr className="bg-gray-100">
+                    <th className="p-2 text-left border border-gray-300">Slot Name</th>
+                    <th className="p-2 text-left border border-gray-300">Null Reason</th>
+                    <th className="p-2 text-left border border-gray-300">Fill Value</th>
+                    <th className="p-2 text-center border border-gray-300">Accept Missing</th>
                   </tr>
                 </thead>
                 <tbody>
                   {report.gaps.map((gap) => {
-                    const isPriority = PRIORITY_SLOTS.has(gap.fieldName);
                     return (
-                      <tr key={gap.fieldName} style={{ background: isPriority ? '#fff8e1' : undefined }}>
-                        <td style={{ padding: '8px', border: '1px solid #ccc', fontWeight: isPriority ? 'bold' : undefined }}>
-                          {gap.fieldName}{isPriority && <span style={{ color: '#e65100', marginLeft: 4 }}>★</span>}
+                      <tr key={gap.fieldName}>
+                        <td className="p-2 border border-gray-300">
+                          {gap.fieldName}
                         </td>
-                        <td style={{ padding: '8px', border: '1px solid #ccc', color: '#666' }}>
+                        <td className="p-2 border border-gray-300 text-gray-500">
                           {gap.nullReason ?? '—'}
                         </td>
-                        <td style={{ padding: '8px', border: '1px solid #ccc' }}>
+                        <td className="p-2 border border-gray-300">
                           <input
                             type="text"
                             value={fillValues[gap.fieldName] ?? ''}
                             onChange={(e) => setFillValues(prev => ({ ...prev, [gap.fieldName]: e.target.value }))}
                             placeholder="Enter value…"
-                            style={{ width: '100%', padding: '4px' }}
+                            className="w-full px-1 py-0.5 border rounded"
                             disabled={acceptMissing[gap.fieldName]}
                           />
                         </td>
-                        <td style={{ padding: '8px', border: '1px solid #ccc', textAlign: 'center' }}>
+                        <td className="p-2 border border-gray-300 text-center">
                           <input
                             type="checkbox"
                             checked={acceptMissing[gap.fieldName] ?? false}
@@ -125,7 +133,7 @@ export default function GapReportPage() {
               <button
                 onClick={handleSubmit}
                 disabled={!hasAnyAction || submitting}
-                style={{ marginRight: '1rem', padding: '8px 16px', cursor: hasAnyAction && !submitting ? 'pointer' : 'not-allowed' }}
+                className={`mr-4 px-4 py-2 ${hasAnyAction && !submitting ? 'cursor-pointer' : 'cursor-not-allowed'}`}
               >
                 {submitting ? 'Submitting…' : 'Submit Attorney Judgment'}
               </button>
@@ -135,38 +143,37 @@ export default function GapReportPage() {
           <button
             onClick={handleGenerate}
             disabled={report.gaps.length > 0 || generating}
-            style={{ padding: '8px 16px', cursor: report.gaps.length === 0 && !generating ? 'pointer' : 'not-allowed' }}
+            className={`px-4 py-2 ${report.gaps.length === 0 && !generating ? 'cursor-pointer' : 'cursor-not-allowed'}`}
           >
             {generating ? 'Generating…' : 'Proceed to Generate'}
           </button>
         </div>
 
         {/* Right column: citation sidebar */}
-        <div style={{ border: '1px solid #e0e0e0', borderRadius: 8, padding: '1rem', height: 'fit-content', maxHeight: '80vh', overflowY: 'auto', background: '#fafafa' }}>
-          <h3 style={{ marginTop: 0, fontSize: '1rem', fontWeight: 600 }}>Citation Sources</h3>
-          {extractedFields.length === 0 && <p style={{ color: '#888', fontSize: '0.85rem' }}>No extracted fields yet.</p>}
+        <div className="border border-gray-200 rounded-lg p-4 h-fit max-h-[80vh] overflow-y-auto bg-gray-50">
+          <h3 className="mt-0 text-base font-semibold">Citation Sources</h3>
+          {extractedFields.length === 0 && <p className="text-gray-400 text-sm">No extracted fields yet.</p>}
           {extractedFields.map((field) => (
-            <div key={field.fieldName} style={{ marginBottom: '0.75rem', fontSize: '0.85rem' }}>
-              <div style={{ fontWeight: 500, color: '#333' }}>{field.fieldName}</div>
+            <div key={field.fieldName} className="mb-3 text-sm">
+              <div className="font-medium text-gray-800">{field.fieldName}</div>
               {field.blockIds.length === 0 ? (
-                <span style={{ color: '#999' }}>—</span>
+                <span className="text-gray-400">—</span>
               ) : (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 2 }}>
+                <div className="flex flex-wrap gap-1 mt-0.5">
                   {field.blockIds.map((bid) => (
                     <button
                       key={bid}
                       onClick={() => handleBlockClick(bid)}
-                      style={{
-                        padding: '2px 8px',
-                        fontSize: '0.75rem',
-                        background: activeBlockId === bid ? '#2563eb' : '#e8eef8',
-                        color: activeBlockId === bid ? '#fff' : '#2563eb',
-                        border: '1px solid #93b4f0',
-                        borderRadius: 4,
-                        cursor: 'pointer',
-                      }}
+                      className={`px-2 py-0.5 text-xs border rounded cursor-pointer ${
+                        activeBlockId === bid
+                          ? 'bg-blue-600 text-white border-blue-300'
+                          : 'bg-blue-50 text-blue-600 border-blue-200'
+                      }`}
                     >
-                      {bid.slice(0, 8)}…
+                      {(() => {
+                        const b = blockMap.get(bid);
+                        return b ? `p.${b.page} · ${b.type.slice(0, 4).toUpperCase()}` : `${bid.slice(0, 8)}…`;
+                      })()}
                     </button>
                   ))}
                 </div>
@@ -178,26 +185,23 @@ export default function GapReportPage() {
 
       {/* Source document preview panel */}
       {blocks.length > 0 && (
-        <div style={{ marginTop: '2rem', border: '1px solid #e0e0e0', borderRadius: 8, padding: '1rem', maxHeight: '500px', overflowY: 'auto', background: '#fff' }}>
-          <h3 style={{ marginTop: 0, fontSize: '1rem', fontWeight: 600 }}>Source Document Preview</h3>
+        <div className="mt-8 border border-gray-200 rounded-lg p-4 max-h-[500px] overflow-y-auto bg-white">
+          <h3 className="mt-0 text-base font-semibold">Source Document Preview</h3>
           {blocks.map((block) => (
             <div
               key={block.id}
               id={block.id}
               ref={(el) => { blockRefs.current[block.id] = el; }}
-              style={{
-                padding: '8px 12px',
-                marginBottom: 8,
-                borderRadius: 4,
-                border: activeBlockId === block.id ? '2px solid #2563eb' : '1px solid #e8e8e8',
-                background: activeBlockId === block.id ? '#eff6ff' : '#fafafa',
-                transition: 'border-color 0.15s, background 0.15s',
-              }}
+              className={`px-3 py-2 mb-2 rounded transition-colors duration-150 ${
+                activeBlockId === block.id
+                  ? 'border-2 border-blue-600 bg-blue-50'
+                  : 'border border-gray-200 bg-gray-50'
+              }`}
             >
-              <div style={{ fontSize: '0.7rem', color: '#999', marginBottom: 4 }}>
+              <div className="text-[11px] text-gray-400 mb-1">
                 [{block.type}] p.{block.page} · id: {block.id}
               </div>
-              <div style={{ fontSize: '0.85rem', color: '#222', whiteSpace: 'pre-wrap' }}>{block.text}</div>
+              <div className="text-sm text-gray-900 whitespace-pre-wrap">{block.text}</div>
             </div>
           ))}
         </div>

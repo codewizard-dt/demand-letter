@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, Outlet } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 
 function initials(name: string): string {
@@ -12,6 +12,7 @@ function initials(name: string): string {
 
 export default function AuthLayout() {
   const { user, logout } = useAuth();
+  const location = useLocation();
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -50,7 +51,11 @@ export default function AuthLayout() {
               <Link
                 to="/account"
                 onClick={() => setOpen(false)}
-                className="block px-4 py-2.5 text-sm text-primary hover:bg-bg transition-colors"
+                className={`block px-4 py-2.5 text-sm transition-colors ${
+                  location.pathname === '/account'
+                    ? 'text-primary font-medium bg-bg'
+                    : 'text-primary hover:bg-bg'
+                }`}
               >
                 Account
               </Link>
