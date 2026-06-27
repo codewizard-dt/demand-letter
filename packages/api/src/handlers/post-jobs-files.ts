@@ -3,6 +3,7 @@ import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { prisma } from '@demand-letter/db';
 import * as parser from 'lambda-multipart-parser';
 import { getCorsHeaders } from '../lib/cors';
+import { errorResponse } from '../lib/error-response';
 
 const s3 = new S3Client({ region: process.env.AWS_REGION ?? 'us-east-1' });
 const BUCKET = process.env.DOCUMENTS_BUCKET!;
@@ -70,6 +71,6 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   };
   } catch (err) {
     console.error('post-jobs-files error', err);
-    return { statusCode: 500, headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'internal_server_error', message: 'An unexpected error occurred.' }) };
+    return errorResponse(event.headers?.['origin'], 500, 'internal_server_error', err);
   }
 };

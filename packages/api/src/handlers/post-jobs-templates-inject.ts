@@ -5,6 +5,7 @@ import { injectDelimiters } from '../lib/docx-injector';
 import { enumerateSlots } from '../lib/docx-inspect';
 import { getCorsHeaders } from '../lib/cors';
 import { logJobError } from '../lib/job-logger';
+import { errorResponse } from '../lib/error-response';
 
 const s3 = new S3Client({});
 const BUCKET = process.env.DOCUMENTS_BUCKET ?? '';
@@ -89,7 +90,6 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   } catch (err) {
     console.error('inject error', err);
     await logJobError(jobId, 'post-jobs-templates-inject', err);
-    return { statusCode: 500,
-      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'internal_server_error', message: 'An unexpected error occurred.' }) };
+    return errorResponse(event.headers?.['origin'], 500, 'internal_server_error', err);
   }
 };

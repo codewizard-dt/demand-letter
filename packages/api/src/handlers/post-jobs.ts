@@ -1,6 +1,7 @@
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import { prisma } from '@demand-letter/db';
 import { corsHeaders } from '../lib/cors';
+import { errorResponse } from '../lib/error-response';
 
 export const handler: APIGatewayProxyHandler = async () => {
   try {
@@ -12,6 +13,6 @@ export const handler: APIGatewayProxyHandler = async () => {
     };
   } catch (err) {
     console.error('post-jobs error', err);
-    return { statusCode: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'internal_server_error', message: 'An unexpected error occurred.' }) };
+    return errorResponse(undefined, 500, 'internal_server_error', err);
   }
 };

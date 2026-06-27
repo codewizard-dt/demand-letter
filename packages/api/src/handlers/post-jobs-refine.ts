@@ -2,6 +2,7 @@ import { APIGatewayProxyHandler } from 'aws-lambda';
 import { LlmFeature, prisma } from '@demand-letter/db';
 import { invokeModelStream } from '../lib/ai-provider';
 import { getCorsHeaders } from '../lib/cors';
+import { errorResponse } from '../lib/error-response';
 
 const MODEL_ID = process.env.BEDROCK_MODEL_ID ?? '';
 
@@ -96,7 +97,6 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     };
   } catch (err) {
     console.error('refine handler error', err);
-    return { statusCode: 500,
-      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'internal_server_error', message: 'An unexpected error occurred.' }) };
+    return errorResponse(event.headers?.['origin'], 500, 'internal_server_error', err);
   }
 };

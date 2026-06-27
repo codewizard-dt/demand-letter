@@ -1,6 +1,7 @@
 import type { APIGatewayProxyHandlerV2 } from 'aws-lambda';
 import { prisma } from '@demand-letter/db';
 import { getCorsHeaders } from '../lib/cors';
+import { errorResponse } from '../lib/error-response';
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   const jobId = event.pathParameters?.id;
@@ -25,10 +26,6 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     };
   } catch (err) {
     console.error('get-jobs-files error', err);
-    return {
-      statusCode: 500,
-      headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'internal_server_error', message: 'An unexpected error occurred.' }),
-    };
+    return errorResponse(event.headers?.['origin'], 500, 'internal_server_error', err);
   }
 };

@@ -4,6 +4,7 @@ import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { enumerateSlots } from '../lib/docx-inspect';
 import { getCorsHeaders } from '../lib/cors';
 import { logJobEvent, logJobError } from '../lib/job-logger';
+import { errorResponse } from '../lib/error-response';
 
 const BUCKET = process.env.DOCUMENTS_BUCKET ?? '';
 const s3 = new S3Client({});
@@ -94,10 +95,6 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     };
   } catch (err) {
     await logJobError(jobId, 'post-jobs-templates-segment', err);
-    return {
-      statusCode: 500,
-      headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'internal_server_error', message: 'An unexpected error occurred.' }),
-    };
+    return errorResponse(event.headers?.['origin'], 500, 'internal_server_error', err);
   }
 };
