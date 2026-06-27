@@ -6,6 +6,7 @@ import { detectDocumentType } from '../lib/document-type-detector';
 import { parseDocx, parsePdfNative } from '../lib/structured-parser';
 import { startTextractAnalysis } from '../lib/textract-client';
 import { getCorsHeaders } from '../lib/cors';
+import { logJobEvent } from '../lib/job-logger';
 
 const s3 = new S3Client({ region: process.env.AWS_REGION ?? 'us-east-1' });
 const BUCKET = process.env.DOCUMENTS_BUCKET!;
@@ -50,8 +51,13 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     let docType: Awaited<ReturnType<typeof detectDocumentType>>;
     try {
       docType = await detectDocumentType(buffer, filename);
-    } catch {
-      // Skip unsupported file types (e.g. output/ prefix files)
+    } catch (err) {
+      await logJobEvent(jobId, 'post-jobs-documents-ingest', 'warn',
+        `Skipped file ${filename}: ${(err as Error).message}`,
+        { context: { s3Key } });
+      await prisma.sourceFile.create({
+        data: { jobId, s3Key, type: 'unknown', status: 'error', errorMessage: (err as Error).message },
+      }).catch(() => {});
       continue;
     }
 

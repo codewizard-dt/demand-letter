@@ -21,6 +21,7 @@ model Job {
   extractedFields ExtractedField[]
   refinements     Refinement[]
   collaborativeChanges CollaborativeChange[]
+  jobLogs         JobLog[]
 
   @@index([status])
   @@index([createdAt])
@@ -204,4 +205,18 @@ model CollaborativeChange {
 
   @@index([jobId])
   @@index([jobId, createdAt])
+}
+
+model JobLog {
+  id        String   @id @default(cuid())
+  jobId     String
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  level     String
+  handler   String
+  message   String
+  stack     String?
+  context   Json     @default("{}")
+  createdAt DateTime @default(now())
+
+  @@map("job_logs")
 }

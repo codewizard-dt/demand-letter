@@ -2,6 +2,7 @@ import { APIGatewayProxyHandlerV2 } from 'aws-lambda';
 import { prisma } from '@demand-letter/db';
 import { runGroundedExtraction } from '../lib/extraction-service';
 import { getCorsHeaders } from '../lib/cors';
+import { logJobError } from '../lib/job-logger';
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   const jobId = event.pathParameters?.id;
@@ -41,6 +42,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     };
   } catch (err) {
     console.error('Extraction failed', err);
+    await logJobError(jobId, 'post-jobs-extract', err);
     return {
       statusCode: 500,
       headers: { ...getCorsHeaders(event.headers?.['origin']) },

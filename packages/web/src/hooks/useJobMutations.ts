@@ -14,6 +14,9 @@ import {
   rejectRefinement,
   deleteJobChange,
   submitAttorneyJudgment,
+  ingestDocuments,
+  segmentTemplate,
+  extractFields,
   type Zone,
   type ChangeRow,
 } from '../lib/api';
@@ -26,6 +29,9 @@ export function useUploadWorkflow() {
       for (const pdf of caseFiles) {
         await uploadFile(id, pdf);
       }
+      await ingestDocuments(id);
+      await segmentTemplate(id);
+      await extractFields(id);
       return id;
     },
   });

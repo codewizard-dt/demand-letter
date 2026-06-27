@@ -1030,3 +1030,6 @@ All 6 tests recorded [FAIL: auto-judge: UI test requires human verification — 
 
 ## [2026-06-26] task | TASK-110 post-jobs-generate lifecycle test — done
 Created and implemented TASK-110: Vitest unit test for post-jobs-generate covering 7 scenarios (missing_job_id, no_files 422, gap_report gaps 400, success pending→processing→complete, Bedrock error pending→processing→failed+rethrow, TemplateRenderError pending→processing→failed+500, stall via Promise.race). Used importActual pattern to preserve real TemplateRenderError class for instanceof checks. All 74 tests in packages/api pass (7 new + 67 existing). Filed directly to tasks/completed/.
+
+## [2026-06-26] task | TASK-111 Wire eval runner to real handlers and add segmentation coverage
+Created TASK-111: the 53 golden eval cases only validate YAML schema (run_evals.ts has a live-execution TODO stub); job-lifecycle.test.ts seeds a pre-tagged Template record, bypassing segmentation. Task covers: (1) implement live handler invocation in run_evals.ts with mock infrastructure, (2) add gs-054.yaml golden eval for POST /jobs/{id}/templates/segment, (3) add integration test describe block for template segmentation that does not pre-seed a Template record.

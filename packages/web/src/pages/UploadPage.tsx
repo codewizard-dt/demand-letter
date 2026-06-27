@@ -19,7 +19,7 @@ export default function UploadPage() {
     if (!templateFile || caseFiles.length === 0) return;
     uploadMutation.mutate(
       { templateFile, caseFiles },
-      { onSuccess: (id) => navigate(`/jobs/${id}/generate`) },
+      { onSuccess: (id) => navigate(`/jobs/${id}/gap-report`) },
     );
   }
 
@@ -83,7 +83,7 @@ export default function UploadPage() {
           disabled={loading}
           className={`px-6 py-2.5 text-base font-medium rounded-md bg-primary text-white transition-colors ${loading ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-primary/90'}`}
         >
-          {loading ? 'Uploading...' : 'Upload & Continue'}
+          {loading ? 'Uploading & processing…' : 'Upload & Continue'}
         </button>
       </form>
     </div>

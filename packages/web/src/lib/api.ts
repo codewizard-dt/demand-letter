@@ -138,7 +138,12 @@ export interface GapReport {
 
 export async function fetchGapReport(jobId: string): Promise<GapReport> {
   const res = await fetch(`${API_BASE}/jobs/${jobId}/gap-report`);
-  if (!res.ok) throw new Error(`GET /jobs/${jobId}/gap-report failed: ${res.status}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as { error?: string; message?: string };
+    const err = new Error(body.message ?? `GET /jobs/${jobId}/gap-report failed: ${res.status}`);
+    (err as unknown as Record<string, unknown>).code = body.error;
+    throw err;
+  }
   return res.json() as Promise<GapReport>;
 }
 
@@ -336,6 +341,55 @@ export async function submitAttorneyJudgment(
     body: JSON.stringify({ fields, acceptMissing }),
   });
   if (!res.ok) throw new Error(`POST /jobs/${jobId}/attorney-judgment failed: ${res.status}`);
+}
+
+export async function ingestDocuments(jobId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/jobs/${jobId}/documents/ingest`, { method: 'POST' });
+  if (!res.ok) throw new Error(`POST /jobs/${jobId}/documents/ingest failed: ${res.status}`);
+}
+
+export async function segmentTemplate(jobId: string): Promise<{ templateId: string; slotCount: number }> {
+  const res = await fetch(`${API_BASE}/jobs/${jobId}/templates/segment`, { method: 'POST' });
+  if (!res.ok) throw new Error(`POST /jobs/${jobId}/templates/segment failed: ${res.status}`);
+  return res.json() as Promise<{ templateId: string; slotCount: number }>;
+}
+
+export async function extractFields(jobId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/jobs/${jobId}/extract`, { method: 'POST' });
+  if (!res.ok) throw new Error(`POST /jobs/${jobId}/extract failed: ${res.status}`);
+}
+
+export interface FileRow {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  role: string;
+  s3Key: string;
+  createdAt: string;
+}
+
+export async function fetchJobFiles(jobId: string): Promise<FileRow[]> {
+  const res = await fetch(`${API_BASE}/jobs/${jobId}/files`);
+  if (!res.ok) throw new Error(`GET /jobs/${jobId}/files failed: ${res.status}`);
+  const data = await res.json() as { files: FileRow[] };
+  return data.files;
+}
+
+export interface JobLogRow {
+  id: string;
+  level: string;
+  handler: string;
+  message: string;
+  stack?: string;
+  context: unknown;
+  createdAt: string;
+}
+
+export async function fetchJobLogs(jobId: string): Promise<JobLogRow[]> {
+  const res = await fetch(`${API_BASE}/jobs/${jobId}/logs`);
+  if (!res.ok) throw new Error(`GET /jobs/${jobId}/logs failed: ${res.status}`);
+  const data = await res.json() as { logs: JobLogRow[] };
+  return data.logs;
 }
 
 export async function triggerGenerateJob(jobId: string): Promise<void> {

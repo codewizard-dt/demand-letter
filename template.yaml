@@ -450,6 +450,57 @@ Resources:
         Variables:
           DOCUMENTS_BUCKET: !Ref DocumentsBucket
 
+  PostJobsTemplatesSegmentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: post-jobs-templates-segment.handler
+      Runtime: nodejs20.x
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
+      Layers:
+        - !Ref DbLayer
+      Events:
+        PostJobsTemplatesSegmentApi:
+          Type: Api
+          Properties:
+            Path: /jobs/{id}/templates/segment
+            Method: post
+      Environment:
+        Variables:
+          DOCUMENTS_BUCKET: !Ref DocumentsBucket
+
+  GetJobsFilesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: get-jobs-files.handler
+      Runtime: nodejs20.x
+      Layers:
+        - !Ref DbLayer
+      Events:
+        GetJobsFilesApi:
+          Type: Api
+          Properties:
+            Path: /jobs/{id}/files
+            Method: get
+
+  GetJobsLogsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: get-jobs-logs.handler
+      Runtime: nodejs20.x
+      Layers:
+        - !Ref DbLayer
+      Events:
+        GetJobsLogsApi:
+          Type: Api
+          Properties:
+            Path: /jobs/{id}/logs
+            Method: get
+
   GetJobsTemplateSlotsFunction:
     Type: AWS::Serverless::Function
     Properties:

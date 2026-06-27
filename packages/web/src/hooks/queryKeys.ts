@@ -9,4 +9,6 @@ export const queryKeys = {
   templateZones:   (jobId: string, templateId: string)       => ['templateZones', jobId, templateId]   as const,
   docxHtml:        (jobId: string, url: string | undefined)  => ['docxHtml', jobId, url]              as const,
   jobs:            ()                                        => ['jobs']                              as const,
+  jobFiles:        (jobId: string)                           => ['jobs', jobId, 'files']              as const,
+  jobLogs:         (jobId: string)                           => ['jobs', jobId, 'logs']               as const,
 };

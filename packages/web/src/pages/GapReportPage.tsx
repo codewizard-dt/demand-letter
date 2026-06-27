@@ -1,5 +1,5 @@
-import { useState, useRef, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useRef, useMemo, useEffect } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useGapReport, useExtractedFields, useBlocks } from '../hooks/useJobQueries';
 import { useSubmitAttorneyJudgment, useTriggerGenerateJob } from '../hooks/useJobMutations';
 
@@ -60,8 +60,52 @@ export default function GapReportPage() {
   const generating = triggerGenerateMutation.isPending;
   const mutationError = submitJudgmentMutation.error?.message ?? triggerGenerateMutation.error?.message ?? null;
 
+  const errorCode = gapReportQuery.isError
+    ? ((gapReportQuery.error as unknown as Record<string, unknown>).code as string | undefined)
+    : undefined;
+
+  useEffect(() => {
+    if (errorCode !== 'template_not_ready') return;
+    let elapsed = 0;
+    const interval = setInterval(() => {
+      elapsed += 3;
+      if (elapsed >= 60) {
+        clearInterval(interval);
+        return;
+      }
+      void gapReportQuery.refetch();
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [errorCode, gapReportQuery]);
+
   if (gapReportQuery.isLoading) return <div className="p-8">Loading gap report…</div>;
-  if (gapReportQuery.isError) return <ErrorCard message={`Error: ${gapReportQuery.error.message}`} onRetry={() => gapReportQuery.refetch()} />;
+
+  if (gapReportQuery.isError) {
+    if (errorCode === 'template_not_ready') {
+      return (
+        <div className="p-8">
+          <WorkflowStepper currentStep={1} />
+          <div className="max-w-lg mt-8 p-6 border border-yellow-300 bg-yellow-50 rounded-lg">
+            <h2 className="text-lg font-semibold text-yellow-800 mb-2">Preparing documents…</h2>
+            <p className="text-yellow-700 mb-4">
+              Your files are being processed. This page will update automatically once the template is ready.
+            </p>
+            <Link
+              to={`/jobs/${jobId}/documents`}
+              className="text-blue-600 underline text-sm"
+            >
+              View uploaded files →
+            </Link>
+          </div>
+        </div>
+      );
+    }
+    if (errorCode === 'job_not_found') {
+      return <ErrorCard message="Job not found." onRetry={() => gapReportQuery.refetch()} />;
+    }
+    return <ErrorCard message={gapReportQuery.error.message} onRetry={() => gapReportQuery.refetch()} />;
+  }
+
   const report = gapReportQuery.data!;
 
   const handleBlockClick = (blockId: string) => {

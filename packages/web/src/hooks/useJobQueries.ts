@@ -11,6 +11,8 @@ import {
   fetchRefinements,
   fetchJobs,
   getTemplateZones,
+  fetchJobFiles,
+  fetchJobLogs,
 } from '../lib/api';
 
 export function useLlmCosts(days = 30) {
@@ -25,6 +27,7 @@ export function useGapReport(jobId: string | undefined) {
     queryKey: queryKeys.gapReport(jobId!),
     queryFn: () => fetchGapReport(jobId!),
     enabled: !!jobId,
+    retry: false,
   });
 }
 
@@ -99,6 +102,22 @@ export function useTemplateZones(jobId: string | undefined, templateId: string |
     queryKey: queryKeys.templateZones(jobId!, templateId!),
     queryFn: () => getTemplateZones(jobId!, templateId!),
     enabled: !!jobId && !!templateId,
+  });
+}
+
+export function useJobFiles(jobId: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.jobFiles(jobId!),
+    queryFn: () => fetchJobFiles(jobId!),
+    enabled: !!jobId,
+  });
+}
+
+export function useJobLogs(jobId: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.jobLogs(jobId!),
+    queryFn: () => fetchJobLogs(jobId!),
+    enabled: !!jobId,
   });
 }
 

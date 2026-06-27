@@ -2,6 +2,7 @@ import { APIGatewayProxyHandler } from 'aws-lambda';
 import { prisma } from '@demand-letter/db';
 import { classifyZones } from '../lib/zone-classifier';
 import { getCorsHeaders } from '../lib/cors';
+import { logJobError } from '../lib/job-logger';
 
 export const handler: APIGatewayProxyHandler = async (event) => {
   const jobId = event.pathParameters?.id;
@@ -30,6 +31,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       return { statusCode: 502,
       headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'llm_invalid_json', message: 'The LLM returned an unparseable response. Please retry.' }) };
     }
+    await logJobError(jobId, 'post-jobs-templates-classify', err);
     throw err;
   }
 

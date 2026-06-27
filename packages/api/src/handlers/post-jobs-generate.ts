@@ -5,6 +5,7 @@ import { renderTemplate, TemplateRenderError, buildDataObject } from '../lib';
 import { generateMedicalNarrative } from '../lib/medical-narrative';
 import { computeGapReport } from '../lib/sufficiency-gate';
 import { getCorsHeaders } from '../lib/cors';
+import { logJobError } from '../lib/job-logger';
 const MODEL_ID = process.env.BEDROCK_MODEL_ID!;
 const s3 = new S3Client({ region: process.env.AWS_REGION ?? 'us-east-1' });
 const BUCKET = process.env.DOCUMENTS_BUCKET!;
@@ -92,6 +93,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       };
     }
     await prisma.job.update({ where: { id: jobId }, data: { status: 'failed' } });
+    await logJobError(jobId, 'post-jobs-generate', err);
     throw err;
   }
 };
