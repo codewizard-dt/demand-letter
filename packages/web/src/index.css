@@ -91,6 +91,15 @@
   }
 }
 
+@layer components {
+  .btn-primary {
+    @apply px-6 py-2.5 text-base font-medium rounded-md bg-primary text-white transition-colors cursor-pointer hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed;
+  }
+  .btn-outline {
+    @apply px-6 py-2.5 text-base font-medium rounded-md border border-border text-primary bg-transparent transition-colors cursor-pointer hover:bg-surface disabled:opacity-60 disabled:cursor-not-allowed;
+  }
+}
+
 /* TipTap / ProseMirror editor styles */
 .tiptap-editor .ProseMirror {
   border: 1px solid #d1d5db;

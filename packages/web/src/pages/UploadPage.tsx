@@ -81,7 +81,7 @@ export default function UploadPage() {
         <button
           type="submit"
           disabled={loading}
-          className={`px-6 py-2.5 text-base font-medium rounded-md bg-primary text-white transition-colors ${loading ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-primary/90'}`}
+          className="btn-primary"
         >
           {loading ? 'Uploading & processing…' : 'Upload & Continue'}
         </button>

@@ -2,6 +2,7 @@ import type { APIGatewayProxyHandlerV2 } from 'aws-lambda';
 import { prisma } from '@demand-letter/db';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { enumerateSlots } from '../lib/docx-inspect';
+import { extractParagraphZones } from '../lib/docx-zone-extractor';
 import { getCorsHeaders } from '../lib/cors';
 import { logJobEvent, logJobError } from '../lib/job-logger';
 import { errorResponse } from '../lib/error-response';
@@ -85,8 +86,22 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       });
     }
 
+    // Extract paragraph zones for AI classification
+    const paragraphZones = extractParagraphZones(buffer);
+    if (paragraphZones.length > 0) {
+      await prisma.zone.createMany({
+        data: paragraphZones.map((z) => ({
+          templateId: template.id,
+          zoneIndex: z.zoneIndex,
+          textContent: z.textContent,
+          runPath: [],
+        })),
+        skipDuplicates: true,
+      });
+    }
+
     await logJobEvent(jobId, 'post-jobs-templates-segment', 'info',
-      `Template segmented: ${slots.length} slots found`, { context: { templateId: template.id } });
+      `Template segmented: ${slots.length} slots, ${paragraphZones.length} zones`, { context: { templateId: template.id } });
 
     return {
       statusCode: 200,

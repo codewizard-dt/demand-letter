@@ -5,12 +5,12 @@ export default function UsagePage() {
   const aggregates = data?.aggregates ?? [];
   const recentRows = data?.recentRows ?? [];
 
-  if (isLoading) return <p className="p-6 text-sm text-gray-500">Loading...</p>;
-  if (error) return <p className="p-6 text-sm text-red-500">{String(error)}</p>;
-
   return (
     <div className="mx-auto max-w-5xl p-6 space-y-8">
       <h1 className="text-2xl font-semibold">LLM Usage &amp; Cost</h1>
+
+      {isLoading && <p className="text-sm text-gray-500">Loading...</p>}
+      {error && <p className="text-sm text-red-500">{String(error)}</p>}
 
       {/* Per-feature aggregate table */}
       <section>

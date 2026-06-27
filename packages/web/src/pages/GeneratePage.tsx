@@ -62,7 +62,7 @@ export default function GeneratePage() {
             onClick={handleGenerate}
             disabled={!canGenerate || isGenerating}
             title={disabledReason ?? undefined}
-            className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn-primary"
           >
             Generate Demand Letter
           </button>
@@ -75,7 +75,7 @@ export default function GeneratePage() {
       {isGenerating && (
         <div className="flex items-center gap-3 mt-4">
           <svg
-            className="animate-spin h-5 w-5 text-blue-600"
+            className="animate-spin h-5 w-5 text-primary"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
@@ -94,7 +94,7 @@ export default function GeneratePage() {
               d="M4 12a8 8 0 018-8v8H4z"
             />
           </svg>
-          <span className="text-blue-700 font-medium">Building document…</span>
+          <span className="text-primary font-medium">Building document…</span>
         </div>
       )}
 
@@ -127,14 +127,14 @@ export default function GeneratePage() {
         <div className="mt-6 flex items-center gap-3">
           <button
             onClick={() => navigate(`/jobs/${id}/editor`)}
-            className="px-5 py-2.5 bg-primary text-white rounded-md text-sm font-medium hover:bg-primary/90 transition-colors"
+            className="btn-primary"
           >
             Open in Editor
           </button>
           <button
             onClick={handleDownload}
             disabled={isDownloading}
-            className="px-5 py-2.5 border border-border rounded-md text-sm text-primary hover:bg-bg transition-colors disabled:opacity-50"
+            className="btn-outline"
           >
             {isDownloading ? 'Preparing…' : 'Download DOCX'}
           </button>

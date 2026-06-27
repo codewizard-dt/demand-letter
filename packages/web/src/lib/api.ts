@@ -354,6 +354,17 @@ export async function segmentTemplate(jobId: string): Promise<{ templateId: stri
   return res.json() as Promise<{ templateId: string; slotCount: number }>;
 }
 
+export async function classifyTemplate(jobId: string, templateId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/jobs/${jobId}/templates/${templateId}/classify`, { method: 'POST' });
+  if (!res.ok) throw new Error(`POST /jobs/${jobId}/templates/${templateId}/classify failed: ${res.status}`);
+}
+
+export async function injectTemplate(jobId: string, templateId: string): Promise<{ slotCount: number }> {
+  const res = await fetch(`${API_BASE}/jobs/${jobId}/templates/${templateId}/inject`, { method: 'POST' });
+  if (!res.ok) throw new Error(`POST /jobs/${jobId}/templates/${templateId}/inject failed: ${res.status}`);
+  return res.json() as Promise<{ slotCount: number }>;
+}
+
 export async function extractFields(jobId: string): Promise<void> {
   const res = await fetch(`${API_BASE}/jobs/${jobId}/extract`, { method: 'POST' });
   if (!res.ok) throw new Error(`POST /jobs/${jobId}/extract failed: ${res.status}`);

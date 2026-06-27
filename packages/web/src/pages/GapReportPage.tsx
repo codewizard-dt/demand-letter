@@ -177,7 +177,7 @@ export default function GapReportPage() {
               <button
                 onClick={handleSubmit}
                 disabled={!hasAnyAction || submitting}
-                className={`mr-4 px-4 py-2 ${hasAnyAction && !submitting ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+                className="btn-primary mr-4"
               >
                 {submitting ? 'Submitting…' : 'Submit Attorney Judgment'}
               </button>
@@ -187,7 +187,7 @@ export default function GapReportPage() {
           <button
             onClick={handleGenerate}
             disabled={report.gaps.length > 0 || generating}
-            className={`px-4 py-2 ${report.gaps.length === 0 && !generating ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+            className="btn-primary"
           >
             {generating ? 'Generating…' : 'Proceed to Generate'}
           </button>

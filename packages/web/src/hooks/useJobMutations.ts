@@ -16,6 +16,8 @@ import {
   submitAttorneyJudgment,
   ingestDocuments,
   segmentTemplate,
+  classifyTemplate,
+  injectTemplate,
   extractFields,
   type Zone,
   type ChangeRow,
@@ -30,7 +32,9 @@ export function useUploadWorkflow() {
         await uploadFile(id, pdf);
       }
       await ingestDocuments(id);
-      await segmentTemplate(id);
+      const { templateId } = await segmentTemplate(id);
+      await classifyTemplate(id, templateId);
+      await injectTemplate(id, templateId);
       await extractFields(id);
       return id;
     },

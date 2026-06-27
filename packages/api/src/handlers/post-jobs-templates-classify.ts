@@ -43,7 +43,11 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       if (!id) return null;
       return prisma.zone.update({
         where: { id },
-        data: { type: c.type, suggestedFieldName: c.suggestedFieldName },
+        data: {
+          type: c.type,
+          suggestedFieldName: c.suggestedFieldName,
+          confirmed: c.type === 'variable_populated',
+        },
       });
     }),
   );

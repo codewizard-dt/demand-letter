@@ -82,7 +82,7 @@ export default function EditorPage() {
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="flex items-center gap-3">
           <svg
-            className="animate-spin h-5 w-5 text-blue-600"
+            className="animate-spin h-5 w-5 text-primary"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
@@ -101,7 +101,7 @@ export default function EditorPage() {
               d="M4 12a8 8 0 018-8v8H4z"
             />
           </svg>
-          <span className="text-blue-700 font-medium">Loading document…</span>
+          <span className="text-primary font-medium">Loading document…</span>
         </div>
       </div>
     );
@@ -115,7 +115,7 @@ export default function EditorPage() {
         <button
           onClick={() => downloadMutation.mutate(id!)}
           disabled={downloadMutation.isPending}
-          className="px-3 py-1 bg-indigo-600 text-white rounded text-sm disabled:opacity-50"
+          className="btn-primary"
         >
           {downloadMutation.isPending ? 'Exporting…' : 'Export to Word'}
         </button>

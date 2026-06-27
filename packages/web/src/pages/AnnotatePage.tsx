@@ -57,14 +57,14 @@ export default function AnnotatePage() {
       <div className="mb-4 flex gap-3">
         <button
           onClick={confirmAll}
-          className="px-4 py-2 bg-teal-700 text-white rounded hover:bg-teal-800"
+          className="btn-primary"
         >
           Confirm All Variable Zones
         </button>
         <button
           onClick={handleSubmit}
           disabled={submitting}
-          className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-900 disabled:opacity-50"
+          className="btn-primary"
         >
           {submitting ? 'Saving…' : 'Submit Annotations'}
         </button>

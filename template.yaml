@@ -408,6 +408,7 @@ Resources:
       CodeUri: .build/handlers/
       Handler: post-jobs-templates-classify.handler
       Runtime: nodejs20.x
+      Timeout: 120
       Policies:
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
@@ -435,6 +436,7 @@ Resources:
       CodeUri: .build/handlers/
       Handler: post-jobs-templates-inject.handler
       Runtime: nodejs20.x
+      Timeout: 60
       Policies:
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
