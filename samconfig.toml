@@ -8,6 +8,11 @@ stack_name = "demand-letter"
 cached = true
 parallel = true
 
+[default.local_start_api.parameters]
+port           = 3000
+env_vars       = "env.json"
+docker_network = "demand-letter-dev"
+
 [default.deploy.parameters]
 capabilities = "CAPABILITY_IAM"
 confirm_changeset = true

@@ -20,7 +20,7 @@ test-e2e:
 	pnpm --filter @demand-letter/api build
 	docker compose up -d
 	@pkill -f 'sam local start-api' 2>/dev/null || true; \
-	sam local start-api --port 3000 & \
+	sam local start-api & \
 	SAM_PID=$$!; \
 	echo "Waiting for SAM local API on :3000…"; \
 	until curl -s --connect-timeout 2 http://localhost:3000 > /dev/null 2>&1; do sleep 3; done; \

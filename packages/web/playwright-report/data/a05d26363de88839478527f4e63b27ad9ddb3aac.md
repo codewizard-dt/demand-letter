@@ -12,10 +12,56 @@
 # Error details
 
 ```
-Error: page.waitForURL: Test ended.
+TimeoutError: page.waitForURL: Timeout 300000ms exceeded.
 =========================== logs ===========================
 waiting for navigation until "load"
 ============================================================
+```
+
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - link "Steno STENO" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - img "Steno" [ref=e6]
+        - generic [ref=e7]: STENO
+      - button "Open user menu" [ref=e9] [cursor=pointer]: T
+    - main [ref=e10]:
+      - generic [ref=e11]:
+        - navigation "Workflow progress" [ref=e12]:
+          - generic [ref=e14]:
+            - generic [ref=e15]: "1"
+            - text: Upload
+          - generic [ref=e18]:
+            - generic [ref=e19]: "2"
+            - text: Gap Report
+          - generic [ref=e22]:
+            - generic [ref=e23]: "3"
+            - text: Generate
+          - generic [ref=e26]:
+            - generic [ref=e27]: "4"
+            - text: Editor
+          - generic [ref=e30]:
+            - generic [ref=e31]: "5"
+            - text: Done
+        - heading "Upload Documents" [level=1] [ref=e32]
+        - generic [ref=e33]: "Error: POST /jobs/cmqxa7p1q0000savrx9zxi9ep/templates/cmqxa810v0001bz9r0eq60evl/classify failed: 502"
+        - generic [ref=e34]:
+          - generic [ref=e35]:
+            - generic [ref=e36]: Template (.docx)
+            - paragraph [ref=e38] [cursor=pointer]: template.docx
+          - generic [ref=e39]:
+            - generic [ref=e40]: Case Documents (.pdf)
+            - list [ref=e42] [cursor=pointer]:
+              - listitem [ref=e43]: case-doc.pdf
+          - button "Upload & Continue" [ref=e44] [cursor=pointer]
+  - generic [ref=e45]:
+    - img [ref=e47]
+    - button "Open Tanstack query devtools" [ref=e95] [cursor=pointer]:
+      - img [ref=e96]
 ```
 
 # Test source
@@ -122,7 +168,7 @@ waiting for navigation until "load"
   127 |     // Chain: createJob → uploadFiles → ingest (Textract) → segment → classify → inject → extract
   128 |     // With real AWS, this takes 1–5 minutes.
 > 129 |     await page.waitForURL(/\/jobs\/[^/]+\/gap-report/, {
-      |                ^ Error: page.waitForURL: Test ended.
+      |                ^ TimeoutError: page.waitForURL: Timeout 300000ms exceeded.
   130 |       timeout: 5 * 60 * 1000,
   131 |     });
   132 | 

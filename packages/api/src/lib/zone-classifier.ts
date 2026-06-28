@@ -28,5 +28,15 @@ export async function classifyZones(
     messages: [{ role: 'user', content: userContent }],
   });
 
-  return JSON.parse(text) as ZoneClassification[];
+  return parseZoneClassifications(text);
+}
+
+export function parseZoneClassifications(text: string): ZoneClassification[] {
+  const cleaned = text
+    .trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/, '')
+    .trim();
+
+  return JSON.parse(cleaned) as ZoneClassification[];
 }

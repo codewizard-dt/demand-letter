@@ -27,7 +27,7 @@ import { handler as postJobsIngestHandler } from '../handlers/post-jobs-document
 import { handler as postJobsGenerateHandler } from '../handlers/post-jobs-generate'
 import { DOCX_MIME, plainDocxBuffer, taggedDocxBuffer } from './helpers/docx'
 import { makeMultipartEvent } from './helpers/multipart'
-import { deleteS3Keys, s3KeyExists, uploadToS3, BUCKET } from './helpers/aws'
+import { deleteS3Keys, s3KeyExists, uploadToS3 } from './helpers/aws'
 
 const lambdaCtx = {} as any
 const noop = () => {}
