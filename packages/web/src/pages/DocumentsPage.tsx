@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { useJobFiles, useJobLogs } from '../hooks/useJobQueries';
 import type { FileRow, JobLogRow } from '../lib/api';
+import WorkflowStepper from '../components/WorkflowStepper';
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleString();
@@ -100,6 +101,8 @@ export default function DocumentsPage() {
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
+      <WorkflowStepper currentStep={0} jobId={jobId} />
+
       <div className="mb-6">
         <Link to={`/jobs/${jobId}/gap-report`} className="text-blue-600 underline text-sm">
           ← Back to Gap Report

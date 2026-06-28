@@ -40,6 +40,39 @@ export function injectDelimiters(
   return Buffer.from(zip.generate({ type: 'nodebuffer', compression: 'DEFLATE' }));
 }
 
+function cloneNode<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function collectRunProperties(runChildren: Array<Record<string, unknown>>): Array<Record<string, unknown>> | undefined {
+  const runPr = runChildren.find((child) => 'w:rPr' in child);
+  if (!runPr || !Array.isArray((runPr as Record<string, unknown>)['w:rPr'])) return undefined;
+  return cloneNode((runPr as Record<string, unknown>)['w:rPr'] as Array<Record<string, unknown>>);
+}
+
+function hasImageOrNonTextContent(runChildren: Array<Record<string, unknown>>): boolean {
+  return runChildren.some((child) =>
+    'w:drawing' in child ||
+    'w:pict' in child ||
+    'v:imagedata' in child ||
+    'w:object' in child ||
+    'mc:AlternateContent' in child ||
+    'w:objectEmbed' in child
+  );
+}
+
+function isTextOnlyRun(runChildren: Array<Record<string, unknown>>): boolean {
+  const hasText = runChildren.some((child) => 'w:t' in child);
+  return hasText && !hasImageOrNonTextContent(runChildren);
+}
+
+function createTagRun(fieldName: string, runProperties?: Array<Record<string, unknown>>): Record<string, unknown> {
+  const children: Array<Record<string, unknown>> = [];
+  if (runProperties) children.push({ 'w:rPr': runProperties });
+  children.push({ 'w:t': [{ '#text': `{${fieldName}}` }] });
+  return { 'w:r': children };
+}
+
 /**
  * Recursively walk the preserveOrder tree.
  * Each node in the array is an object like:
@@ -61,27 +94,33 @@ function traverseAndInject(
         const idx = paraIndex.value++;
         const fieldName = confirmedSet.get(idx);
         if (fieldName) {
-          // Replace all children of this paragraph that are w:r nodes
-          // with a single tag run: <w:r><w:t>{fieldName}</w:t></w:r>
           const pChildren = node[key] as Array<Record<string, unknown>>;
-          const tagRun: Record<string, unknown> = {
-            'w:r': [
-              {
-                'w:t': [
-                  { '#text': `{${fieldName}}` },
-                ],
-              },
-            ],
-          };
-          // Keep pPr (paragraph properties) if present, replace rest with tag run
-          const newChildren: Array<Record<string, unknown>> = [];
+          const transformedChildren: Array<Record<string, unknown>> = [];
+          let styleSample: Array<Record<string, unknown>> | undefined;
+          let inserted = false;
+
           for (const child of pChildren) {
-            if ('w:pPr' in child) {
-              newChildren.push(child);
+            if ('w:r' in child) {
+              const runChildren = child['w:r'] as Array<Record<string, unknown>>;
+              if (Array.isArray(runChildren) && isTextOnlyRun(runChildren)) {
+                styleSample ??= collectRunProperties(runChildren);
+                if (!inserted) {
+                  transformedChildren.push(createTagRun(fieldName, styleSample));
+                  inserted = true;
+                }
+                continue;
+              }
+              transformedChildren.push(child);
+              continue;
             }
+            transformedChildren.push(child);
           }
-          newChildren.push(tagRun);
-          node[key] = newChildren;
+
+          if (!inserted) {
+            transformedChildren.push(createTagRun(fieldName, styleSample));
+          }
+
+          node[key] = transformedChildren;
         }
       } else {
         // Recurse into any other element that has children

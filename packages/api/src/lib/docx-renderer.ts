@@ -31,6 +31,7 @@ export async function renderTemplate(
   if (!bytes) throw new Error('Empty S3 response for template');
 
   // Load with PizZip and Docxtemplater
+  const templateZip = new PizZip(bytes);
   const zip = new PizZip(bytes);
   const doc = new Docxtemplater(zip, {
     paragraphLoop: true,
@@ -50,6 +51,13 @@ export async function renderTemplate(
     throw err;
   }
 
+  const renderedZip = doc.getZip() as unknown as PizZip;
+  for (const [fileName, file] of Object.entries(templateZip.files)) {
+    if (file.dir) continue;
+    if (renderedZip.file(fileName)) continue;
+    renderedZip.file(fileName, file.asUint8Array());
+  }
+
   // Return output buffer
-  return doc.getZip().generate({ type: 'nodebuffer', compression: 'DEFLATE' }) as Buffer;
+  return renderedZip.generate({ type: 'nodebuffer', compression: 'DEFLATE' }) as Buffer;
 }

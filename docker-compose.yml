@@ -1,4 +1,34 @@
+name: demand-letter
+
 services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/sam-local.Dockerfile
+    container_name: demand-letter-api
+    working_dir: /workspace
+    volumes:
+      - ./:/workspace:cached
+      - ~/.aws:/root/.aws:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    env_file:
+      - .env
+    environment:
+      SAM_CLI_TELEMETRY: 0
+      SAM_CLI_CONTAINER_CONNECTION_TIMEOUT: 120
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_PROFILE: ${AWS_PROFILE:-default}
+      AWS_SDK_LOAD_CONFIG: 1
+      AWS_EC2_METADATA_DISABLED: true
+      HOST_PROJECT_DIR: ${HOST_PROJECT_DIR:-${PWD}}
+    command: /bin/bash /workspace/scripts/sam-local-compose.sh
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+    networks:
+      - demand-letter-dev
+
   postgres:
     image: postgres:16-alpine
     container_name: demand-letter-postgres

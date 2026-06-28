@@ -1,0 +1,22 @@
+- id: "gs-054"
+  description: "POST /jobs/{id}/templates/{templateId}/inject returns deterministic slotCount for the Pat Donahue template"
+  query: |
+    Given template file `raw/AAA-Insurance_Time-Limited-Policy-Limits-Demand_Pat-Donahue.docx` has been uploaded and classified,
+    run the inject flow for that same template twice with identical inputs.
+    In each run, collect `{ "slotCount", "slots" }` from the handler response and compare:
+    the two `slotCount` values must be identical, `slots.length` must equal `slotCount` in both runs, and the second run must not drift from the first.
+  tested_files:
+    - packages/api/src/handlers/post-jobs-templates-inject.ts
+    - packages/api/src/lib/docx-inspect.ts
+  expected_tools:
+    - post-jobs-templates-inject
+    - enumerateSlots
+    - prisma.template.update
+  must_contain:
+    - '"slotCount"'
+    - '"sameSlotCount": true'
+    - '"slots.length"'
+  must_not_contain:
+    - '"sameSlotCount": false'
+    - '"error"'
+    - '"statusCode": 500'

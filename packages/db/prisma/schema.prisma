@@ -37,6 +37,7 @@ model File {
   id        String   @id @default(cuid())
   jobId     String
   job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  contentHash String? @db.VarChar(64)
   s3Key     String
   mimeType  String
   role      FileRole
@@ -44,6 +45,7 @@ model File {
   createdAt DateTime @default(now())
 
   @@index([jobId])
+  @@unique([jobId, contentHash])
   @@map("files")
 }
 

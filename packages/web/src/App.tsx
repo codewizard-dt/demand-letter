@@ -14,6 +14,7 @@ import AnnotatePage from './pages/AnnotatePage';
 import GapReportPage from './pages/GapReportPage';
 import EditorPage from './pages/EditorPage';
 import DocumentsPage from './pages/DocumentsPage';
+import NotFoundPage from './pages/NotFoundPage';
 
 export default function App() {
   return (
@@ -37,6 +38,7 @@ export default function App() {
               <Route path="/jobs/:id/templates/:templateId/annotate" element={<AnnotatePage />} />
               <Route path="/jobs/:id/editor" element={<EditorPage />} />
               <Route path="/jobs/:id/documents" element={<DocumentsPage />} />
+              <Route path="*" element={<NotFoundPage />} />
             </Route>
           </Route>
         </Routes>

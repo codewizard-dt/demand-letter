@@ -61,12 +61,13 @@ Run on every commit. Zero LLM cost — assertions over recorded output.
 | gs-051 | POST /jobs/:id/attorney-judgment upserts field with confidence=1.0 and source=attorney-judgment | attorney_judgment | post-jobs-attorney-judgment.ts | 2026-06-26 |
 | gs-052 | POST /jobs/:id/attorney-judgment sets acceptMissing=true with nullReason for dismissed slots | attorney_judgment | post-jobs-attorney-judgment.ts | 2026-06-26 |
 | gs-053 | GET /jobs/:id/gap-report returns 404 template_not_ready when no template classified yet | generation_gate | get-jobs-gap-report.ts | 2026-06-26 |
+| gs-054 | POST /jobs/:id/templates/:templateId/inject returns deterministic slotCount for Pat Donahue template | template_classification | post-jobs-templates-inject.ts | 2026-06-28 |
 
 ## Coverage status
 
 | Stage | Status | Count |
 |-------|--------|-------|
-| 1 — Golden Sets | Active | 53 |
+| 1 — Golden Sets | Active | 54 |
 | 2 — Labeled Scenarios | Not started | — |
 | 3 — Replay Harnesses | Not started | — |
 | 4 — Rubrics | Not started | — |

@@ -1033,3 +1033,12 @@ Created and implemented TASK-110: Vitest unit test for post-jobs-generate coveri
 
 ## [2026-06-26] task | TASK-111 Wire eval runner to real handlers and add segmentation coverage
 Created TASK-111: the 53 golden eval cases only validate YAML schema (run_evals.ts has a live-execution TODO stub); job-lifecycle.test.ts seeds a pre-tagged Template record, bypassing segmentation. Task covers: (1) implement live handler invocation in run_evals.ts with mock infrastructure, (2) add gs-054.yaml golden eval for POST /jobs/{id}/templates/segment, (3) add integration test describe block for template segmentation that does not pre-seed a Template record.
+
+## [2026-06-28] ingest | Steno Brand Style Assets
+Ingested from raw/research/steno-brand. Key claims: visual evidence capture spans homepage, legal-tech, transcript, and DelayPay pages; the bundle is treated as brand-reference proof for style tokens (colors, spacing, typography, controls); it lacks explanatory text and is intentionally non-normative. 1 entity page touched, 1 concept page touched.
+
+## [2026-06-28] ingest | Steno Brand Style Assets (supplement refresh)
+Ingested from `raw/research/steno-brand/index.md`, `raw/research/steno-brand/index-2.md`, `raw/research/steno-brand/sources.md`, and `raw/research/steno-brand/sources-2.md`. Key claims: module-level CSS exposes shared brand primitives (`html{font-size:1px}`, `Apercu`/`Editor` roles, eyebrow/button/card patterns) that can be safely generalized into shared classes; a status-role standardization (`st-status`, `st-status-banner`) was documented as the preferred pattern for consistency across pages. 1 entity page touched (Steno), 1 concept page touched (Steno Brand Style System).
+
+## [2026-06-28] ingest | Steno Brand Status-role Supplement (index-2)
+Ingested from `raw/research/steno-brand/index-2.md`. Key claims: status and confirmation messaging should be standardized as first-class brand roles using `st-status`, `st-status-muted`, `st-status-banner`, and `st-status-banner-success`; project style skill now maps these roles across pages/components before page-specific tuning. 1 entity page touched (Steno), 1 concept page touched (Steno Brand Style System).

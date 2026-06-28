@@ -5,6 +5,7 @@ import {
   fetchLlmCosts,
   fetchGapReport,
   fetchOutputUrl,
+  fetchOutputDocxPreview,
   fetchExtractedFields,
   fetchBlocks,
   fetchJobChanges,
@@ -13,6 +14,8 @@ import {
   getTemplateZones,
   fetchJobFiles,
   fetchJobLogs,
+  fetchOutputDocx,
+  fetchOutputDocxByUrl,
 } from '../lib/api';
 
 export function useLlmCosts(days = 30) {
@@ -44,21 +47,45 @@ export function useDocxHtml(jobId: string | undefined, url: string | undefined) 
   return useQuery({
     queryKey: queryKeys.docxHtml(jobId!, url),
     queryFn: async () => {
-      const resp = await fetch(url!);
-      if (!resp.ok) throw new Error(`S3 fetch failed: ${resp.status}`);
-      const buf = await resp.arrayBuffer();
+      const buf = await (async () => {
+        if (url) {
+          try {
+            return await fetchOutputDocxByUrl(url);
+          } catch {
+            return await fetchOutputDocx(jobId!);
+          }
+        }
+        return await fetchOutputDocx(jobId!);
+      })();
       const { value } = await mammoth.convertToHtml(
         { arrayBuffer: buf },
         {
+          ignoreEmptyParagraphs: false,
           styleMap: [
             "p[style-name='Boilerplate'] => p.boilerplate-zone:fresh",
             "r[style-name='Boilerplate'] => span.boilerplate-zone",
+            "p[style-name='Normal'] => p.docx-paragraph:fresh",
+            "p[style-name='List Paragraph'] => p.docx-list-paragraph:fresh",
+            "p[style-name='Title'] => h1.docx-title:fresh",
+            "p[style-name='Heading 1'] => h1.docx-heading-1:fresh",
+            "p[style-name='Heading 2'] => h2.docx-heading-2:fresh",
+            "p[style-name='Heading 3'] => h3.docx-heading-3:fresh",
           ],
         },
       );
       return value;
     },
     enabled: !!url,
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+}
+
+export function useDocxPreview(jobId: string | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.docxPreview(jobId!),
+    queryFn: () => fetchOutputDocxPreview(jobId!),
+    enabled: !!jobId && enabled,
     staleTime: Infinity,
     gcTime: Infinity,
   });

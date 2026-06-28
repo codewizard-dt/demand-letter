@@ -19,6 +19,60 @@ export interface LlmAuditRow {
 
 export const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 
+const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+export interface OutputDocxPreview {
+  html: string;
+  stationaries: {
+    slot: 'header' | 'footer';
+    variant: 'default' | 'first' | 'even';
+    text: string;
+    imageDataUrl?: string;
+    imageWidthPx?: number;
+    imageHeightPx?: number;
+  }[];
+}
+
+const looksLikeBase64 = (value: string): boolean => {
+  const trimmed = value.replace(/\s/g, '');
+  if (trimmed.length < 8 || trimmed.length % 4 !== 0) return false;
+  if (!/^[A-Za-z0-9+/=]+$/.test(trimmed)) return false;
+  return trimmed.startsWith('UEsDB');
+};
+
+async function readDocxResponse(res: Response): Promise<ArrayBuffer> {
+  const contentType = res.headers.get('content-type')?.split(';')[0].trim().toLowerCase();
+  const bytes = new Uint8Array(await res.arrayBuffer());
+
+  if (contentType === 'application/json' || bytes[0] === '{'.charCodeAt(0)) {
+    const text = new TextDecoder().decode(bytes);
+    try {
+      const body = JSON.parse(text) as { message?: string; error?: string };
+      const message = body.message ?? body.error ?? 'An unexpected error occurred.';
+      throw new Error(message);
+    } catch (err) {
+      if (err instanceof Error) throw err;
+      throw new Error('Received an invalid DOCX response payload.');
+    }
+  }
+
+  if (bytes.length >= 2 && bytes[0] === 0x50 && bytes[1] === 0x4b) {
+    return bytes.buffer;
+  }
+
+  const asText = new TextDecoder().decode(bytes);
+  if (looksLikeBase64(asText)) {
+    const cleaned = asText.replace(/\s/g, '');
+    const bin = atob(cleaned);
+    const decoded = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) {
+      decoded[i] = bin.charCodeAt(i);
+    }
+    return decoded.buffer;
+  }
+
+  throw new Error('Unexpected response while fetching DOCX output.');
+}
+
 export async function fetchLlmCosts(days = 30): Promise<{
   aggregates: LlmCostAggregate[];
   recentRows: LlmAuditRow[];
@@ -110,11 +164,27 @@ export async function refineJob(
   return { afterText: collected.join(''), refinementId: '' };
 }
 
-export async function downloadOutput(jobId: string): Promise<string> {
-  const res = await fetch(`${API_BASE}/jobs/${jobId}/output`);
+export async function fetchOutputDocxByUrl(url: string): Promise<ArrayBuffer> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`downloadOutputDocxByUrl failed: ${res.status}`);
+  return readDocxResponse(res);
+}
+
+export async function fetchOutputDocxPreview(jobId: string): Promise<OutputDocxPreview> {
+  const res = await fetch(`${API_BASE}/jobs/${jobId}/output/docx/preview`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as { message?: string; error?: string };
+    const message = body.message ?? body.error ?? `GET /jobs/${jobId}/output/docx/preview failed: ${res.status}`;
+    throw new Error(message);
+  }
+  return res.json() as Promise<OutputDocxPreview>;
+}
+
+export async function downloadOutput(jobId: string): Promise<Blob> {
+  const res = await fetch(`${API_BASE}/jobs/${jobId}/output/docx`);
   if (!res.ok) throw new Error(`downloadOutput failed: ${res.status}`);
-  const { url } = await res.json() as { url: string };
-  return url;
+  const bytes = await readDocxResponse(res);
+  return new Blob([bytes], { type: DOCX_MIME });
 }
 
 export async function fetchOutputUrl(id: string): Promise<string> {
@@ -122,6 +192,12 @@ export async function fetchOutputUrl(id: string): Promise<string> {
   if (!res.ok) throw new Error(`Failed to fetch output URL: ${res.status}`);
   const data = await res.json() as { url: string };
   return data.url;
+}
+
+export async function fetchOutputDocx(id: string): Promise<ArrayBuffer> {
+  const res = await fetch(`${API_BASE}/jobs/${id}/output/docx`);
+  if (!res.ok) throw new Error(`downloadOutputDocx failed: ${res.status}`);
+  return readDocxResponse(res);
 }
 
 export interface GapItem {
@@ -343,9 +419,22 @@ export async function submitAttorneyJudgment(
   if (!res.ok) throw new Error(`POST /jobs/${jobId}/attorney-judgment failed: ${res.status}`);
 }
 
-export async function ingestDocuments(jobId: string): Promise<void> {
+export interface IngestResponse {
+  processed: number;
+  pending: number;
+  blocks: number;
+}
+
+export async function ingestDocuments(jobId: string): Promise<IngestResponse> {
   const res = await fetch(`${API_BASE}/jobs/${jobId}/documents/ingest`, { method: 'POST' });
   if (!res.ok) throw new Error(`POST /jobs/${jobId}/documents/ingest failed: ${res.status}`);
+
+  const data = await res.json().catch(() => ({})) as Partial<IngestResponse>;
+  return {
+    processed: typeof data.processed === 'number' ? data.processed : 0,
+    pending: typeof data.pending === 'number' ? data.pending : 0,
+    blocks: typeof data.blocks === 'number' ? data.blocks : 0,
+  };
 }
 
 export async function segmentTemplate(jobId: string): Promise<{ templateId: string; slotCount: number }> {
@@ -375,6 +464,7 @@ export interface FileRow {
   fileName: string;
   mimeType: string;
   role: string;
+  contentHash: string | null;
   s3Key: string;
   createdAt: string;
 }

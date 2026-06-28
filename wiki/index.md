@@ -31,6 +31,7 @@ The wiki is split into two domains with opposite organizing laws:
 - [Research — Textract, SOC2, HIPAA, and AWS Compliance Solutions](knowledge/sources/textract-soc2-hipaa-aws-compliance.md) — Textract role + compliance status; encryption vs redaction at rest; PHI+PII log scrubbing; three-tier AWS compliance stack; Presidio vs Comprehend Medical
 - [Research — API Testing Strategy (Unit + Integration)](knowledge/sources/api-testing-strategy.md) — Vitest (node env) for packages/api; aws-sdk-client-mock for AWS SDK v3; vitest-mock-extended for Prisma; lib split: 18 pure + 8 AWS-dependent; Lambda handler scaffold
 - [Primary Sources — API Testing Strategy](knowledge/sources/api-testing-strategy-sources.md) — Bibliography register: 8 sources (2 codebase, 6 web) with verbatim excerpts backing the testing patterns
+- [Research — Steno Brand Style Assets](knowledge/sources/steno-brand.md) — Visual + CSS evidence from steno.com (type scale, buttons, cards, status-role patterns) for consistent frontend styling
 
 ### Concepts
 
@@ -43,6 +44,7 @@ The wiki is split into two domains with opposite organizing laws:
 - [Docx Zone-Detection Pipeline](knowledge/concepts/docx-zone-detection-pipeline.md) — Classifying template spans as boilerplate-verbatim vs variable-populated; five techniques, the asymmetric failure mode, the chosen hybrid pipeline (DEC-0001)
 - [HIPAA and SOC 2 Compliance on AWS](knowledge/concepts/hipaa-soc2-compliance-aws.md) — Encryption vs redaction distinction; what each standard requires; PHI vs PII in logs; three-tier AWS compliance stack; Presidio vs AWS-native scrubbing
 - [Lambda Handler Testing (TypeScript)](knowledge/concepts/lambda-handler-testing.md) — Integration test scaffold for Lambda handlers: mock boundaries (AWS SDK + Prisma), test file pattern, pdfjs-dist constraint
+- [Steno Brand Style System](knowledge/concepts/steno-brand-style-system.md) — Steno visual identity model: tone, palette, typography, buttons, labels, and component tokens for frontend consistency
 
 ### Entities
 
@@ -58,7 +60,7 @@ The wiki is split into two domains with opposite organizing laws:
 
 **Organisations**
 
-- [Steno](knowledge/entities/organisations/steno.md) — Legaltech company; project client building the demand letter generator
+- [Steno](knowledge/entities/organisations/steno.md) — Legaltech company and client brand source for the demand letter app; frontend brand evidence also captured in `steno-brand`
 - [Stalwart Law Group, APC](knowledge/entities/organisations/stalwart-law-group.md) — CA personal injury law firm; authors of the sample demand letter template
 - [Interinsurance Exchange of the Automobile Club (AAA)](knowledge/entities/organisations/aaa-interinsurance-exchange.md) — Respondent insurer in the sample case
 - [Coastal Pain and Spinal Diagnostics](knowledge/entities/organisations/coastal-pain-spinal-diagnostics.md) — Pain management practice; treating provider in sample case

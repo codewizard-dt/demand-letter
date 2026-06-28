@@ -4,6 +4,7 @@ import { useUploadWorkflow } from '../hooks/useJobMutations';
 
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import WorkflowStepper from '../components/WorkflowStepper';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function UploadPage() {
   useDocumentTitle('Upload Documents — Steno');
@@ -12,13 +13,21 @@ export default function UploadPage() {
   const [caseFiles, setCaseFiles] = useState<File[]>([]);
   const [templateDrag, setTemplateDrag] = useState(false);
   const [caseDrag, setCaseDrag] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<string | null>(null);
   const uploadMutation = useUploadWorkflow();
+
+  function appendCaseFiles(files: FileList | File[]) {
+    const nextFiles = Array.from(files);
+    if (nextFiles.length === 0) return;
+    setCaseFiles(prev => [...prev, ...nextFiles]);
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!templateFile || caseFiles.length === 0) return;
+    setUploadStatus('Starting upload…');
     uploadMutation.mutate(
-      { templateFile, caseFiles },
+      { templateFile, caseFiles, onStatus: setUploadStatus },
       { onSuccess: (id) => navigate(`/jobs/${id}/gap-report`) },
     );
   }
@@ -36,6 +45,17 @@ export default function UploadPage() {
           className="bg-red-100 border border-red-400 text-red-700 rounded-md px-4 py-3 mb-4"
         >
           {error}
+        </div>
+      )}
+
+      {loading && uploadStatus && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="mb-4 st-status-banner"
+        >
+          <LoadingSpinner className="h-4 w-4 text-primary" />
+          <span>{uploadStatus}</span>
         </div>
       )}
 
@@ -64,13 +84,24 @@ export default function UploadPage() {
             className={`border-2 border-dashed rounded-lg px-4 py-6 text-center cursor-pointer transition-colors ${caseDrag ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/60'}`}
             onDragOver={(e) => { e.preventDefault(); setCaseDrag(true); }}
             onDragLeave={() => setCaseDrag(false)}
-            onDrop={(e) => { e.preventDefault(); setCaseDrag(false); setCaseFiles(Array.from(e.dataTransfer.files)); }}
+            onDrop={(e) => { e.preventDefault(); setCaseDrag(false); appendCaseFiles(e.dataTransfer.files); }}
             onClick={() => document.getElementById('caseDocs')?.click()}
           >
-            <input id="caseDocs" type="file" accept=".pdf" multiple aria-hidden="true" className="hidden" onChange={(e) => setCaseFiles(Array.from(e.target.files ?? []))} />
+            <input
+              id="caseDocs"
+              type="file"
+              accept=".pdf"
+              multiple
+              aria-hidden="true"
+              className="hidden"
+              onChange={(e) => {
+                appendCaseFiles(e.target.files ?? []);
+                e.currentTarget.value = '';
+              }}
+            />
             {caseFiles.length > 0 ? (
               <ul className="text-sm text-primary font-medium space-y-0.5">
-                {caseFiles.map((f) => <li key={f.name}>{f.name}</li>)}
+                {caseFiles.map((f, index) => <li key={`${f.name}-${f.lastModified}-${index}`}>{f.name}</li>)}
               </ul>
             ) : (
               <p className="text-sm text-text-muted">Drag .pdf files here or <span className="text-primary underline">browse</span></p>

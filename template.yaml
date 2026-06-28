@@ -5,6 +5,8 @@ Description: Demand Letter Generator — SAM application
 Globals:
   Function:
     Runtime: nodejs20.x
+    Timeout: 30
+    MemorySize: 512
     Architectures:
       - x86_64
     Environment:
@@ -15,6 +17,8 @@ Globals:
   Api:
     BinaryMediaTypes:
       - multipart/form-data
+      - application/vnd.openxmlformats-officedocument.wordprocessingml.document
+      - application/octet-stream
     Cors:
       AllowMethods: "'GET,POST,PATCH,DELETE,OPTIONS'"
       AllowHeaders: "'Content-Type,X-Caller-Role'"
@@ -354,6 +358,48 @@ Resources:
             Path: /jobs/{id}/output
             Method: get
 
+  GetJobsOutputDocxFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: get-jobs-output-docx.handler
+      Runtime: nodejs20.x
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
+      Layers:
+        - !Ref DbLayer
+      Environment:
+        Variables:
+          DOCUMENTS_BUCKET: !Ref DocumentsBucket
+      Events:
+        GetJobsOutputDocxApi:
+          Type: Api
+          Properties:
+            Path: /jobs/{id}/output/docx
+            Method: get
+
+  GetJobsOutputDocxPreviewFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: get-jobs-output-docx-preview.handler
+      Runtime: nodejs20.x
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
+      Layers:
+        - !Ref DbLayer
+      Environment:
+        Variables:
+          DOCUMENTS_BUCKET: !Ref DocumentsBucket
+      Events:
+        GetJobsOutputDocxPreviewApi:
+          Type: Api
+          Properties:
+            Path: /jobs/{id}/output/docx/preview
+            Method: get
+
   GetJobsTemplateZonesFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -644,7 +690,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: .build/handlers/
-      Handler: packages/api/src/handlers/get-jobs-fields.handler
+      Handler: get-jobs-fields.handler
       Runtime: nodejs20.x
       Timeout: 30
       MemorySize: 256
@@ -913,7 +959,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: .build/handlers/
-      Handler: handlers/merge-yjs-snapshot.handler
+      Handler: merge-yjs-snapshot.handler
       Runtime: nodejs20.x
       Timeout: 300
       MemorySize: 512

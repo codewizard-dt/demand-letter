@@ -18,7 +18,7 @@ describe('buildDataObject', () => {
     await expect(buildDataObject(JOB_ID)).rejects.toThrow(JOB_ID)
   })
 
-  it('maps a non-null field to its camelCase tagName', async () => {
+  it('maps a non-null field to its camelCase tagName and dbName alias', async () => {
     prismaMock.extractedField.findMany.mockResolvedValue([
       { fieldName: 'letter_date', value: '2024-01-15', isNull: false, source: 'llm', acceptMissing: false },
     ] as any)
@@ -26,7 +26,7 @@ describe('buildDataObject', () => {
     const result = await buildDataObject(JOB_ID)
 
     expect(result).toHaveProperty('letterDate', '2024-01-15')
-    expect(result).not.toHaveProperty('letter_date')
+    expect(result).toHaveProperty('letter_date', '2024-01-15')
   })
 
   it('includes the field value as-is when isNull is false and value is present', async () => {
@@ -57,6 +57,7 @@ describe('buildDataObject', () => {
     const result = await buildDataObject(JOB_ID)
 
     expect(result).toHaveProperty('incidentTime', '')
+    expect(result).toHaveProperty('incident_time', '')
   })
 
   it('uses the dbName as the key when the field is not in FIELD_SCHEMA', async () => {
@@ -81,6 +82,7 @@ describe('buildDataObject', () => {
     const result = await buildDataObject(JOB_ID)
 
     expect(result.specials).toEqual(items)
+    expect(result.per_provider_line_items).toEqual(items)
   })
 
   it('sets specials to an empty array when loop field value is null', async () => {
@@ -115,8 +117,11 @@ describe('buildDataObject', () => {
     const result = await buildDataObject(JOB_ID)
 
     expect(result.letterDate).toBe('2024-06-01')
+    expect(result.letter_date).toBe('2024-06-01')
     expect(result).not.toHaveProperty('adjusterName')
     expect(result.adjusterTitle).toBe('')
+    expect(result.adjuster_title).toBe('')
     expect(result.specials).toEqual(lineItems)
+    expect(result.per_provider_line_items).toEqual(lineItems)
   })
 })

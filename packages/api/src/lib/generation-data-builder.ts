@@ -3,6 +3,18 @@ import { dbNameToTagName, FIELD_SCHEMA } from './field-schema';
 
 export type GenerationData = Record<string, string | Array<Record<string, string>>>;
 
+function setValueWithAlias(
+  result: GenerationData,
+  dbName: string,
+  tagName: string,
+  value: string | Array<Record<string, string>>,
+): void {
+  result[tagName] = value;
+  if (dbName !== tagName) {
+    result[dbName] = value;
+  }
+}
+
 export async function buildDataObject(jobId: string): Promise<GenerationData> {
   const rows = await prisma.extractedField.findMany({
     where: { jobId },
@@ -22,9 +34,9 @@ export async function buildDataObject(jobId: string): Promise<GenerationData> {
     const key = dbNameToTagName(row.fieldName) ?? row.fieldName;
 
     if (!row.isNull && row.value !== null) {
-      result[key] = row.value;
+      setValueWithAlias(result, row.fieldName, key, row.value);
     } else if (row.acceptMissing) {
-      result[key] = '';
+      setValueWithAlias(result, row.fieldName, key, '');
     }
     // isNull === true && acceptMissing === false → omit entirely
   }
@@ -34,13 +46,13 @@ export async function buildDataObject(jobId: string): Promise<GenerationData> {
     const def = FIELD_SCHEMA.find(f => f.dbName === row.fieldName);
     if (!def?.isLoop) continue;
     if (!row.value) {
-      result[def.tagName] = [];
+      setValueWithAlias(result, row.fieldName, def.tagName, []);
       continue;
     }
     try {
-      result[def.tagName] = JSON.parse(row.value);
+      setValueWithAlias(result, row.fieldName, def.tagName, JSON.parse(row.value) as Array<Record<string, string>>);
     } catch {
-      result[def.tagName] = [];
+      setValueWithAlias(result, row.fieldName, def.tagName, []);
     }
   }
 

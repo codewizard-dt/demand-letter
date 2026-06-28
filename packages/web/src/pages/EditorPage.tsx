@@ -7,18 +7,19 @@ import { WebsocketProvider } from 'y-websocket';
 import { Collaboration } from '@tiptap/extension-collaboration';
 import { CollaborationCursor } from '@tiptap/extension-collaboration-cursor';
 import { useOutputUrl, useDocxHtml } from '../hooks/useJobQueries';
-import { useDownloadExportDocx } from '../hooks/useJobMutations';
+import { useExportDocx } from '../hooks/useJobMutations';
 import { BoilerplateZone } from '../lib/editor/boilerplateZoneMark';
 import { useAuth } from '../lib/auth';
 import { TrackInsert, TrackDelete } from '../lib/editor/trackChangeMarks';
 import { TrackChangesToolbar } from '../components/TrackChangesToolbar';
 import WorkflowStepper from '../components/WorkflowStepper';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 /**
  * EditorPage — loads a completed job's DOCX output, converts it to HTML via
  * mammoth, and opens it in a TipTap editor for attorney review and refinement.
  *
- * Flow: fetchOutputUrl(id) → presigned S3 URL → arrayBuffer → mammoth → HTML → TipTap
+ * Flow: fetchOutputUrl(id) → output/docx API proxy → arrayBuffer → mammoth → HTML → TipTap
  * The wrapper div's class "tiptap-editor" is used for UAT targeting.
  */
 // Real-time sync requires VITE_WS_API_URL to point to a deployed WebSocket API
@@ -34,34 +35,46 @@ export default function EditorPage() {
   const { user } = useAuth();
   const outputUrlQuery = useOutputUrl(id);
   const docxHtmlQuery = useDocxHtml(id, outputUrlQuery.data);
-  const downloadMutation = useDownloadExportDocx();
+  const exportMutation = useExportDocx();
 
   const userId = user?.email ?? 'anonymous';
   const userName = user?.name ?? 'Anonymous';
 
   const ydoc = useMemo(() => new Y.Doc(), []);
 
-  const wsUrl = `${import.meta.env.VITE_WS_API_URL as string}?userId=${encodeURIComponent(userId)}&userName=${encodeURIComponent(userName)}`;
+  const wsApiUrl = import.meta.env.VITE_WS_API_URL as string | undefined;
+  const wsUrl = wsApiUrl
+    ? `${wsApiUrl}?userId=${encodeURIComponent(userId)}&userName=${encodeURIComponent(userName)}`
+    : null;
   const provider = useMemo(
-    () => new WebsocketProvider(wsUrl, `job-${id}`, ydoc),
+    () => (wsUrl ? new WebsocketProvider(wsUrl, `job-${id}`, ydoc) : null),
     [wsUrl, id, ydoc]
   );
 
-  const editor = useEditor({
-    extensions: [
+  const editorExtensions = useMemo(
+    () => [
       StarterKit,
-      Collaboration.configure({ document: ydoc }),
-      CollaborationCursor.configure({
-        provider,
-        user: { name: userName, color: '#6366f1' },
-      }),
+      ...(provider
+        ? [
+            Collaboration.configure({ document: ydoc }),
+            CollaborationCursor.configure({
+              provider,
+              user: { name: userName, color: '#6366f1' },
+            }),
+          ]
+        : []),
       BoilerplateZone,
       TrackInsert,
       TrackDelete,
     ],
+    [provider, userName, ydoc],
+  );
+
+  const editor = useEditor({
+    extensions: editorExtensions,
   });
 
-  useEffect(() => () => { provider.destroy(); }, [provider]);
+  useEffect(() => () => { provider?.destroy(); }, [provider]);
 
   // Seed Y.Doc from mammoth HTML once both editor and HTML are ready
   useEffect(() => {
@@ -77,30 +90,30 @@ export default function EditorPage() {
 
   const loading = outputUrlQuery.isLoading || docxHtmlQuery.isLoading;
 
+  function handleExport() {
+    if (!id || !editor) return;
+    exportMutation.mutate(
+      { jobId: id, doc: editor.getJSON() },
+      {
+        onSuccess: (blob) => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'demand-letter.docx';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        },
+      },
+    );
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="flex items-center gap-3">
-          <svg
-            className="animate-spin h-5 w-5 text-primary"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              className="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="4"
-            />
-            <path
-              className="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8v8H4z"
-            />
-          </svg>
+          <LoadingSpinner className="h-5 w-5 text-primary" />
           <span className="text-primary font-medium">Loading document…</span>
         </div>
       </div>
@@ -109,15 +122,15 @@ export default function EditorPage() {
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
-      <WorkflowStepper currentStep={3} />
+      <WorkflowStepper currentStep={3} jobId={id} />
       <h1 className="text-2xl font-bold mb-6">Edit Demand Letter</h1>
       <div className="mb-4 flex justify-end">
         <button
-          onClick={() => downloadMutation.mutate(id!)}
-          disabled={downloadMutation.isPending}
+          onClick={handleExport}
+          disabled={exportMutation.isPending || !editor}
           className="btn-primary"
         >
-          {downloadMutation.isPending ? 'Exporting…' : 'Export to Word'}
+          {exportMutation.isPending ? 'Exporting…' : 'Export to Word'}
         </button>
       </div>
       {!import.meta.env.VITE_WS_API_URL && !wsBannerDismissed && (

@@ -7,11 +7,15 @@ dist/
 .build/
 .aws-sam/
 coverage/
+/DbLayer
+/*Function
 
 # Environment — never commit
 .env
 .env.*
 !.env.example
+
+packages/web/test-results/
 
 # AWS credentials / local config
 .aws/
@@ -25,3 +29,4 @@ samconfig.local.toml
 
 # Test result artifacts
 packages/api/test-results/
+packages/web/playwright-report/

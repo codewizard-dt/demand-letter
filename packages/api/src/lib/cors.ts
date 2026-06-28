@@ -1,4 +1,4 @@
-const IS_DEV = process.env.NODE_ENV !== 'production' || process.env.AWS_SAM_LOCAL === 'true';
+const IS_DEV = process.env.NODE_ENV !== 'production';
 
 const ALLOWED_ORIGINS = (process.env.CORS_ORIGINS ?? process.env.CORS_ORIGIN ?? '*')
   .split(',')

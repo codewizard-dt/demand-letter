@@ -25,6 +25,12 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'job_not_found', message: 'The requested job does not exist.' }) };
   }
 
+  const existingSourceFiles = await prisma.sourceFile.findMany({
+    where: { jobId },
+    select: { s3Key: true },
+  });
+  const processedS3Keys = new Set(existingSourceFiles.map((sourceFile) => sourceFile.s3Key));
+
   // List uploaded files from S3 under the job prefix
   const listCmd = new ListObjectsV2Command({
     Bucket: BUCKET,
@@ -39,6 +45,9 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
   for (const obj of objects) {
     const s3Key = obj.Key!;
+    if (processedS3Keys.has(s3Key)) {
+      continue;
+    }
     const filename = s3Key.split('/').pop() ?? s3Key;
 
     // Download file buffer
@@ -71,6 +80,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
           status: 'processing',
         },
       });
+      processedS3Keys.add(s3Key);
       const jobTag = sourceFile.id;
       const textractJobId = await startTextractAnalysis(BUCKET, s3Key, jobTag);
       await prisma.sourceFile.update({
@@ -93,6 +103,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
           status: 'complete',
         },
       });
+      processedS3Keys.add(s3Key);
 
       if (blocks.length > 0) {
         const blockData = blocks.map((b) => ({

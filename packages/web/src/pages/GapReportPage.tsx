@@ -1,7 +1,8 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useGapReport, useExtractedFields, useBlocks } from '../hooks/useJobQueries';
-import { useSubmitAttorneyJudgment, useTriggerGenerateJob } from '../hooks/useJobMutations';
+import { useAddCaseDocuments, useSubmitAttorneyJudgment, useTriggerGenerateJob } from '../hooks/useJobMutations';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
@@ -17,11 +18,14 @@ export default function GapReportPage() {
   const extractedFieldsQuery = useExtractedFields(jobId);
   const blocksQuery = useBlocks(jobId);
   const submitJudgmentMutation = useSubmitAttorneyJudgment(jobId!);
+  const addCaseDocumentsMutation = useAddCaseDocuments(jobId!);
   const triggerGenerateMutation = useTriggerGenerateJob();
 
   const [fillValues, setFillValues] = useState<Record<string, string>>({});
   const [acceptMissing, setAcceptMissing] = useState<Record<string, boolean>>({});
   const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
+  const [caseDrag, setCaseDrag] = useState(false);
+  const [caseUploadStatus, setCaseUploadStatus] = useState<string | null>(null);
   const blockRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const extractedFields = extractedFieldsQuery.data ?? [];
@@ -38,7 +42,7 @@ export default function GapReportPage() {
   const handleSubmit = () => {
     if (!jobId) return;
     const fields = Object.entries(fillValues)
-      .filter(([, v]) => v.trim() !== '')
+      .filter(([fieldName, v]) => v.trim() !== '' && !acceptMissing[fieldName])
       .map(([fieldName, value]) => ({ fieldName, value }));
     const acceptList = Object.entries(acceptMissing)
       .filter(([, checked]) => checked)
@@ -49,16 +53,29 @@ export default function GapReportPage() {
     );
   };
 
+  const handleAddCaseDocuments = (files: FileList | File[]) => {
+    if (!jobId) return;
+    const caseFiles = Array.from(files);
+    if (caseFiles.length === 0) return;
+    addCaseDocumentsMutation.mutate(
+      { caseFiles, onStatus: setCaseUploadStatus },
+      {
+        onSettled: () => setCaseUploadStatus(null),
+      },
+    );
+  };
+
   const handleGenerate = () => {
     if (!jobId) return;
     triggerGenerateMutation.mutate(jobId, {
-      onSuccess: () => navigate(`/jobs/${jobId}/output`),
+      onSuccess: () => navigate(`/jobs/${jobId}/generate`),
     });
   };
 
   const submitting = submitJudgmentMutation.isPending;
+  const addingCaseDocuments = addCaseDocumentsMutation.isPending;
   const generating = triggerGenerateMutation.isPending;
-  const mutationError = submitJudgmentMutation.error?.message ?? triggerGenerateMutation.error?.message ?? null;
+  const mutationError = submitJudgmentMutation.error?.message ?? addCaseDocumentsMutation.error?.message ?? triggerGenerateMutation.error?.message ?? null;
 
   const errorCode = gapReportQuery.isError
     ? ((gapReportQuery.error as unknown as Record<string, unknown>).code as string | undefined)
@@ -84,7 +101,7 @@ export default function GapReportPage() {
     if (errorCode === 'template_not_ready') {
       return (
         <div className="p-8">
-          <WorkflowStepper currentStep={1} />
+          <WorkflowStepper currentStep={1} jobId={jobId} />
           <div className="max-w-lg mt-8 p-6 border border-yellow-300 bg-yellow-50 rounded-lg">
             <h2 className="text-lg font-semibold text-yellow-800 mb-2">Preparing documents…</h2>
             <p className="text-yellow-700 mb-4">
@@ -107,6 +124,18 @@ export default function GapReportPage() {
   }
 
   const report = gapReportQuery.data!;
+  const allMissingAccepted = report.gaps.length > 0 &&
+    report.gaps.every((gap) => acceptMissing[gap.fieldName]);
+
+  const handleAcceptAllMissing = (checked: boolean) => {
+    setAcceptMissing((prev) => {
+      const next = { ...prev };
+      for (const gap of report.gaps) {
+        next[gap.fieldName] = checked;
+      }
+      return next;
+    });
+  };
 
   const handleBlockClick = (blockId: string) => {
     setActiveBlockId(blockId);
@@ -116,7 +145,7 @@ export default function GapReportPage() {
 
   return (
     <div className="p-8">
-      <WorkflowStepper currentStep={1} />
+      <WorkflowStepper currentStep={1} jobId={jobId} />
       <div className="grid grid-cols-[1fr_360px] gap-8 items-start">
         {/* Left column: existing gap-report table + submit form */}
         <div className="max-w-[900px]">
@@ -130,8 +159,66 @@ export default function GapReportPage() {
             <div className="text-red-600 mb-4">{mutationError}</div>
           )}
 
+          <div className="mb-6">
+            <label className="block mb-1.5 font-semibold">Add Missed Case Documents (.pdf)</label>
+            <div
+              className={`border-2 border-dashed rounded-lg px-4 py-5 text-center cursor-pointer transition-colors ${
+                caseDrag ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/60'
+              } ${addingCaseDocuments ? 'opacity-70 cursor-wait' : ''}`}
+              onDragOver={(e) => { e.preventDefault(); if (!addingCaseDocuments) setCaseDrag(true); }}
+              onDragLeave={() => setCaseDrag(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setCaseDrag(false);
+                if (!addingCaseDocuments) handleAddCaseDocuments(e.dataTransfer.files);
+              }}
+              onClick={() => {
+                if (!addingCaseDocuments) document.getElementById('gapCaseDocs')?.click();
+              }}
+            >
+              <input
+                id="gapCaseDocs"
+                type="file"
+                accept=".pdf"
+                multiple
+                aria-hidden="true"
+                className="hidden"
+                disabled={addingCaseDocuments}
+                onChange={(e) => {
+                  handleAddCaseDocuments(e.target.files ?? []);
+                  e.currentTarget.value = '';
+                }}
+              />
+              <p className="text-sm text-text-muted">
+                {addingCaseDocuments ? (
+                  caseUploadStatus ?? 'Uploading & processing…'
+                ) : (
+                  <>Drag additional .pdf files here or <span className="text-primary underline">browse</span></>
+                )}
+              </p>
+            </div>
+
+            {addingCaseDocuments && caseUploadStatus && (
+              <div role="status" aria-live="polite" className="mt-2 flex items-center gap-2 text-sm text-blue-700">
+                <LoadingSpinner className="h-4 w-4 text-primary" />
+                <span>{caseUploadStatus}</span>
+              </div>
+            )}
+          </div>
+
           {report.gaps.length > 0 && (
             <>
+              <div className="mb-3 flex justify-end">
+                <label className="flex w-fit items-center gap-2 text-sm font-medium text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={allMissingAccepted}
+                    onChange={(e) => handleAcceptAllMissing(e.target.checked)}
+                  />
+                  Accept All Missing
+                </label>
+              </div>
+
               <table className="w-full border-collapse mb-6">
                 <thead>
                   <tr className="bg-gray-100">

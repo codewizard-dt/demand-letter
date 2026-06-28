@@ -163,6 +163,17 @@ Tailwind utility shorthand:
 text-[12px] font-normal tracking-[1px] uppercase text-primary-gold
 ```
 
+## Status and Live Feedback
+
+Use these shared role classes for status-like elements:
+
+| Role | Utility class | Notes |
+|------|---------------|-------|
+| Inline chip | `st-status` | Pill badge with uppercase microcopy and gold edge treatment |
+| Muted chip | `st-status-muted` | Muted border/text variant of `st-status` |
+| Inline banner | `st-status-banner` | Banner-style `role="status"` treatment for message rows |
+| Success banner | `st-status-banner-success` | Success-state variant of `st-status-banner` |
+
 ---
 
 ## Products / Services Reference

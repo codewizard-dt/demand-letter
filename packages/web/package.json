@@ -1,6 +1,6 @@
 {
   "name": "@demand-letter/web",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "private": true,
   "scripts": {
     "dev": "vite",
@@ -9,14 +9,20 @@
     "lint": "eslint src --ext .ts,.tsx",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
-    "test:e2e:headed": "playwright test --headed",
+    "test:e2e": "playwright test e2e/e2e.spec.ts",
+    "test:e2e:ui": "playwright test e2e/e2e.spec.ts --ui",
+    "test:e2e:headed": "playwright test e2e/e2e.spec.ts --headed",
     "test:e2e:report": "playwright show-report",
+    "test:e2e:auth": "playwright test e2e/auth.spec.ts",
+    "test:e2e:lifecycle": "playwright test e2e/full-job-lifecycle.spec.ts",
+    "test:e2e:account": "playwright test e2e/account.spec.ts",
+    "test:e2e:admin": "playwright test e2e/admin-usage.spec.ts",
+    "test:e2e:jobs-list": "playwright test e2e/jobs-list-after-lifecycle.spec.ts",
     "create-fixtures": "node scripts/create-fixtures.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.80.7",
+    "lucide-react": "^0.523.0",
     "@tiptap/core": "^3.27.1",
     "@tiptap/extension-collaboration": "^3.27.1",
     "@tiptap/extension-collaboration-cursor": "^2.26.2",

@@ -70,7 +70,7 @@ export default function AnnotatePage() {
         </button>
       </div>
       {saved && (
-        <div className="mb-4 px-4 py-3 bg-teal-50 border border-teal-300 text-teal-800 rounded-md text-sm" role="status" aria-live="polite">
+        <div className="mb-4 st-status-banner st-status-banner-success" role="status" aria-live="polite">
           Zones saved successfully.
         </div>
       )}
