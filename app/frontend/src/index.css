@@ -1,0 +1,345 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,100;0,400;0,500;0,600;0,700;1,400&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  :root {
+    --color-primary: #193D3D;
+    --color-primary-gold: #A18050;
+    --color-secondary: #346E4A;
+    --color-secondary-steel: #27455C;
+    --color-bg: #F0F1E8;
+    --color-surface: #F9FFFA;
+    --color-border: #E8E5DC;
+    --color-accent: #ABDFD4;
+    --color-error: #B5006A;
+    --color-text-muted: #696969;
+    --gradient-hero: linear-gradient(80deg, #CE11A4 0%, #B5006A 30%, #493087 76%, #2F317C 93%);
+  }
+
+  html {
+    background-color: var(--color-bg);
+    color: var(--color-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    font-size: 1rem;
+    line-height: 1.618;
+    font-weight: 400;
+    min-height: 100dvh;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: 'Playfair Display', ui-serif, Georgia, serif;
+    font-weight: 400;
+    letter-spacing: 0.25px;
+    line-height: 1.2;
+  }
+
+  img,
+  picture,
+  video,
+  canvas,
+  svg {
+    display: block;
+    max-width: 100%;
+  }
+
+  input,
+  button,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  p,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    overflow-wrap: break-word;
+  }
+
+  #root {
+    isolation: isolate;
+  }
+
+  ::selection {
+    background-color: rgba(161, 128, 80, 0.2);
+    color: var(--color-primary);
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-6 py-2.5 text-[12px] uppercase tracking-[0.25px] font-normal rounded-lg text-white transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed;
+    background-color: var(--color-primary-gold);
+    box-shadow: 0 1px 12px 0 rgba(25, 61, 61, 0.1);
+  }
+  .btn-primary:hover,
+  .btn-primary:focus-visible {
+    background-color: #7848df;
+  }
+  .btn-primary:active {
+    transform: translateY(0.5px);
+  }
+  .btn-outline {
+    @apply px-6 py-2.5 text-[12px] uppercase tracking-[0.25px] font-normal rounded-lg border border-border text-primary-gold bg-transparent transition-colors cursor-pointer hover:bg-surface disabled:opacity-60 disabled:cursor-not-allowed;
+  }
+  .st-section-heading {
+    font-family: 'Playfair Display', ui-serif, Georgia, serif;
+    font-size: 55px;
+    line-height: 1.2;
+    letter-spacing: 0.25px;
+    font-weight: 500;
+    color: var(--color-primary);
+  }
+  .st-eyebrow {
+    @apply inline-block text-[12px] font-normal uppercase tracking-[1px] text-primary-gold;
+  }
+  .st-card {
+    @apply rounded-md border border-border bg-surface shadow-sm;
+  }
+  .st-status {
+    @apply inline-flex items-center px-4 py-1 rounded-full text-[12px] font-normal uppercase tracking-[1px] leading-none;
+    border: 1px solid var(--color-primary-gold);
+    color: var(--color-primary-gold);
+    background-color: var(--color-bg);
+  }
+  .st-status-muted {
+    border-color: var(--color-border);
+    color: var(--color-text-muted);
+    background-color: var(--color-surface);
+  }
+  .st-status-banner {
+    @apply inline-flex w-full items-center gap-2 rounded-md border px-3 py-2 text-sm leading-snug;
+    color: var(--color-primary);
+    background-color: var(--color-bg);
+  }
+  .st-status-banner-success {
+    border-color: var(--color-primary-gold);
+    background-color: var(--color-surface);
+  }
+
+  .st-template-document-wrap {
+    @apply bg-white border border-border rounded-lg shadow-sm p-4 sm:p-8;
+    font-family: 'Times New Roman', 'Times', serif;
+    color: var(--color-primary);
+  }
+
+  .st-docx-preview-wrap {
+    position: relative;
+  }
+
+  .st-template-document {
+    max-width: 8.5in;
+    margin: 0 auto;
+    line-height: 1.7;
+    color: #1f2937;
+    font-size: 11pt;
+    text-align: left;
+    background: #fff;
+    padding: 0 0.1rem;
+  }
+
+  .st-docx-preview {
+    line-height: 1.9;
+    font-size: 12pt;
+  }
+
+  .st-docx-stationary {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2;
+    width: calc(100% - 2rem);
+    max-width: 8.5in;
+    pointer-events: none;
+    color: #111827;
+  }
+
+  .st-docx-stationary-header {
+    top: 0.4rem;
+  }
+
+  .st-docx-stationary-footer {
+    bottom: 0.4rem;
+  }
+
+  .st-docx-stationary-image {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 0 auto;
+  }
+
+  .st-docx-stationary-text {
+    white-space: pre-wrap;
+    font-size: 10pt;
+    line-height: 1.25;
+    text-align: center;
+  }
+
+  .st-template-document p {
+    margin: 0 0 0.9rem;
+    text-indent: 0.12in;
+    text-align: justify;
+    letter-spacing: 0.01em;
+  }
+
+  .st-template-document p.docx-paragraph,
+  .st-template-document p.docx-list-paragraph {
+    text-indent: 0;
+    margin-bottom: 0.7rem;
+  }
+
+  .st-template-document p.docx-list-paragraph {
+    margin-left: 0.75rem;
+    margin-right: 0.75rem;
+  }
+
+  .st-template-document ul,
+  .st-template-document ol {
+    margin: 0 0 0.95rem 1.3rem;
+    padding: 0;
+  }
+
+  .st-template-document li {
+    margin-bottom: 0.3rem;
+    padding-left: 0.1rem;
+  }
+
+  .st-template-document h1,
+  .st-template-document h2,
+  .st-template-document h3,
+  .st-template-document h4,
+  .st-template-document h5,
+  .st-template-document h6 {
+    margin: 1.25rem 0 0.55rem;
+    font-family: 'Times New Roman', 'Times', serif;
+    text-transform: none;
+    letter-spacing: 0;
+    color: #111827;
+    font-weight: 700;
+    font-size: 12pt;
+    line-height: 1.4;
+  }
+
+  .st-template-document hr {
+    border: none;
+    border-top: 1px solid #d1d5db;
+    margin: 1.2rem 0;
+  }
+
+  .st-template-document table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-bottom: 1rem;
+    font-size: 11pt;
+  }
+
+  .st-template-document th,
+  .st-template-document td {
+    border: 1px solid #d1d5db;
+    padding: 0.3rem 0.5rem;
+    vertical-align: top;
+  }
+
+  .st-template-document h3 {
+    font-family: 'Playfair Display', ui-serif, Georgia, serif;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-size: 1.1rem;
+    margin: 1.4rem 0 0.45rem;
+  }
+
+  .st-template-document h1.docx-title,
+  .st-template-document h1.docx-heading-1 {
+    text-transform: none;
+    text-align: center;
+    letter-spacing: 0.25px;
+    margin-top: 0;
+  }
+
+  .st-template-document h2.docx-heading-2,
+  .st-template-document h3.docx-heading-3 {
+    text-transform: none;
+    letter-spacing: 0.15px;
+  }
+
+  .st-letter-paragraph {
+    margin: 0 0 1rem;
+    text-align: justify;
+  }
+
+  .st-letter-list {
+    margin: 0 0 1rem 1.25rem;
+    padding-left: 1rem;
+    display: grid;
+    gap: 0.15rem;
+  }
+
+  .st-letter-list li {
+    margin: 0;
+    padding: 0;
+  }
+}
+
+/* TipTap / ProseMirror editor styles */
+.tiptap-editor .ProseMirror {
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  padding: 1rem;
+  min-height: 400px;
+  outline: none;
+}
+.tiptap-editor .ProseMirror:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+.boilerplate-zone {
+  background-color: #f3f4f6;
+  border-left: 3px solid #9ca3af;
+  padding-left: 0.25rem;
+  cursor: not-allowed;
+  user-select: none;
+}
+
+/* ── Track-Changes marks ──────────────────────────────────────── */
+.track-insert {
+  text-decoration: underline;
+  text-decoration-color: #16a34a;
+  background-color: rgba(22, 163, 74, 0.1);
+}
+.track-delete {
+  text-decoration: line-through;
+  text-decoration-color: #dc2626;
+  background-color: rgba(220, 38, 38, 0.1);
+  color: #dc2626;
+}
+.track-insert[data-user-name],
+.track-delete[data-user-name] {
+  cursor: help;
+}
