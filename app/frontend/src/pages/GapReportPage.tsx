@@ -101,7 +101,7 @@ export default function GapReportPage() {
     if (errorCode === 'template_not_ready') {
       return (
         <div className="p-8">
-          <WorkflowStepper currentStep={1} jobId={jobId} />
+          <WorkflowStepper currentStep={2} jobId={jobId} />
           <div className="max-w-lg mt-8 p-6 border border-yellow-300 bg-yellow-50 rounded-lg">
             <h2 className="text-lg font-semibold text-yellow-800 mb-2">Preparing documents…</h2>
             <p className="text-yellow-700 mb-4">
@@ -145,7 +145,7 @@ export default function GapReportPage() {
 
   return (
     <div className="p-8">
-      <WorkflowStepper currentStep={1} jobId={jobId} />
+      <WorkflowStepper currentStep={2} jobId={jobId} />
       <div className="grid grid-cols-[1fr_360px] gap-8 items-start">
         {/* Left column: existing gap-report table + submit form */}
         <div className="max-w-[900px]">

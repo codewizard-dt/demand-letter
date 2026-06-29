@@ -45,7 +45,7 @@ function getAttrValue(xml: string, name: string): string | undefined {
   return match?.[2];
 }
 
-function parseXmlReferences(xml: string): SectionReferences {
+function parseXmlReferences(xml: string, slot: 'header' | 'footer'): SectionReferences {
   const refs: SectionReferences = {
     default: undefined,
     first: undefined,
@@ -55,7 +55,7 @@ function parseXmlReferences(xml: string): SectionReferences {
   const sectPrs = [...xml.matchAll(/<w:sectPr\b[^>]*>([\s\S]*?)<\/w:sectPr>/g)];
   const sectionXml = sectPrs.length > 0 ? sectPrs[sectPrs.length - 1]?.[0] : xml;
 
-  const pattern = new RegExp(`<w:${name}Reference\\b([^>]*)/>`, 'g');
+  const pattern = new RegExp(`<w:${slot}Reference\\b([^>]*)/>`, 'g');
   for (const match of sectionXml.matchAll(pattern)) {
     const attrs = match[1] ?? '';
     const slotType = getAttrValue(attrs, 'w:type');
@@ -106,7 +106,7 @@ function extractTextFromXml(xml: string): string {
 
   for (const paraMatch of withoutTabs.matchAll(paraRegex)) {
     const paraBody = paraMatch[1] ?? '';
-    const textChunks = [...paraBody.matchAll(/<w:t[^>]*>([\s\S]*?)<\/w:t>/g)].map((m) => decodeXmlText(m[1] ?? ''));
+    const textChunks = [...paraBody.matchAll(/<w:t\b[^>]*>([\s\S]*?)<\/w:t>/g)].map((m) => decodeXmlText(m[1] ?? ''));
     const text = textChunks.join('');
     if (text.trim()) paragraphs.push(text);
   }
@@ -200,8 +200,8 @@ export function extractDocxStationaries(buffer: Buffer): DocxStationary[] {
     const relationshipsXml = asDocumentText(zip, 'word/_rels/document.xml.rels') ?? '';
     const documentRels = parseRelationships(relationshipsXml);
     const refs = {
-      header: parseXmlReferences(documentXml),
-      footer: parseXmlReferences(documentXml),
+      header: parseXmlReferences(documentXml, 'header'),
+      footer: parseXmlReferences(documentXml, 'footer'),
     };
 
     const stationaries: DocxStationary[] = [];

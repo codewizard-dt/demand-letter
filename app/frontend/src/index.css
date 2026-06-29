@@ -168,6 +168,11 @@
     font-size: 12pt;
   }
 
+  .st-original-docx-preview {
+    line-height: 1.18;
+    font-size: 10pt;
+  }
+
   .st-docx-stationary {
     position: absolute;
     left: 50%;
@@ -212,6 +217,15 @@
   .st-template-document p.docx-list-paragraph {
     text-indent: 0;
     margin-bottom: 0.7rem;
+  }
+
+  .st-original-docx-preview p,
+  .st-original-docx-preview p.docx-paragraph,
+  .st-original-docx-preview p.docx-list-paragraph {
+    margin: 0 0 0.07in;
+    text-indent: 0;
+    text-align: left;
+    letter-spacing: 0;
   }
 
   .st-template-document p.docx-list-paragraph {

@@ -4,7 +4,7 @@ Description: Demand Letter Generator — SAM application
 
 Globals:
   Function:
-    Runtime: nodejs20.x
+    Runtime: nodejs24.x
     Timeout: 30
     MemorySize: 512
     Architectures:
@@ -188,17 +188,17 @@ Resources:
       LayerName: !Sub '${Stage}-demand-letter-db'
       ContentUri: packages/db/
       CompatibleRuntimes:
-        - nodejs20.x
+        - nodejs24.x
       RetentionPolicy: Delete
     Metadata:
-      BuildMethod: nodejs20.x
+      BuildMethod: nodejs24.x
 
   GetJobsFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: .build/handlers/
       Handler: get-jobs.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Layers:
         - !Ref DbLayer
       Events:
@@ -215,7 +215,7 @@ Resources:
     Properties:
       CodeUri: .build/handlers/
       Handler: post-jobs.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Policies:
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
@@ -239,7 +239,7 @@ Resources:
     Properties:
       CodeUri: .build/handlers/
       Handler: post-jobs-files.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Policies:
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
@@ -266,7 +266,7 @@ Resources:
     Properties:
       CodeUri: .build/handlers/
       Handler: get-admin-llm-costs.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Policies:
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
@@ -290,7 +290,7 @@ Resources:
     Properties:
       CodeUri: .build/handlers/
       Handler: post-jobs-generate.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Timeout: 300
       Layers:
         - !Ref DbLayer
@@ -310,7 +310,7 @@ Resources:
     Properties:
       CodeUri: .build/handlers/
       Handler: post-jobs-refine.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Timeout: 300
       Layers:
         - !Ref DbLayer
@@ -336,7 +336,7 @@ Resources:
     Properties:
       CodeUri: .build/handlers/
       Handler: get-jobs-output.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Policies:
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
@@ -363,7 +363,7 @@ Resources:
     Properties:
       CodeUri: .build/handlers/
       Handler: get-jobs-output-docx.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Policies:
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
@@ -384,7 +384,7 @@ Resources:
     Properties:
       CodeUri: .build/handlers/
       Handler: get-jobs-output-docx-preview.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Policies:
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
@@ -405,7 +405,7 @@ Resources:
     Properties:
       CodeUri: .build/handlers/
       Handler: get-jobs-template-zones.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Policies:
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
@@ -424,12 +424,48 @@ Resources:
             Path: /jobs/{id}/templates/{templateId}/zones
             Method: get
 
+  GetJobsTemplateOriginalDocxFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: get-jobs-template-original-docx.handler
+      Runtime: nodejs24.x
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
+      Layers:
+        - !Ref DbLayer
+      Events:
+        GetJobsTemplateOriginalDocxApi:
+          Type: Api
+          Properties:
+            Path: /jobs/{id}/templates/{templateId}/original.docx
+            Method: get
+
+  GetJobsTemplateOriginalPreviewFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: get-jobs-template-original-preview.handler
+      Runtime: nodejs24.x
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
+      Layers:
+        - !Ref DbLayer
+      Events:
+        GetJobsTemplateOriginalPreviewApi:
+          Type: Api
+          Properties:
+            Path: /jobs/{id}/templates/{templateId}/original/preview
+            Method: get
+
   PatchJobsTemplateZonesFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: .build/handlers/
       Handler: patch-jobs-template-zones.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Policies:
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
@@ -453,7 +489,7 @@ Resources:
     Properties:
       CodeUri: .build/handlers/
       Handler: post-jobs-templates-classify.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Timeout: 120
       Policies:
         - S3CrudPolicy:
@@ -481,7 +517,7 @@ Resources:
     Properties:
       CodeUri: .build/handlers/
       Handler: post-jobs-templates-inject.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Timeout: 60
       Policies:
         - S3CrudPolicy:
@@ -503,7 +539,7 @@ Resources:
     Properties:
       CodeUri: .build/handlers/
       Handler: post-jobs-templates-segment.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Policies:
         - S3ReadPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
@@ -524,7 +560,7 @@ Resources:
     Properties:
       CodeUri: .build/handlers/
       Handler: get-jobs-files.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Layers:
         - !Ref DbLayer
       Events:
@@ -539,7 +575,7 @@ Resources:
     Properties:
       CodeUri: .build/handlers/
       Handler: get-jobs-logs.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Layers:
         - !Ref DbLayer
       Events:
@@ -554,7 +590,7 @@ Resources:
     Properties:
       CodeUri: .build/handlers/
       Handler: get-jobs-template-slots.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Layers:
         - !Ref DbLayer
       Events:
@@ -569,7 +605,7 @@ Resources:
     Properties:
       CodeUri: .build/handlers/
       Handler: post-jobs-documents-ingest.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Timeout: 300
       MemorySize: 512
       Layers:
@@ -603,7 +639,7 @@ Resources:
     Properties:
       CodeUri: .build/handlers/
       Handler: sns-textract-completion.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Timeout: 300
       MemorySize: 512
       Layers:
@@ -628,7 +664,7 @@ Resources:
     Properties:
       CodeUri: .build/handlers/
       Handler: get-jobs-blocks.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Timeout: 30
       MemorySize: 256
       Layers:
@@ -647,7 +683,7 @@ Resources:
     Properties:
       CodeUri: .build/handlers/
       Handler: post-jobs-extract.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Timeout: 300
       Layers:
         - !Ref DbLayer
@@ -672,7 +708,7 @@ Resources:
     Properties:
       CodeUri: .build/handlers/
       Handler: get-jobs-gap-report.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Timeout: 30
       MemorySize: 256
       Layers:
@@ -691,7 +727,7 @@ Resources:
     Properties:
       CodeUri: .build/handlers/
       Handler: get-jobs-fields.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Timeout: 30
       MemorySize: 256
       Layers:
@@ -710,7 +746,7 @@ Resources:
     Properties:
       CodeUri: .build/handlers/
       Handler: post-jobs-attorney-judgment.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Timeout: 30
       MemorySize: 256
       Layers:
@@ -729,7 +765,7 @@ Resources:
     Properties:
       CodeUri: .build/handlers/
       Handler: patch-jobs-refine-accept.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Timeout: 30
       MemorySize: 256
       Layers:
@@ -748,7 +784,7 @@ Resources:
     Properties:
       CodeUri: .build/handlers/
       Handler: patch-jobs-refine-reject.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Timeout: 30
       MemorySize: 256
       Layers:
@@ -767,7 +803,7 @@ Resources:
     Properties:
       CodeUri: .build/handlers/
       Handler: get-jobs-refinements.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Timeout: 30
       MemorySize: 256
       Layers:
@@ -786,7 +822,7 @@ Resources:
     Properties:
       CodeUri: .build/handlers/
       Handler: get-jobs-changes.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Timeout: 30
       MemorySize: 256
       Layers:
@@ -805,7 +841,7 @@ Resources:
     Properties:
       CodeUri: .build/handlers/
       Handler: delete-jobs-changes.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Timeout: 30
       MemorySize: 256
       Layers:
@@ -915,7 +951,7 @@ Resources:
     Properties:
       CodeUri: .build/handlers/
       Handler: websocket-sync.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Timeout: 30
       MemorySize: 256
       Layers:
@@ -960,7 +996,7 @@ Resources:
     Properties:
       CodeUri: .build/handlers/
       Handler: merge-yjs-snapshot.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Timeout: 300
       MemorySize: 512
       Layers:
@@ -993,7 +1029,7 @@ Resources:
     Properties:
       CodeUri: .build/handlers/
       Handler: post-jobs-export-docx.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Layers:
         - !Ref DbLayer
       Events:
@@ -1008,7 +1044,7 @@ Resources:
     Properties:
       CodeUri: .build/handlers/
       Handler: get-jobs-export-docx.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Layers:
         - !Ref DbLayer
       Events:

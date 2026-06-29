@@ -1,4 +1,5 @@
 import mammoth from 'mammoth';
+import { normalizeExtractedText } from './text-normalization';
 
 export interface ParsedBlock {
   type: string;
@@ -22,7 +23,7 @@ export async function parsePdfNative(buffer: Buffer): Promise<ParsedBlock[]> {
       const pageText: string = pageData.text || '';
       // Split by newlines to create line-level blocks
       pageText.split('\n').forEach((line: string) => {
-        const trimmed = line.trim();
+        const trimmed = normalizeExtractedText(line);
         if (trimmed) {
           blocks.push({
             type: 'LINE',
@@ -37,7 +38,7 @@ export async function parsePdfNative(buffer: Buffer): Promise<ParsedBlock[]> {
   } else if (result.text) {
     // Fallback: treat the full text as a single page
     result.text.split('\n').forEach((line: string) => {
-      const trimmed = line.trim();
+      const trimmed = normalizeExtractedText(line);
       if (trimmed) {
         blocks.push({
           type: 'LINE',
@@ -58,7 +59,7 @@ export async function parseDocx(buffer: Buffer): Promise<ParsedBlock[]> {
   const blocks: ParsedBlock[] = [];
   // DOCX doesn't have page boundaries; treat as single page
   text.split('\n').forEach((line: string) => {
-    const trimmed = line.trim();
+    const trimmed = normalizeExtractedText(line);
     if (trimmed) {
       blocks.push({
         type: 'PARAGRAPH',

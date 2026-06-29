@@ -1,6 +1,6 @@
 {
   "name": "@demand-letter/api",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "main": "dist/index.js",
   "scripts": {
@@ -37,7 +37,7 @@
   "devDependencies": {
     "@types/aws-lambda": "^8.10.0",
     "@types/busboy": "^1.5.4",
-    "@types/node": "*",
+    "@types/node": "^24.0.0",
     "@types/pdf-parse": "^1.1.5",
     "@types/pizzip": "^3.1.2",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
@@ -50,5 +50,8 @@
     "typescript": "*",
     "vitest": "^2.0.0",
     "vitest-mock-extended": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=24 <25"
   }
 }

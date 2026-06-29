@@ -1,4 +1,5 @@
 import type { APIGatewayProxyHandlerV2 } from 'aws-lambda';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@demand-letter/db';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { enumerateSlots } from '../lib/docx-inspect';
@@ -94,7 +95,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
           templateId: template.id,
           zoneIndex: z.zoneIndex,
           textContent: z.textContent,
-          runPath: [],
+          runPath: z.runPath as unknown as Prisma.InputJsonValue,
         })),
         skipDuplicates: true,
       });

@@ -17,19 +17,30 @@ export function defineFullJobLifecycleSuite(state: LifecycleState = createLifecy
       await expect(page).toHaveURL('/upload');
     });
 
-    test('upload template + case document and reach gap report', async ({ page }) => {
+    test('upload template, confirm parsing, upload case document, and reach gap report', async ({ page }) => {
       test.setTimeout(6 * 60 * 1000);
       await injectAuth(page);
       await page.goto('/upload');
 
-      await expect(page.getByRole('heading', { name: 'Upload Documents' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Upload Template' })).toBeVisible();
       await page.locator('#template').setInputFiles(path.join(FIXTURES, 'template.docx'));
-      await page.locator('#caseDocs').setInputFiles(path.join(FIXTURES, 'case-doc.pdf'));
       await expect(page.getByText('template.docx')).toBeVisible();
+      await Promise.all([
+        page.waitForURL(/\/jobs\/[^/]+\/templates\/[^/]+\/annotate/, { timeout: 5 * 60 * 1000 }),
+        page.getByRole('button', { name: 'Upload Template' }).click(),
+      ]);
+
+      await expect(page.getByRole('heading', { name: 'Review Template Parsing' })).toBeVisible();
+      await expect(page.getByText('Sections')).toBeVisible();
+      await page.getByRole('button', { name: 'Confirm All Sections' }).click();
+      await page.getByRole('button', { name: 'Continue to Case Documents' }).click();
+
+      await expect(page.getByRole('heading', { name: 'Upload Case Documents' })).toBeVisible();
+      await page.locator('#caseDocs').setInputFiles(path.join(FIXTURES, 'case-doc.pdf'));
       await expect(page.getByText('case-doc.pdf')).toBeVisible();
       await Promise.all([
         page.waitForURL(/\/jobs\/[^/]+\/gap-report/, { timeout: 5 * 60 * 1000 }),
-        page.getByRole('button', { name: 'Upload & Continue' }).click(),
+        page.getByRole('button', { name: 'Upload Case Documents' }).click(),
       ]);
 
       const match = page.url().match(/\/jobs\/([^/]+)\/gap-report/);
@@ -161,9 +172,7 @@ export function defineFullJobLifecycleSuite(state: LifecycleState = createLifecy
       await expect(page.getByText('case-doc.pdf')).toBeVisible({ timeout: 15_000 });
       await expect(page.getByRole('heading', { name: 'Job Log' })).toBeVisible();
       await page.waitForLoadState('networkidle');
-      await expect(page.getByRole('link', { name: '← Back to Gap Report' })).toBeVisible();
-      await page.getByRole('link', { name: '← Back to Gap Report' }).click();
-      await expect(page).toHaveURL(`/jobs/${state.jobId}/gap-report`);
+      await expect(page.getByRole('button', { name: 'Upload Case Documents' })).toBeVisible();
     });
   });
 }

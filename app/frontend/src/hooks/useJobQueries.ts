@@ -16,6 +16,7 @@ import {
   fetchJobLogs,
   fetchOutputDocx,
   fetchOutputDocxByUrl,
+  fetchTemplateOriginalPreview,
 } from '../lib/api';
 
 export function useLlmCosts(days = 30) {
@@ -129,6 +130,16 @@ export function useTemplateZones(jobId: string | undefined, templateId: string |
     queryKey: queryKeys.templateZones(jobId!, templateId!),
     queryFn: () => getTemplateZones(jobId!, templateId!),
     enabled: !!jobId && !!templateId,
+  });
+}
+
+export function useTemplateOriginalPreview(jobId: string | undefined, templateId: string | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.templateOriginalPreview(jobId!, templateId!),
+    queryFn: () => fetchTemplateOriginalPreview(jobId!, templateId!),
+    enabled: !!jobId && !!templateId && enabled,
+    staleTime: Infinity,
+    gcTime: Infinity,
   });
 }
 

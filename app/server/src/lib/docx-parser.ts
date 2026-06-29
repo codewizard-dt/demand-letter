@@ -1,6 +1,7 @@
 import PizZip from 'pizzip';
 import { XMLParser } from 'fast-xml-parser';
 import { OoxmlZone, OoxmlRun } from './docx-types';
+import { repairMissingSpaces } from './text-normalization';
 
 const XML_PARSER = new XMLParser({
   ignoreAttributes: false,
@@ -53,7 +54,7 @@ export function parseDocxToZones(buffer: Buffer): OoxmlZone[] {
       return { runIndex, runPath: { paragraphIndex: zoneIndex, runIndex }, text, bold, italic, font, fontSize };
     });
 
-    const textContent = runs.map((r) => r.text).join('');
+    const textContent = repairMissingSpaces(runs.map((r) => r.text).join(''));
     return { zoneIndex, paragraphStyle: pStyle, runs, textContent };
   });
 }

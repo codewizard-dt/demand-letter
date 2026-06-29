@@ -32,6 +32,7 @@ The wiki is split into two domains with opposite organizing laws:
 - [Research — API Testing Strategy (Unit + Integration)](knowledge/sources/api-testing-strategy.md) — Vitest (node env) for packages/api; aws-sdk-client-mock for AWS SDK v3; vitest-mock-extended for Prisma; lib split: 18 pure + 8 AWS-dependent; Lambda handler scaffold
 - [Primary Sources — API Testing Strategy](knowledge/sources/api-testing-strategy-sources.md) — Bibliography register: 8 sources (2 codebase, 6 web) with verbatim excerpts backing the testing patterns
 - [Research — Steno Brand Style Assets](knowledge/sources/steno-brand.md) — Visual + CSS evidence from steno.com (type scale, buttons, cards, status-role patterns) for consistent frontend styling
+- [Research — Node 24 Runtime Upgrade](knowledge/sources/node-24-runtime-upgrade.md) — Runtime research and implementation record selecting Node 24 as the highest current safe target across local, CI, Lambda, build, and typings surfaces
 
 ### Concepts
 
@@ -45,6 +46,7 @@ The wiki is split into two domains with opposite organizing laws:
 - [HIPAA and SOC 2 Compliance on AWS](knowledge/concepts/hipaa-soc2-compliance-aws.md) — Encryption vs redaction distinction; what each standard requires; PHI vs PII in logs; three-tier AWS compliance stack; Presidio vs AWS-native scrubbing
 - [Lambda Handler Testing (TypeScript)](knowledge/concepts/lambda-handler-testing.md) — Integration test scaffold for Lambda handlers: mock boundaries (AWS SDK + Prisma), test file pattern, pdfjs-dist constraint
 - [Steno Brand Style System](knowledge/concepts/steno-brand-style-system.md) — Steno visual identity model: tone, palette, typography, buttons, labels, and component tokens for frontend consistency
+- [Node Runtime Policy](knowledge/concepts/node-runtime-policy.md) — Repo-wide versioning rule aligning local Node, package engines, CI, Lambda runtimes, SAM build methods, esbuild targets, and Node typings
 
 ### Entities
 
@@ -77,6 +79,8 @@ The wiki is split into two domains with opposite organizing laws:
 - [Vitest](knowledge/entities/tools/vitest.md) — Test runner for both packages/web and packages/api; node environment for Lambda backend; jest-compatible API
 - [aws-sdk-client-mock](knowledge/entities/tools/aws-sdk-client-mock.md) — AWS-endorsed library for mocking SDK v3 clients in Vitest; intercepts client.send() without network calls
 - [vitest-mock-extended](knowledge/entities/tools/vitest-mock-extended.md) — Type-safe deep mocking for Vitest; primary use is mockDeep\<PrismaClient\>() for handler integration tests
+- [Node.js](knowledge/entities/tools/nodejs.md) — JavaScript runtime standardized to Node 24 for this repo across local tools, CI, Lambda, builds, and type declarations
+- [AWS Lambda](knowledge/entities/tools/aws-lambda.md) — Managed serverless runtime target; current Node policy uses Lambda `nodejs24.x` support as the maximum safe deployment bound
 
 **Components**
 

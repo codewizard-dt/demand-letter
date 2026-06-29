@@ -32,7 +32,7 @@ if (typeof globalThis.ImageData === 'undefined') {
 if (typeof globalThis.Path2D === 'undefined') { globalThis.Path2D = function Path2D() {}; }
 `.trim();
 
-const base = { bundle: true, platform: 'node', target: 'node20', outdir: OUT };
+const base = { bundle: true, platform: 'node', target: 'node24', outdir: OUT };
 
 await build({ ...base, entryPoints: wsSync, external: ['@aws-sdk/client-dynamodb', '@aws-sdk/client-apigatewaymanagementapi'] });
 await build({ ...base, entryPoints: rest, external: ['@prisma/client'], banner: { js: pdfJsPolyfill } });

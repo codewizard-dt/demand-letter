@@ -1,5 +1,5 @@
 import { LlmFeature, ZoneType } from '@demand-letter/db';
-import { invokeModel } from './ai-provider';
+import { getBasicModelId, invokeModel } from './ai-provider';
 import { CANONICAL_FIELDS } from './zone-field-schema';
 
 export interface ZoneClassification {
@@ -12,7 +12,7 @@ export async function classifyZones(
   zones: Array<{ zoneIndex: number; textContent: string }>,
   userId: string,
 ): Promise<ZoneClassification[]> {
-  const modelId = process.env.BEDROCK_MODEL_ID!;
+  const modelId = getBasicModelId();
 
   const systemPrompt =
     `You are a legal document classifier. Classify each zone of a demand letter template as either "boilerplate_verbatim" (fixed legal language that must never be paraphrased) or "variable_populated" (a fill-in slot). For variable zones, suggest a field name from this canonical schema:\n${CANONICAL_FIELDS}\n\n` +

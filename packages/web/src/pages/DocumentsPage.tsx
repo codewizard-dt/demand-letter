@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { useJobFiles, useJobLogs } from '../hooks/useJobQueries';
+import { useAddCaseDocuments } from '../hooks/useJobMutations';
 import type { FileRow, JobLogRow } from '../lib/api';
 import WorkflowStepper from '../components/WorkflowStepper';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleString();
@@ -91,25 +93,102 @@ function LogEntry({ entry }: { entry: JobLogRow }) {
 export default function DocumentsPage() {
   useDocumentTitle('Documents — Steno');
   const { id: jobId } = useParams<{ id: string }>();
+  const navigate = useNavigate();
 
   const filesQuery = useJobFiles(jobId);
   const logsQuery = useJobLogs(jobId);
+  const addCaseDocumentsMutation = useAddCaseDocuments(jobId!);
+  const [caseFiles, setCaseFiles] = useState<File[]>([]);
+  const [caseDrag, setCaseDrag] = useState(false);
+  const [caseUploadStatus, setCaseUploadStatus] = useState<string | null>(null);
 
   const files = filesQuery.data ?? [];
   const logs = logsQuery.data ?? [];
   const hasErrors = logs.some((l) => l.level === 'error' || l.level === 'warn');
+  const loading = addCaseDocumentsMutation.isPending;
+  const error = addCaseDocumentsMutation.error ? String(addCaseDocumentsMutation.error) : null;
+
+  function appendCaseFiles(files: FileList | File[]) {
+    const nextFiles = Array.from(files);
+    if (nextFiles.length === 0) return;
+    setCaseFiles(prev => [...prev, ...nextFiles]);
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!jobId || caseFiles.length === 0) return;
+    addCaseDocumentsMutation.mutate(
+      { caseFiles, onStatus: setCaseUploadStatus },
+      {
+        onSuccess: () => navigate(`/jobs/${jobId}/gap-report`),
+        onSettled: () => setCaseUploadStatus(null),
+      },
+    );
+  }
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
-      <WorkflowStepper currentStep={0} jobId={jobId} />
+      <WorkflowStepper currentStep={1} jobId={jobId} />
 
-      <div className="mb-6">
-        <Link to={`/jobs/${jobId}/gap-report`} className="text-blue-600 underline text-sm">
-          ← Back to Gap Report
-        </Link>
-      </div>
+      <h1 className="text-2xl font-bold mb-6">Upload Case Documents</h1>
 
-      <h1 className="text-2xl font-bold mb-8">Documents</h1>
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 rounded-md px-4 py-3 mb-4">
+          {error}
+        </div>
+      )}
+
+      {loading && caseUploadStatus && (
+        <div role="status" aria-live="polite" className="mb-4 st-status-banner">
+          <LoadingSpinner className="h-4 w-4 text-primary" />
+          <span>{caseUploadStatus}</span>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="mb-10">
+        <label className="block mb-1.5 font-semibold">Case Documents (.pdf)</label>
+        <div
+          className={`border-2 border-dashed rounded-lg px-4 py-6 text-center cursor-pointer transition-colors ${caseDrag ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/60'} ${loading ? 'opacity-70 cursor-wait' : ''}`}
+          onDragOver={(e) => { e.preventDefault(); if (!loading) setCaseDrag(true); }}
+          onDragLeave={() => setCaseDrag(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setCaseDrag(false);
+            if (!loading) appendCaseFiles(e.dataTransfer.files);
+          }}
+          onClick={() => {
+            if (!loading) document.getElementById('caseDocs')?.click();
+          }}
+        >
+          <input
+            id="caseDocs"
+            type="file"
+            accept=".pdf"
+            multiple
+            aria-hidden="true"
+            className="hidden"
+            disabled={loading}
+            onChange={(e) => {
+              appendCaseFiles(e.target.files ?? []);
+              e.currentTarget.value = '';
+            }}
+          />
+          {caseFiles.length > 0 ? (
+            <ul className="text-sm text-primary font-medium space-y-0.5">
+              {caseFiles.map((f, index) => <li key={`${f.name}-${f.lastModified}-${index}`}>{f.name}</li>)}
+            </ul>
+          ) : (
+            <p className="text-sm text-text-muted">Drag .pdf files here or <span className="text-primary underline">browse</span></p>
+          )}
+        </div>
+        <button
+          type="submit"
+          disabled={loading || caseFiles.length === 0}
+          className="btn-primary mt-4"
+        >
+          {loading ? 'Uploading & processing…' : 'Upload Case Documents'}
+        </button>
+      </form>
 
       {/* Uploaded Files section */}
       <section className="mb-10">

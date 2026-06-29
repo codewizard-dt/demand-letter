@@ -1042,3 +1042,6 @@ Ingested from `raw/research/steno-brand/index.md`, `raw/research/steno-brand/ind
 
 ## [2026-06-28] ingest | Steno Brand Status-role Supplement (index-2)
 Ingested from `raw/research/steno-brand/index-2.md`. Key claims: status and confirmation messaging should be standardized as first-class brand roles using `st-status`, `st-status-muted`, `st-status-banner`, and `st-status-banner-success`; project style skill now maps these roles across pages/components before page-specific tuning. 1 entity page touched (Steno), 1 concept page touched (Steno Brand Style System).
+
+## [2026-06-29] ingest | Research — Node 24 Runtime Upgrade
+Ingested from `raw/research/node-24-runtime-upgrade/index.md`. Key claims: Node 24 is the maximum current safe repo-wide target because AWS Lambda supports `nodejs24.x` while Node 26 is only upcoming; the dependency set accepts Node 24 without major upgrades; runtime policy now spans local version files, package engines, CI, SAM runtimes/build methods, esbuild targets, and Node typings. 2 entity pages touched, 1 concept page touched.

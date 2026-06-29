@@ -60,7 +60,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     const buffer = Buffer.from(bytes);
     const stationaries = extractDocxStationaries(buffer);
     const { value: html } = await mammoth.convertToHtml(
-      { arrayBuffer: buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) },
+      { buffer },
       {
         ignoreEmptyParagraphs: false,
         styleMap: DOCX_STYLE_MAP,

@@ -1,10 +1,10 @@
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import { LlmFeature, prisma } from '@demand-letter/db';
-import { invokeModelStream } from '../lib/ai-provider';
+import { getBasicModelId, invokeModelStream } from '../lib/ai-provider';
 import { getCorsHeaders } from '../lib/cors';
 import { errorResponse } from '../lib/error-response';
 
-const MODEL_ID = process.env.BEDROCK_MODEL_ID ?? '';
+const MODEL_ID = getBasicModelId();
 
 export const handler: APIGatewayProxyHandler = async (event) => {
   const jobId = event.pathParameters?.id;

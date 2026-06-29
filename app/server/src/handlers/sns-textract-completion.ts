@@ -5,6 +5,7 @@ import { getTextractResults } from '../lib/textract-client';
 import { detectPhi } from '../lib/comprehend-medical-client';
 import { detectPii } from '../lib/comprehend-client';
 import { mergeEntities } from '../lib/merge-entities';
+import { normalizeExtractedText } from '../lib/text-normalization';
 
 
 export const handler = async (event: SNSEvent): Promise<void> => {
@@ -53,14 +54,15 @@ export const handler = async (event: SNSEvent): Promise<void> => {
       }> = [];
 
       for (const r of results) {
+        const normalizedText = normalizeExtractedText(r.text);
         // Fail-closed: if detection throws, block is NOT inserted (error surfaces via outer catch)
-        const phiEntities = await detectPhi(r.text);
-        const piiEntities = await detectPii(r.text);
+        const phiEntities = await detectPhi(normalizedText);
+        const piiEntities = await detectPii(normalizedText);
         const mergedEntities = mergeEntities(phiEntities, piiEntities);
         blockData.push({
           sourceFileId: sourceFile.id,
           type: r.type,
-          text: r.text,
+          text: normalizedText,
           page: r.page,
           confidence: r.confidence,
           bbox: r.bbox as Prisma.InputJsonValue,

@@ -1,23 +1,27 @@
 {
   "name": "@demand-letter/db",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc --project tsconfig.json",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext .ts",
-    "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate deploy",
-    "db:push": "prisma db push",
-    "lambda-layer": "prisma generate && node scripts/build-lambda-layer.mjs"
+    "db:generate": "DOTENV_CONFIG_PATH=../../.env node -r dotenv/config node_modules/prisma/build/index.js generate",
+    "db:migrate": "DOTENV_CONFIG_PATH=../../.env node -r dotenv/config node_modules/prisma/build/index.js migrate deploy",
+    "db:push": "DOTENV_CONFIG_PATH=../../.env node -r dotenv/config node_modules/prisma/build/index.js db push",
+    "lambda-layer": "pnpm db:generate && node scripts/build-lambda-layer.mjs"
   },
   "dependencies": {
     "@prisma/client": "^5.0.0",
+    "dotenv": "^16.0.0",
     "prisma": "^5.0.0"
   },
   "devDependencies": {
-    "@types/node": "*",
+    "@types/node": "^24.0.0",
     "typescript": "*"
+  },
+  "engines": {
+    "node": ">=24 <25"
   }
 }

@@ -7,6 +7,16 @@ import { LlmFeature, prisma } from '@demand-letter/db';
 import { estimateCostUsd } from './ai';
 
 const client = new BedrockRuntimeClient({ region: process.env.AWS_REGION ?? 'us-east-1' });
+const DEFAULT_BASIC_MODEL_ID = 'us.anthropic.claude-haiku-4-5-20251001-v1:0';
+const DEFAULT_LOGIC_MODEL_ID = 'us.anthropic.claude-sonnet-4-5-20250929-v1:0';
+
+export function getBasicModelId(): string {
+  return process.env.BEDROCK_MODEL_ID_BASIC ?? process.env.BEDROCK_MODEL_ID ?? DEFAULT_BASIC_MODEL_ID;
+}
+
+export function getLogicModelId(): string {
+  return process.env.BEDROCK_MODEL_ID_LOGIC ?? process.env.BEDROCK_MODEL_ID ?? DEFAULT_LOGIC_MODEL_ID;
+}
 
 interface InvokeOptions {
   modelId: string;

@@ -245,7 +245,7 @@ export default function GeneratePage() {
 
   return (
     <div className="p-8 max-w-3xl mx-auto">
-      <WorkflowStepper currentStep={2} jobId={id} />
+      <WorkflowStepper currentStep={3} jobId={id} />
       <h1 className="text-2xl font-bold mb-6">Generate Demand Letter</h1>
 
       {!isDone && (

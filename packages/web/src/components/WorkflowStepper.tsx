@@ -1,28 +1,34 @@
 import { Link } from 'react-router-dom';
 
-const STEPS = ['Upload', 'Gap Report', 'Generate', 'Editor', 'Done'];
+const STEPS = ['Template', 'Case Documents', 'Gap Report', 'Generate', 'Editor', 'Done'];
 
 interface Props {
   currentStep: number; // 0-indexed
   jobId?: string;
+  templateId?: string;
+  className?: string;
 }
 
-function getStepHref(step: number, jobId?: string): string | null {
-  if (step === 0) return jobId ? `/jobs/${jobId}/documents` : '/upload';
+function getStepHref(step: number, jobId?: string, templateId?: string): string | null {
+  if (step === 0) {
+    if (jobId && templateId) return `/jobs/${jobId}/templates/${templateId}/annotate`;
+    return '/upload';
+  }
   if (!jobId) return null;
-  if (step === 1) return `/jobs/${jobId}/gap-report`;
-  if (step === 2) return `/jobs/${jobId}/generate`;
-  if (step === 3) return `/jobs/${jobId}/editor`;
+  if (step === 1) return `/jobs/${jobId}/documents`;
+  if (step === 2) return `/jobs/${jobId}/gap-report`;
+  if (step === 3) return `/jobs/${jobId}/generate`;
+  if (step === 4) return `/jobs/${jobId}/editor`;
   return null;
 }
 
-export default function WorkflowStepper({ currentStep, jobId }: Props) {
+export default function WorkflowStepper({ currentStep, jobId, templateId, className = '' }: Props) {
   return (
-    <nav aria-label="Workflow progress" className="flex items-center gap-0 mb-8">
+    <nav aria-label="Workflow progress" className={`flex items-center gap-0 mb-8 ${className}`}>
       {STEPS.map((label, i) => {
         const done = i < currentStep;
         const active = i === currentStep;
-        const href = done ? getStepHref(i, jobId) : null;
+        const href = done ? getStepHref(i, jobId, templateId) : null;
         const pillClassName = `flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${
           active ? 'bg-primary text-white' : done ? 'text-primary' : 'text-text-muted'
         } ${href ? 'hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary' : ''}`;

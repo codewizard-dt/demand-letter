@@ -1,5 +1,5 @@
 import { prisma, LlmFeature } from '@demand-letter/db';
-import { invokeModelWithTools } from './ai-provider';
+import { getBasicModelId, invokeModelWithTools } from './ai-provider';
 import { buildExtractionTool, CANONICAL_FIELDS } from './extraction-schema';
 
 export async function runGroundedExtraction(jobId: string, userId: string): Promise<void> {
@@ -17,7 +17,7 @@ export async function runGroundedExtraction(jobId: string, userId: string): Prom
 
   // 3. Call the provider wrapper
   const result = await invokeModelWithTools({
-    modelId: process.env.BEDROCK_MODEL_ID ?? 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
+    modelId: getBasicModelId(),
     feature: LlmFeature.case_extraction,
     userId,
     system: `You are a precise legal document extraction assistant.

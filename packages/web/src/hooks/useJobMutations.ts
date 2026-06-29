@@ -24,10 +24,13 @@ import {
   type ChangeRow,
 } from '../lib/api';
 
-interface UploadWorkflowInput {
+interface UploadTemplateWorkflowInput {
   templateFile: File;
-  caseFiles: File[];
   onStatus?: (status: string) => void;
+}
+
+interface UploadWorkflowInput extends UploadTemplateWorkflowInput {
+  caseFiles: File[];
 }
 
 interface AddCaseDocumentsInput {
@@ -82,6 +85,30 @@ export function useUploadWorkflow() {
 
       onStatus?.('Opening gap report…');
       return id;
+    },
+  });
+}
+
+export function useUploadTemplateWorkflow() {
+  return useMutation({
+    mutationFn: async ({ templateFile, onStatus }: UploadTemplateWorkflowInput) => {
+      onStatus?.('Creating job…');
+      const { id } = await createJob();
+
+      onStatus?.('Uploading template…');
+      await uploadFile(id, templateFile);
+
+      onStatus?.('Segmenting template…');
+      const { templateId } = await segmentTemplate(id);
+
+      onStatus?.('Classifying template zones…');
+      await classifyTemplate(id, templateId);
+
+      onStatus?.('Preparing template fields…');
+      await injectTemplate(id, templateId);
+
+      onStatus?.('Opening template review…');
+      return { jobId: id, templateId };
     },
   });
 }
@@ -213,7 +240,10 @@ export function useRejectRefinement(jobId: string) {
 export function usePatchTemplateZones(jobId: string, templateId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (zones: Zone[]) => patchTemplateZones(jobId, templateId, zones),
+    mutationFn: (input: Zone[] | { zones: Zone[]; removeZoneIds?: string[] }) => {
+      if (Array.isArray(input)) return patchTemplateZones(jobId, templateId, input);
+      return patchTemplateZones(jobId, templateId, input.zones, input.removeZoneIds);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.templateZones(jobId, templateId) });
     },

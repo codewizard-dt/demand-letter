@@ -122,7 +122,7 @@ export default function EditorPage() {
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
-      <WorkflowStepper currentStep={3} jobId={id} />
+      <WorkflowStepper currentStep={4} jobId={id} />
       <h1 className="text-2xl font-bold mb-6">Edit Demand Letter</h1>
       <div className="mb-4 flex justify-end">
         <button

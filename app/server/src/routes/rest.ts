@@ -12,7 +12,7 @@ import { asyncHandler, errorJson, internalError, json, sendDocx, sendSse } from 
 import { renderTemplate, TemplateRenderError, buildDataObject, prosemirrorToDocx, type ProseMirrorDoc } from '../lib';
 import { computeGapReport } from '../lib/sufficiency-gate';
 import { generateMedicalNarrative } from '../lib/medical-narrative';
-import { invokeModelStream } from '../lib/ai-provider';
+import { getBasicModelId, invokeModelStream } from '../lib/ai-provider';
 import { redactText, type RedactableEntity } from '../lib/redact-text';
 import { extractDocxStationaries } from '../lib/docx-stationary';
 import { runGroundedExtraction } from '../lib/extraction-service';
@@ -29,7 +29,7 @@ export const restRouter: ExpressRouter = Router();
 
 const s3 = new S3Client({ region: process.env.AWS_REGION ?? 'us-east-1' });
 const BUCKET = process.env.DOCUMENTS_BUCKET ?? '';
-const MODEL_ID = process.env.BEDROCK_MODEL_ID ?? '';
+const MODEL_ID = getBasicModelId();
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 const ALLOWED_MIME = new Set([DOCX_MIME, 'application/pdf']);
 
@@ -211,7 +211,7 @@ restRouter.post('/jobs/:id/templates/segment', asyncHandler(async (req, res) => 
           templateId: template.id,
           zoneIndex: z.zoneIndex,
           textContent: z.textContent,
-          runPath: [],
+          runPath: z.runPath as unknown as Prisma.InputJsonValue,
         })),
         skipDuplicates: true,
       });
@@ -236,14 +236,57 @@ restRouter.get('/jobs/:id/templates/:templateId/zones', asyncHandler(async (req,
   json(res, 200, zones);
 }));
 
+restRouter.get('/jobs/:id/templates/:templateId/original.docx', asyncHandler(async (req, res) => {
+  const { id: jobId, templateId } = req.params;
+  const template = await prisma.template.findUnique({
+    where: { id: templateId },
+    select: { jobId: true, s3KeyOriginal: true },
+  });
+  if (!template || template.jobId !== jobId) return errorJson(res, 404, 'template_not_found', 'The requested template does not exist.');
+
+  const s3Obj = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: template.s3KeyOriginal }));
+  const bodyBytes = await s3Obj.Body?.transformToByteArray();
+  if (!bodyBytes) return errorJson(res, 502, 's3_empty_response', 'The S3 object returned no content.');
+
+  res.status(200)
+    .setHeader('Content-Type', DOCX_MIME)
+    .setHeader('Content-Disposition', 'inline; filename="template.docx"')
+    .send(Buffer.from(bodyBytes));
+}));
+
+restRouter.get('/jobs/:id/templates/:templateId/original/preview', asyncHandler(async (req, res) => {
+  const { id: jobId, templateId } = req.params;
+  const template = await prisma.template.findUnique({
+    where: { id: templateId },
+    select: { jobId: true, s3KeyOriginal: true },
+  });
+  if (!template || template.jobId !== jobId) return errorJson(res, 404, 'template_not_found', 'The requested template does not exist.');
+
+  const s3Obj = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: template.s3KeyOriginal }));
+  const bodyBytes = await s3Obj.Body?.transformToByteArray();
+  if (!bodyBytes) return errorJson(res, 502, 's3_empty_response', 'The S3 object returned no content.');
+
+  const buffer = Buffer.from(bodyBytes);
+  const stationaries = extractDocxStationaries(buffer);
+  const { value: html } = await mammoth.convertToHtml(
+    { buffer },
+    { ignoreEmptyParagraphs: false, styleMap: DOCX_STYLE_MAP },
+  );
+  json(res, 200, { html, stationaries });
+}));
+
 restRouter.patch('/jobs/:id/templates/:templateId/zones', asyncHandler(async (req, res) => {
+  const { templateId } = req.params;
   const zones = req.body?.zones;
+  const removeZoneIds = req.body?.removeZoneIds;
   if (!Array.isArray(zones)) return errorJson(res, 400, 'invalid_request_body', 'The request body is malformed or missing required fields.');
+  if (removeZoneIds !== undefined && !Array.isArray(removeZoneIds)) return errorJson(res, 400, 'invalid_request_body', 'The request body is malformed or missing required fields.');
   const updated = await Promise.all(
     zones.map((z) => prisma.zone.update({
       where: { id: z.id },
       data: {
         type: z.type as 'boilerplate_verbatim' | 'variable_populated' | null,
+        ...(typeof z.textContent === 'string' ? { textContent: z.textContent } : {}),
         suggestedFieldName: z.suggestedFieldName,
         confirmed: z.confirmed,
         confirmedBy: 'attorney',
@@ -251,6 +294,14 @@ restRouter.patch('/jobs/:id/templates/:templateId/zones', asyncHandler(async (re
       },
     })),
   );
+  if (removeZoneIds?.length > 0) {
+    await prisma.zone.deleteMany({
+      where: {
+        templateId,
+        id: { in: removeZoneIds },
+      },
+    });
+  }
   json(res, 200, updated);
 }));
 
@@ -635,7 +686,7 @@ restRouter.get('/jobs/:id/output/docx/preview', asyncHandler(async (req, res) =>
   const buffer = Buffer.from(bytes);
   const stationaries = extractDocxStationaries(buffer);
   const { value: html } = await mammoth.convertToHtml(
-    { arrayBuffer: buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) },
+    { buffer },
     { ignoreEmptyParagraphs: false, styleMap: DOCX_STYLE_MAP },
   );
   json(res, 200, { html, stationaries });

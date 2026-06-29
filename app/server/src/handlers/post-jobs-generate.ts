@@ -6,7 +6,9 @@ import { generateMedicalNarrative } from '../lib/medical-narrative';
 import { computeGapReport } from '../lib/sufficiency-gate';
 import { getCorsHeaders } from '../lib/cors';
 import { logJobError } from '../lib/job-logger';
-const MODEL_ID = process.env.BEDROCK_MODEL_ID!;
+import { getBasicModelId } from '../lib/ai-provider';
+
+const MODEL_ID = getBasicModelId();
 const s3 = new S3Client({ region: process.env.AWS_REGION ?? 'us-east-1' });
 const BUCKET = process.env.DOCUMENTS_BUCKET!;
 

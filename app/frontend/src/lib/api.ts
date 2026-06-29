@@ -279,6 +279,36 @@ export type Zone = {
   id: string;
   zoneIndex: number;
   textContent: string;
+  runPath?: {
+    paragraph?: {
+      style?: string;
+      alignment?: 'left' | 'center' | 'right' | 'both';
+    };
+    source?: {
+      part: 'header' | 'body' | 'footer';
+      path: string;
+    };
+    images?: Array<{
+      relId: string;
+      target: string;
+      dataUrl: string;
+    }>;
+    runs?: Array<{
+      runIndex: number;
+      text: string;
+      bold: boolean;
+      italic: boolean;
+      underline: boolean;
+      font?: string;
+      fontSize?: number;
+      hasImage?: boolean;
+      images?: Array<{
+        relId: string;
+        target: string;
+        dataUrl: string;
+      }>;
+    }>;
+  };
   type: 'boilerplate_verbatim' | 'variable_populated' | null;
   suggestedFieldName: string | null;
   confirmed: boolean;
@@ -290,15 +320,32 @@ export async function getTemplateZones(jobId: string, templateId: string): Promi
   return res.json() as Promise<Zone[]>;
 }
 
+export async function fetchTemplateOriginalDocx(jobId: string, templateId: string): Promise<ArrayBuffer> {
+  const res = await fetch(`${API_BASE}/jobs/${jobId}/templates/${templateId}/original.docx`);
+  if (!res.ok) throw new Error(`GET /jobs/${jobId}/templates/${templateId}/original.docx failed: ${res.status}`);
+  return readDocxResponse(res);
+}
+
+export async function fetchTemplateOriginalPreview(jobId: string, templateId: string): Promise<OutputDocxPreview> {
+  const res = await fetch(`${API_BASE}/jobs/${jobId}/templates/${templateId}/original/preview`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as { message?: string; error?: string };
+    const message = body.message ?? body.error ?? `GET /jobs/${jobId}/templates/${templateId}/original/preview failed: ${res.status}`;
+    throw new Error(message);
+  }
+  return res.json() as Promise<OutputDocxPreview>;
+}
+
 export async function patchTemplateZones(
   jobId: string,
   templateId: string,
-  zones: Array<{ id: string; type: string | null; suggestedFieldName: string | null; confirmed: boolean }>,
+  zones: Array<{ id: string; type: string | null; textContent?: string; suggestedFieldName: string | null; confirmed: boolean }>,
+  removeZoneIds: string[] = [],
 ) {
   const res = await fetch(`${API_BASE}/jobs/${jobId}/templates/${templateId}/zones`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ zones }),
+    body: JSON.stringify({ zones, removeZoneIds }),
   });
   if (!res.ok) throw new Error(`Failed to patch zones: ${res.status}`);
   return res.json();
