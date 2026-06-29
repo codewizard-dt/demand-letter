@@ -7,7 +7,7 @@
     Expected: throws TemplateRenderError with message containing
     'Unexpected missing tag: {claimantName}' — never emits a partially-filled document
   tested_files:
-    - packages/api/src/lib/docx-renderer.ts
+    - app/server/src/lib/docx-renderer.ts
   expected_tools:
     - renderTemplate
   must_contain:

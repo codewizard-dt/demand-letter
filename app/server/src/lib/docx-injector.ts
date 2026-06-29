@@ -29,15 +29,84 @@ export function injectDelimiters(
   }
 
   const confirmedSet = new Map(confirmedZones.map(z => [z.zoneIndex, z.suggestedFieldName]));
-
-  const parsed = PARSER.parse(docXml) as Array<Record<string, unknown>>;
+  const documentRels = parseRelationships(zip.file('word/_rels/document.xml.rels')?.asText() ?? '');
 
   const paraIndex = { value: 0 };
-  traverseAndInject(parsed, confirmedSet, paraIndex);
-
-  const modifiedXml = BUILDER.build(parsed) as string;
-  zip.file('word/document.xml', modifiedXml);
+  for (const headerPath of referencedPartPaths(docXml, documentRels, 'header')) {
+    injectPart(zip, headerPath, confirmedSet, paraIndex);
+  }
+  injectPart(zip, 'word/document.xml', confirmedSet, paraIndex);
+  for (const footerPath of referencedPartPaths(docXml, documentRels, 'footer')) {
+    injectPart(zip, footerPath, confirmedSet, paraIndex);
+  }
   return Buffer.from(zip.generate({ type: 'nodebuffer', compression: 'DEFLATE' }));
+}
+
+interface Relationship {
+  id: string;
+  target: string;
+}
+
+function parseRelationships(xml: string): Record<string, Relationship> {
+  const relationships: Record<string, Relationship> = {};
+  const relRegex = /<Relationship\b([^>]*)\/>/g;
+  const attrsRegex = /([a-zA-Z0-9_:-]+)=(?:"([^"]*)"|'([^']*)')/g;
+
+  for (const relMatch of xml.matchAll(relRegex)) {
+    const relAttrs = relMatch[1] ?? '';
+    const attrMap = Object.fromEntries([...relAttrs.matchAll(attrsRegex)].map((m) => [m[1], m[2] ?? m[3]]));
+    const id = attrMap.Id;
+    const target = attrMap.Target;
+    if (!id || !target) continue;
+    relationships[id] = { id, target };
+  }
+
+  return relationships;
+}
+
+function normalizeTarget(sourcePath: string, target: string): string {
+  if (target.startsWith('/')) return target.slice(1);
+  if (target.startsWith('word/')) return target;
+  const sourceDir = sourcePath.includes('/') ? sourcePath.slice(0, sourcePath.lastIndexOf('/')) : '';
+  const parts = `${sourceDir}/${target}`.split('/');
+  const normalized: string[] = [];
+  for (const part of parts) {
+    if (!part || part === '.') continue;
+    if (part === '..') normalized.pop();
+    else normalized.push(part);
+  }
+  return normalized.join('/');
+}
+
+function referencedPartPaths(
+  documentXml: string,
+  documentRels: Record<string, Relationship>,
+  slot: 'header' | 'footer',
+): string[] {
+  const paths: string[] = [];
+  const pattern = new RegExp(`<w:${slot}Reference\\b([^>]*)/>`, 'g');
+  for (const match of documentXml.matchAll(pattern)) {
+    const relId = /r:id=("|')([^"']*)\1/.exec(match[1] ?? '')?.[2];
+    if (!relId) continue;
+    const rel = documentRels[relId];
+    if (!rel) continue;
+    const path = normalizeTarget('word/document.xml', rel.target);
+    if (!paths.includes(path)) paths.push(path);
+  }
+  return paths;
+}
+
+function injectPart(
+  zip: PizZip,
+  path: string,
+  confirmedSet: Map<number, string>,
+  paraIndex: { value: number },
+): void {
+  const xml = zip.file(path)?.asText();
+  if (!xml) return;
+  const parsed = PARSER.parse(xml) as Array<Record<string, unknown>>;
+  traverseAndInject(parsed, confirmedSet, paraIndex);
+  zip.file(path, BUILDER.build(parsed) as string);
 }
 
 function cloneNode<T>(value: T): T {

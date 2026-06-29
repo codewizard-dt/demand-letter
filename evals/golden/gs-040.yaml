@@ -7,7 +7,7 @@
     PATCH /jobs/job-2/refinements/ref-2/reject
     Expected: { "ok": true }; job.output remains "original letter text" (not replaced with afterText).
   tested_files:
-    - packages/api/src/handlers/patch-jobs-refine-reject.ts
+    - app/server/src/handlers/patch-jobs-refine-reject.ts
   expected_tools:
     - patch-jobs-refine-reject
   must_contain:

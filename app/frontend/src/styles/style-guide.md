@@ -212,7 +212,7 @@ Paste into `tailwind.config.js` → `theme.extend`. Ready for TASK-019.
 
 ```js
 // tailwind.config.js — theme.extend section
-// Source: packages/web/src/styles/style-guide.md (Steno.com audit)
+// Source: app/frontend/src/styles/style-guide.md (Steno.com audit)
 theme: {
   extend: {
     colors: {

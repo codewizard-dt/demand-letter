@@ -7,7 +7,7 @@
     Expected: groundingReport.unknownCitations = ["FAKE-999"];
     groundingReport.validCitations = 1
   tested_files:
-    - packages/api/src/lib/medical-narrative.ts
+    - app/server/src/lib/medical-narrative.ts
   expected_tools:
     - generateMedicalNarrative
   must_contain:

@@ -11,7 +11,7 @@
     ]
     Call: injectDelimiters(buffer, confirmedZones)
   tested_files:
-    - packages/api/src/lib/docx-injector.ts
+    - app/server/src/lib/docx-injector.ts
   expected_tools:
     - injectDelimiters
   must_contain:

@@ -7,7 +7,7 @@
         - { fieldName: "return_to_work_date", isNull: true, confidence: 0.0, acceptMissing: true, nullReason: "claimant still off work" }
     Call: computeGapReport(jobId)
   tested_files:
-    - packages/api/src/lib/sufficiency-gate.ts
+    - app/server/src/lib/sufficiency-gate.ts
   expected_tools:
     - computeGapReport
   must_contain:

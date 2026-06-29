@@ -6,8 +6,8 @@
     In each run, collect `{ "slotCount", "slots" }` from the handler response and compare:
     the two `slotCount` values must be identical, `slots.length` must equal `slotCount` in both runs, and the second run must not drift from the first.
   tested_files:
-    - packages/api/src/handlers/post-jobs-templates-inject.ts
-    - packages/api/src/lib/docx-inspect.ts
+    - app/server/src/handlers/post-jobs-templates-inject.ts
+    - app/server/src/lib/docx-inspect.ts
   expected_tools:
     - post-jobs-templates-inject
     - enumerateSlots

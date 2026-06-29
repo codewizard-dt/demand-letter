@@ -4,7 +4,7 @@ import path from 'node:path';
 const repoRoot = path.resolve(import.meta.dirname, '..');
 const templatePath = path.join(repoRoot, 'template.yaml');
 const handlersDir = path.join(repoRoot, '.build', 'handlers');
-const layerNodejsDir = path.join(repoRoot, 'packages', 'db', 'nodejs');
+const layerNodejsDir = path.join(repoRoot, 'app', 'db', 'nodejs');
 const samBuildDir = path.join(repoRoot, '.aws-sam', 'build');
 
 if (!existsSync(handlersDir)) {

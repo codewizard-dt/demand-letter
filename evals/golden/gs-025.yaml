@@ -9,8 +9,8 @@
     NOT a raw JSON string. The tagName 'specials' is used (not 'perProviderLineItems'
     or 'per_provider_line_items').
   tested_files:
-    - packages/api/src/lib/generation-data-builder.ts
-    - packages/api/src/lib/field-schema.ts
+    - app/server/src/lib/generation-data-builder.ts
+    - app/server/src/lib/field-schema.ts
   expected_tools:
     - buildDataObject
   must_contain:

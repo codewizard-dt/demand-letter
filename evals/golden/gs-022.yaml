@@ -6,7 +6,7 @@
     For a field with no evidence in blocks (e.g. policy_limits, employer_name):
       Expected: { is_null: true, null_reason: <non-empty string>, confidence: <below 0.5> }
   tested_files:
-    - packages/api/src/lib/extraction-service.ts
+    - app/server/src/lib/extraction-service.ts
   expected_tools:
     - invokeModelWithTools
     - extract_case_fields

@@ -186,7 +186,7 @@ Resources:
     Type: AWS::Serverless::LayerVersion
     Properties:
       LayerName: !Sub '${Stage}-demand-letter-db'
-      ContentUri: packages/db/
+      ContentUri: app/db/
       CompatibleRuntimes:
         - nodejs24.x
       RetentionPolicy: Delete
@@ -440,6 +440,24 @@ Resources:
           Type: Api
           Properties:
             Path: /jobs/{id}/templates/{templateId}/original.docx
+            Method: get
+
+  GetJobsTemplateLatestFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .build/handlers/
+      Handler: get-jobs-template-latest.handler
+      Runtime: nodejs24.x
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
+      Layers:
+        - !Ref DbLayer
+      Events:
+        GetJobsTemplateLatestApi:
+          Type: Api
+          Properties:
+            Path: /jobs/{id}/templates/latest
             Method: get
 
   GetJobsTemplateOriginalPreviewFunction:

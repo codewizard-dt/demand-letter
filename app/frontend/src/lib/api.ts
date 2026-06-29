@@ -501,6 +501,30 @@ export async function injectTemplate(jobId: string, templateId: string): Promise
   return res.json() as Promise<{ slotCount: number }>;
 }
 
+export interface LatestTemplate {
+  templateId: string;
+  slotCount: number | null;
+  ingestedAt: string;
+}
+
+export async function fetchLatestTemplate(jobId: string): Promise<LatestTemplate> {
+  const res = await fetch(`${API_BASE}/jobs/${jobId}/templates/latest`);
+  if (!res.ok) throw new Error(`GET /jobs/${jobId}/templates/latest failed: ${res.status}`);
+  return res.json() as Promise<LatestTemplate>;
+}
+
+export interface TemplateSlotRow {
+  slotName: string;
+  required: boolean;
+}
+
+export async function fetchTemplateSlots(jobId: string, templateId: string): Promise<TemplateSlotRow[]> {
+  const res = await fetch(`${API_BASE}/jobs/${jobId}/templates/${templateId}/slots`);
+  if (!res.ok) throw new Error(`GET /jobs/${jobId}/templates/${templateId}/slots failed: ${res.status}`);
+  const data = await res.json() as { slots: TemplateSlotRow[] };
+  return data.slots;
+}
+
 export async function extractFields(jobId: string): Promise<void> {
   const res = await fetch(`${API_BASE}/jobs/${jobId}/extract`, { method: 'POST' });
   if (!res.ok) throw new Error(`POST /jobs/${jobId}/extract failed: ${res.status}`);

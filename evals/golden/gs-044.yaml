@@ -8,7 +8,7 @@
     POST /jobs/job-1/generate
     Expected: 400 with error: "sufficiency_precheck_failed" and gaps array listing "date_of_loss".
   tested_files:
-    - packages/api/src/handlers/post-jobs-generate.ts
+    - app/server/src/handlers/post-jobs-generate.ts
   expected_tools:
     - post-jobs-generate
   must_contain:

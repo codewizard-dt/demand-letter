@@ -3,8 +3,8 @@
   query: |
     Zone 44: "[ATTORNEY NAME], Esq."
   tested_files:
-    - packages/api/src/lib/zone-classifier.ts
-    - packages/api/src/lib/zone-field-schema.ts
+    - app/server/src/lib/zone-classifier.ts
+    - app/server/src/lib/zone-field-schema.ts
   expected_tools:
     - invokeModel
   must_contain:

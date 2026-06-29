@@ -1,4 +1,4 @@
-// packages/api/src/handlers/websocket-sync.ts
+// app/server/src/handlers/websocket-sync.ts
 // WebSocket sync handler — distributes Y.js CRDT updates and awareness state
 // between clients sharing the same jobId room.
 //

@@ -38,9 +38,13 @@ export function defineFullJobLifecycleSuite(state: LifecycleState = createLifecy
       await expect(page.getByRole('heading', { name: 'Upload Case Documents' })).toBeVisible();
       await page.locator('#caseDocs').setInputFiles(path.join(FIXTURES, 'case-doc.pdf'));
       await expect(page.getByText('case-doc.pdf')).toBeVisible();
+      await page.getByRole('button', { name: 'Upload Case Documents' }).click();
+      await expect(page.getByRole('button', { name: 'Uploading & processing…' })).not.toBeVisible({
+        timeout: 5 * 60 * 1000,
+      });
       await Promise.all([
         page.waitForURL(/\/jobs\/[^/]+\/gap-report/, { timeout: 5 * 60 * 1000 }),
-        page.getByRole('button', { name: 'Upload Case Documents' }).click(),
+        page.getByRole('button', { name: 'Continue to Gap Report' }).click(),
       ]);
 
       const match = page.url().match(/\/jobs\/([^/]+)\/gap-report/);

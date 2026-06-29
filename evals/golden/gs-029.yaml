@@ -7,7 +7,7 @@
     Expected: "Call us at [PHI_ENTITY] for follow-up."
     The span "555-867-5309" must be replaced; the catch-all token must be [PHI_ENTITY].
   tested_files:
-    - packages/api/src/lib/redact-text.ts
+    - app/server/src/lib/redact-text.ts
   expected_tools:
     - redactText
   must_contain:

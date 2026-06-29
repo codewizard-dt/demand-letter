@@ -4,7 +4,7 @@
     Call: textRunFromNode({ type: "text", text: "Important claim", marks: [{ type: "bold" }] })
     Expected: TextRun with bold: true (not undefined, not omitted).
   tested_files:
-    - packages/api/src/lib/prosemirror-to-docx.ts
+    - app/server/src/lib/prosemirror-to-docx.ts
   expected_tools:
     - textRunFromNode
   must_contain:

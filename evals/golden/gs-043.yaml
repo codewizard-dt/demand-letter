@@ -5,7 +5,7 @@
     GET /jobs/job-x/export/docx
     Expected: 422 with error: "output_not_ready" — cannot export a DOCX before generation runs.
   tested_files:
-    - packages/api/src/handlers/get-jobs-export-docx.ts
+    - app/server/src/handlers/get-jobs-export-docx.ts
   expected_tools:
     - get-jobs-export-docx
   must_contain:

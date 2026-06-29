@@ -6,7 +6,7 @@
     DELETE /jobs/job-B/changes/chg-1
     Expected: 403 with error: "change_job_mismatch" — change belongs to job-A, not job-B.
   tested_files:
-    - packages/api/src/handlers/delete-jobs-changes.ts
+    - app/server/src/handlers/delete-jobs-changes.ts
   expected_tools:
     - delete-jobs-changes
   must_contain:

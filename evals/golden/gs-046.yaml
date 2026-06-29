@@ -9,7 +9,7 @@
     GET /jobs/job-1/refinements
     Expected: { refinements: [{ id, instruction, scope, accepted, createdAt }, ...] }
   tested_files:
-    - packages/api/src/handlers/get-jobs-refinements.ts
+    - app/server/src/handlers/get-jobs-refinements.ts
   expected_tools:
     - get-jobs-refinements
   must_contain:

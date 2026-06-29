@@ -1,7 +1,7 @@
 {
   "name": "demand-letter",
   "private": true,
-  "version": "1.1.0",
+  "version": "2.0.0",
   "type": "module",
   "packageManager": "pnpm@9.0.0",
   "scripts": {

@@ -7,7 +7,7 @@
     Expected: response block text = "[PATIENT_NAME] was treated."
     Raw PHI "Jane Smith" must not appear in the response.
   tested_files:
-    - packages/api/src/handlers/get-jobs-blocks.ts
+    - app/server/src/handlers/get-jobs-blocks.ts
   expected_tools:
     - getJobsBlocks
   must_contain:

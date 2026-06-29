@@ -1,4 +1,4 @@
-// packages/api/src/handlers/merge-yjs-snapshot.ts
+// app/server/src/handlers/merge-yjs-snapshot.ts
 // Scheduled Lambda: merges pending Y.js updates into the full snapshot for each job.
 // Triggered every 5 minutes by an EventBridge schedule.
 

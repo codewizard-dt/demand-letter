@@ -5,7 +5,7 @@
     Body: { "scope": "medical_narrative" }  (no "instruction" field)
     Expected: 400 with error: "missing_instruction".
   tested_files:
-    - packages/api/src/handlers/post-jobs-refine.ts
+    - app/server/src/handlers/post-jobs-refine.ts
   expected_tools:
     - post-jobs-refine
   must_contain:

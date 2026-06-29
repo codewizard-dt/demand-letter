@@ -7,7 +7,7 @@
     GET /jobs/job-2/gap-report
     Expected: 404 with error: "template_not_ready".
   tested_files:
-    - packages/api/src/handlers/get-jobs-gap-report.ts
+    - app/server/src/handlers/get-jobs-gap-report.ts
   expected_tools:
     - get-jobs-gap-report
   must_contain:

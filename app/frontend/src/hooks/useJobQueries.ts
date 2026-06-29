@@ -12,11 +12,13 @@ import {
   fetchRefinements,
   fetchJobs,
   getTemplateZones,
+  fetchTemplateSlots,
   fetchJobFiles,
   fetchJobLogs,
   fetchOutputDocx,
   fetchOutputDocxByUrl,
   fetchTemplateOriginalPreview,
+  fetchLatestTemplate,
 } from '../lib/api';
 
 export function useLlmCosts(days = 30) {
@@ -133,6 +135,15 @@ export function useTemplateZones(jobId: string | undefined, templateId: string |
   });
 }
 
+export function useTemplateSlots(jobId: string | undefined, templateId: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.templateSlots(jobId!, templateId!),
+    queryFn: () => fetchTemplateSlots(jobId!, templateId!),
+    enabled: !!jobId && !!templateId,
+    staleTime: 5 * 60_000,
+  });
+}
+
 export function useTemplateOriginalPreview(jobId: string | undefined, templateId: string | undefined, enabled: boolean) {
   return useQuery({
     queryKey: queryKeys.templateOriginalPreview(jobId!, templateId!),
@@ -140,6 +151,15 @@ export function useTemplateOriginalPreview(jobId: string | undefined, templateId
     enabled: !!jobId && !!templateId && enabled,
     staleTime: Infinity,
     gcTime: Infinity,
+  });
+}
+
+export function useLatestTemplate(jobId: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.latestTemplate(jobId!),
+    queryFn: () => fetchLatestTemplate(jobId!),
+    enabled: !!jobId && enabled,
+    staleTime: 5 * 60_000,
   });
 }
 

@@ -8,7 +8,7 @@
         - { fieldName: "incident_date",  isNull: false, confidence: 0.62, acceptMissing: false }
     Call: computeGapReport(jobId)
   tested_files:
-    - packages/api/src/lib/sufficiency-gate.ts
+    - app/server/src/lib/sufficiency-gate.ts
   expected_tools:
     - computeGapReport
   must_contain:

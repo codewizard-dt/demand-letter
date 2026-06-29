@@ -28,14 +28,14 @@ jobs:
         run: pnpm typecheck
 
       - name: Run API tests
-        run: pnpm --filter @demand-letter/api test
+        run: pnpm --filter @demand-letter/server test
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: api-test-results
-          path: packages/api/test-results/junit.xml
+          path: app/server/test-results/junit.xml
 
       - name: Lint
         run: pnpm lint

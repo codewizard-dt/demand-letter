@@ -4,7 +4,7 @@
     Call: headingNodeToDocx({ type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "Section II" }] })
     Expected: Paragraph with style: "Heading2" — not "Heading1" (the fallback default).
   tested_files:
-    - packages/api/src/lib/prosemirror-to-docx.ts
+    - app/server/src/lib/prosemirror-to-docx.ts
   expected_tools:
     - headingNodeToDocx
   must_contain:

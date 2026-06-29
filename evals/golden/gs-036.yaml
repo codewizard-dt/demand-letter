@@ -6,7 +6,7 @@
     Expected: (1_000_000 / 1_000_000) × $1.00 + (1_000_000 / 1_000_000) × $5.00 = 6.0
     parseFloat((6.0).toFixed(6)) = 6
   tested_files:
-    - packages/api/src/lib/ai.ts
+    - app/server/src/lib/ai.ts
   expected_tools:
     - estimateCostUsd
   must_contain:

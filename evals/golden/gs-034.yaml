@@ -8,7 +8,7 @@
     Spans are non-overlapping (startOffset delta = 20, well beyond the 5-offset tolerance).
     Expected: two entities returned — one PATIENT at [0,8] and one SSN at [20,31].
   tested_files:
-    - packages/api/src/lib/merge-entities.ts
+    - app/server/src/lib/merge-entities.ts
   expected_tools:
     - mergeEntities
   must_contain:

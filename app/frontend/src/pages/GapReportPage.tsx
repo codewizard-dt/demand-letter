@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useGapReport, useExtractedFields, useBlocks } from '../hooks/useJobQueries';
+import { useGapReport, useExtractedFields, useBlocks, useLatestTemplate, useTemplateSlots } from '../hooks/useJobQueries';
 import { useAddCaseDocuments, useSubmitAttorneyJudgment, useTriggerGenerateJob } from '../hooks/useJobMutations';
 import LoadingSpinner from '../components/LoadingSpinner';
 
@@ -17,6 +17,8 @@ export default function GapReportPage() {
   const gapReportQuery = useGapReport(jobId);
   const extractedFieldsQuery = useExtractedFields(jobId);
   const blocksQuery = useBlocks(jobId);
+  const latestTemplateQuery = useLatestTemplate(jobId);
+  const templateSlotsQuery = useTemplateSlots(jobId, latestTemplateQuery.data?.templateId);
   const submitJudgmentMutation = useSubmitAttorneyJudgment(jobId!);
   const addCaseDocumentsMutation = useAddCaseDocuments(jobId!);
   const triggerGenerateMutation = useTriggerGenerateJob();
@@ -29,6 +31,14 @@ export default function GapReportPage() {
   const blockRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const extractedFields = extractedFieldsQuery.data ?? [];
+  const templateSlots = templateSlotsQuery.data ?? [];
+  const templateSlotNames = useMemo(
+    () => new Set(templateSlots.map((slot) => slot.slotName)),
+    [templateSlots],
+  );
+  const citationFields = templateSlotNames.size > 0
+    ? extractedFields.filter((field) => templateSlotNames.has(field.fieldName))
+    : extractedFields;
   const blocks = blocksQuery.data ?? [];
 
   const blockMap = useMemo(
@@ -283,8 +293,8 @@ export default function GapReportPage() {
         {/* Right column: citation sidebar */}
         <div className="border border-gray-200 rounded-lg p-4 h-fit max-h-[80vh] overflow-y-auto bg-gray-50">
           <h3 className="mt-0 text-base font-semibold">Citation Sources</h3>
-          {extractedFields.length === 0 && <p className="text-gray-400 text-sm">No extracted fields yet.</p>}
-          {extractedFields.map((field) => (
+          {citationFields.length === 0 && <p className="text-gray-400 text-sm">No extracted fields yet.</p>}
+          {citationFields.map((field) => (
             <div key={field.fieldName} className="mb-3 text-sm">
               <div className="font-medium text-gray-800">{field.fieldName}</div>
               {field.blockIds.length === 0 ? (

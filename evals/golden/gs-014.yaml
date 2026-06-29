@@ -6,7 +6,7 @@
       - paragraph 1: "{demand_amount}"
     Call: enumerateSlots(taggedBuffer)
   tested_files:
-    - packages/api/src/lib/docx-inspect.ts
+    - app/server/src/lib/docx-inspect.ts
   expected_tools:
     - enumerateSlots
   must_contain:

@@ -3,7 +3,7 @@
   query: |
     Zone 12: "The total medical specials incurred to date amount to $47,832.00."
   tested_files:
-    - packages/api/src/lib/zone-classifier.ts
+    - app/server/src/lib/zone-classifier.ts
   expected_tools:
     - invokeModel
   must_contain:

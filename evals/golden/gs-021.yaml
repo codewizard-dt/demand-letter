@@ -5,7 +5,7 @@
     Call: runGroundedExtraction(jobId, userId)
     Expected: the extract_case_fields tool call includes block_ids for any populated field
   tested_files:
-    - packages/api/src/lib/extraction-service.ts
+    - app/server/src/lib/extraction-service.ts
   expected_tools:
     - invokeModelWithTools
     - extract_case_fields

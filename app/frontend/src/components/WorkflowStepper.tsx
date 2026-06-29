@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useLatestTemplate } from '../hooks/useJobQueries';
 
 const STEPS = ['Template', 'Case Documents', 'Gap Report', 'Generate', 'Editor', 'Done'];
 
@@ -12,6 +13,7 @@ interface Props {
 function getStepHref(step: number, jobId?: string, templateId?: string): string | null {
   if (step === 0) {
     if (jobId && templateId) return `/jobs/${jobId}/templates/${templateId}/annotate`;
+    if (jobId) return null;
     return '/upload';
   }
   if (!jobId) return null;
@@ -23,12 +25,14 @@ function getStepHref(step: number, jobId?: string, templateId?: string): string 
 }
 
 export default function WorkflowStepper({ currentStep, jobId, templateId, className = '' }: Props) {
+  const latestTemplateQuery = useLatestTemplate(jobId, !!jobId && !templateId);
+  const resolvedTemplateId = templateId ?? latestTemplateQuery.data?.templateId;
   return (
     <nav aria-label="Workflow progress" className={`flex items-center gap-0 mb-8 ${className}`}>
       {STEPS.map((label, i) => {
         const done = i < currentStep;
         const active = i === currentStep;
-        const href = done ? getStepHref(i, jobId, templateId) : null;
+        const href = done ? getStepHref(i, jobId, resolvedTemplateId) : null;
         const pillClassName = `flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${
           active ? 'bg-primary text-white' : done ? 'text-primary' : 'text-text-muted'
         } ${href ? 'hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary' : ''}`;

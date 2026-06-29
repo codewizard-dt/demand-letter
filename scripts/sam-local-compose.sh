@@ -12,7 +12,7 @@ if [ "$host_workspace_dir" != "$workspace_dir" ] && [ ! -e "$host_workspace_dir"
 fi
 
 if [ ! -e "$workspace_dir/DbLayer" ]; then
-  ln -s "$workspace_dir/packages/db" "$workspace_dir/DbLayer"
+  ln -s "$workspace_dir/app/db" "$workspace_dir/DbLayer"
 fi
 
 python3 - <<'PY'

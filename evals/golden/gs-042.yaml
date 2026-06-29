@@ -4,7 +4,7 @@
     Call: textRunFromNode({ type: "text", text: "Pursuant to CCP §999...", marks: [{ type: "boilerplateZone" }] })
     Expected: TextRun with shading.fill = 'D9D9D9' (gray background to visually mark read-only zones).
   tested_files:
-    - packages/api/src/lib/prosemirror-to-docx.ts
+    - app/server/src/lib/prosemirror-to-docx.ts
   expected_tools:
     - textRunFromNode
   must_contain:

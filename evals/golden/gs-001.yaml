@@ -4,8 +4,8 @@
     Zone 0: "Pursuant to California Code of Civil Procedure Section 999, this letter
     constitutes a written offer to settle the above-referenced personal injury claim."
   tested_files:
-    - packages/api/src/lib/zone-classifier.ts
-    - packages/api/src/lib/zone-field-schema.ts
+    - app/server/src/lib/zone-classifier.ts
+    - app/server/src/lib/zone-field-schema.ts
   expected_tools:
     - invokeModel
   must_contain:

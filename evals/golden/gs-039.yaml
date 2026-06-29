@@ -7,7 +7,7 @@
     PATCH /jobs/job-1/refinements/ref-1/accept
     Expected: { "ok": true }; refinement.accepted → true; job.output → "revised letter text".
   tested_files:
-    - packages/api/src/handlers/patch-jobs-refine-accept.ts
+    - app/server/src/handlers/patch-jobs-refine-accept.ts
   expected_tools:
     - patch-jobs-refine-accept
   must_contain:

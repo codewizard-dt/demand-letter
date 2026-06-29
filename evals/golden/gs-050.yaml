@@ -7,7 +7,7 @@
     Expected: user message sent to Bedrock contains the string:
       'return only the revised text for the "medical_narrative" section'
   tested_files:
-    - packages/api/src/handlers/post-jobs-refine.ts
+    - app/server/src/handlers/post-jobs-refine.ts
   expected_tools:
     - post-jobs-refine
   must_contain:

@@ -4,7 +4,7 @@
     Call: detectDocumentType(buffer, "police_report.pdf")
     where buffer is a valid PDF with an empty text layer (pdf-parse returns text: "")
   tested_files:
-    - packages/api/src/lib/document-type-detector.ts
+    - app/server/src/lib/document-type-detector.ts
   expected_tools:
     - detectDocumentType
   must_contain:

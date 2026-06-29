@@ -7,7 +7,7 @@
     Expected: "Patient [PATIENT_NAME] was admitted on 01/15/2024."
     The prefix ("Patient ") and suffix (" was admitted...") must be preserved exactly.
   tested_files:
-    - packages/api/src/lib/redact-text.ts
+    - app/server/src/lib/redact-text.ts
   expected_tools:
     - redactText
   must_contain:

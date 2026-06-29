@@ -8,7 +8,7 @@
     the key must be absent so docxtemplater's nullGetter fires if the template
     references it, rather than silently writing an empty field
   tested_files:
-    - packages/api/src/lib/generation-data-builder.ts
+    - app/server/src/lib/generation-data-builder.ts
   expected_tools:
     - buildDataObject
   must_contain:

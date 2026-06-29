@@ -104,6 +104,7 @@ export default function DocumentsPage() {
 
   const files = filesQuery.data ?? [];
   const logs = logsQuery.data ?? [];
+  const hasCaseDocuments = files.some((file) => file.role !== 'template');
   const hasErrors = logs.some((l) => l.level === 'error' || l.level === 'warn');
   const loading = addCaseDocumentsMutation.isPending;
   const error = addCaseDocumentsMutation.error ? String(addCaseDocumentsMutation.error) : null;
@@ -120,10 +121,15 @@ export default function DocumentsPage() {
     addCaseDocumentsMutation.mutate(
       { caseFiles, onStatus: setCaseUploadStatus },
       {
-        onSuccess: () => navigate(`/jobs/${jobId}/gap-report`),
+        onSuccess: () => setCaseFiles([]),
         onSettled: () => setCaseUploadStatus(null),
       },
     );
+  }
+
+  function handleContinue() {
+    if (!jobId || loading || !hasCaseDocuments) return;
+    navigate(`/jobs/${jobId}/gap-report`);
   }
 
   return (
@@ -146,6 +152,24 @@ export default function DocumentsPage() {
       )}
 
       <form onSubmit={handleSubmit} className="mb-10">
+        <div className="sticky top-0 z-10 -mx-2 mb-4 flex flex-wrap gap-3 border-b border-border bg-bg/95 px-2 py-3 backdrop-blur">
+          <button
+            type="submit"
+            disabled={loading || caseFiles.length === 0}
+            className="btn-primary"
+          >
+            {loading ? 'Uploading & processing…' : 'Upload Case Documents'}
+          </button>
+          <button
+            type="button"
+            onClick={handleContinue}
+            disabled={loading || !hasCaseDocuments}
+            className="btn-primary"
+            title={!hasCaseDocuments ? 'Upload and process at least one case document first.' : undefined}
+          >
+            Continue to Gap Report
+          </button>
+        </div>
         <label className="block mb-1.5 font-semibold">Case Documents (.pdf)</label>
         <div
           className={`border-2 border-dashed rounded-lg px-4 py-6 text-center cursor-pointer transition-colors ${caseDrag ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/60'} ${loading ? 'opacity-70 cursor-wait' : ''}`}
@@ -181,13 +205,6 @@ export default function DocumentsPage() {
             <p className="text-sm text-text-muted">Drag .pdf files here or <span className="text-primary underline">browse</span></p>
           )}
         </div>
-        <button
-          type="submit"
-          disabled={loading || caseFiles.length === 0}
-          className="btn-primary mt-4"
-        >
-          {loading ? 'Uploading & processing…' : 'Upload Case Documents'}
-        </button>
       </form>
 
       {/* Uploaded Files section */}

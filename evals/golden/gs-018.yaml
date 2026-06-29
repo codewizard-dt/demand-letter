@@ -9,7 +9,7 @@
         - { fieldName: "demand_amount",  isNull: false, confidence: 0.91, source: "textract", acceptMissing: false }
     Call: computeGapReport(jobId)
   tested_files:
-    - packages/api/src/lib/sufficiency-gate.ts
+    - app/server/src/lib/sufficiency-gate.ts
   expected_tools:
     - computeGapReport
   must_contain:

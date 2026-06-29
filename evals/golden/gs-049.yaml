@@ -9,7 +9,7 @@
     GET /jobs/job-1/changes
     Expected: { changes: [{ id, userId, userName, operationType, contentDelta, createdAt }, ...] }
   tested_files:
-    - packages/api/src/handlers/get-jobs-changes.ts
+    - app/server/src/handlers/get-jobs-changes.ts
   expected_tools:
     - get-jobs-changes
   must_contain:

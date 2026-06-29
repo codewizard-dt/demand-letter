@@ -1,6 +1,6 @@
 /**
  * One-time fixture generator for Playwright E2E tests.
- * Run: node packages/web/scripts/create-fixtures.mjs
+ * Run: node app/frontend/scripts/create-fixtures.mjs
  * Commit the generated e2e/fixtures/ files — they're stable, <20 KB each.
  */
 

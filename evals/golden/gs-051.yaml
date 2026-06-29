@@ -7,7 +7,7 @@
     Expected: extractedField upserted with confidence: 1.0, isNull: false, source: "attorney-judgment".
     Returns: { "ok": true }
   tested_files:
-    - packages/api/src/handlers/post-jobs-attorney-judgment.ts
+    - app/server/src/handlers/post-jobs-attorney-judgment.ts
   expected_tools:
     - post-jobs-attorney-judgment
   must_contain:

@@ -5,7 +5,7 @@
     Zone 1: "Dear [ADJUSTER NAME],"
     Zone 2: "This firm represents the claimant in the above-referenced matter."
   tested_files:
-    - packages/api/src/lib/zone-classifier.ts
+    - app/server/src/lib/zone-classifier.ts
   expected_tools:
     - invokeModel
   must_contain:

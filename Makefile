@@ -36,8 +36,6 @@ prepare-sam-local:
 	node scripts/prepare-sam-local-build.mjs
 
 dev-api: docker-compose-up
-	AWS_EC2_METADATA_DISABLED=true AWS_SDK_LOAD_CONFIG=1 \
-	  pnpm --filter @demand-letter/server dev & \
 	API_PID=$$!; \
 	cleanup() { \
 	  kill $$API_PID 2>/dev/null || true; \
@@ -52,29 +50,7 @@ dev-web:
 
 dev: prisma-generate
 	@$(MAKE) docker-compose-up
-	AWS_EC2_METADATA_DISABLED=true AWS_SDK_LOAD_CONFIG=1 \
-	  pnpm --filter @demand-letter/server dev & \
-	API_PID=$$!; \
-	cleanup() { \
-	  kill $$API_PID 2>/dev/null || true; \
-	  $(MAKE) docker-compose-down; \
-	}; \
-	trap cleanup EXIT; \
-	trap 'cleanup; exit 130' INT TERM; \
-	echo "Waiting for Express API on :3000..."; \
-	READY=0; \
-	for attempt in $$(seq 1 120); do \
-	  if curl -fsS --connect-timeout 2 --max-time 10 http://localhost:3000/jobs > /dev/null 2>&1; then \
-	    READY=1; \
-	    break; \
-	  fi; \
-	  echo "waiting for http://localhost:3000/jobs"; \
-	  sleep 1; \
-	done; \
-	if [ "$$READY" -ne 1 ]; then \
-	  echo "Express API did not become healthy at http://localhost:3000/jobs"; \
-	  exit 1; \
-	fi; \
+	pnpm --filter @demand-letter/server dev & \
 	echo "Express API ready at http://localhost:3000"; \
 	pnpm --filter @demand-letter/web dev
 

@@ -377,6 +377,25 @@ restRouter.get('/jobs/:id/templates/:templateId/slots', asyncHandler(async (req,
   json(res, 200, { slotCount: template.slotCount ?? slots.length, slots });
 }));
 
+restRouter.get('/jobs/:id/templates/latest', asyncHandler(async (req, res) => {
+  const jobId = req.params.id;
+  const job = await requireJob(jobId);
+  if (!job) return errorJson(res, 404, 'job_not_found', 'The requested job does not exist.');
+
+  const template = await prisma.template.findFirst({
+    where: { jobId },
+    orderBy: { ingestedAt: 'desc' },
+    select: { id: true, slotCount: true, ingestedAt: true },
+  });
+  if (!template) return errorJson(res, 404, 'template_not_found', 'No template has been ingested for this job.');
+
+  json(res, 200, {
+    templateId: template.id,
+    slotCount: template.slotCount,
+    ingestedAt: template.ingestedAt.toISOString(),
+  });
+}));
+
 restRouter.post('/jobs/:id/documents/ingest', asyncHandler(async (req, res) => {
   const jobId = req.params.id;
   const job = await requireJob(jobId);

@@ -1,8 +1,10 @@
 import { type CSSProperties, useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
-import type { OutputDocxPreview, Zone } from '../lib/api';
+import { injectTemplate, type OutputDocxPreview, type Zone } from '../lib/api';
 import { useTemplateOriginalPreview, useTemplateZones } from '../hooks/useJobQueries';
 import { usePatchTemplateZones } from '../hooks/useJobMutations';
+import { queryKeys } from '../hooks/queryKeys';
 import WorkflowStepper from '../components/WorkflowStepper';
 
 type ZoneRow = Zone & { confirmed: boolean };
@@ -50,12 +52,15 @@ export default function AnnotatePage() {
   useDocumentTitle('Annotate Template — Steno');
   const { id: jobId, templateId } = useParams<{ id: string; templateId: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [zones, setZones] = useState<ZoneRow[]>([]);
   const [saved, setSaved] = useState(false);
   const [expandedZones, setExpandedZones] = useState<Record<string, boolean>>({});
   const [removedZones, setRemovedZones] = useState<Record<string, boolean>>({});
   const [previewMode, setPreviewMode] = useState<'parsed' | 'original'>('parsed');
   const [flashedZoneId, setFlashedZoneId] = useState<string | null>(null);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const previewScrollRef = useRef<HTMLDivElement | null>(null);
   const sectionsScrollRef = useRef<HTMLDivElement | null>(null);
   const previewZoneRefs = useRef<Record<string, HTMLParagraphElement | null>>({});
@@ -94,8 +99,12 @@ export default function AnnotatePage() {
   }, [zonesQuery.data]);
 
   const loading = zonesQuery.isLoading;
-  const error = zonesQuery.error ? String(zonesQuery.error) : patchMutation.error ? String(patchMutation.error) : null;
-  const submitting = patchMutation.isPending;
+  const error = zonesQuery.error
+    ? String(zonesQuery.error)
+    : patchMutation.error
+      ? String(patchMutation.error)
+      : saveError;
+  const submitting = patchMutation.isPending || savingTemplate;
   const activeZones = zones.filter((z) => !removedZones[z.id]);
   const boilerplateCount = activeZones.filter((z) => z.type === 'boilerplate_verbatim').length;
   const variableCount = activeZones.filter((z) => z.type === 'variable_populated').length;
@@ -131,6 +140,13 @@ export default function AnnotatePage() {
         ? { ...zone, type: 'boilerplate_verbatim' as const, suggestedFieldName: null, confirmed: true }
         : zone
     ));
+  const refreshInjectedTemplateQueries = async () => {
+    if (!jobId || !templateId) return;
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.templateSlots(jobId, templateId) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.latestTemplate(jobId) }),
+    ]);
+  };
   const getZonePreviewStyle = (zone: ZoneRow): CSSProperties => ({
     textAlign: zone.runPath?.paragraph?.alignment === 'both'
       ? 'justify'
@@ -211,26 +227,43 @@ export default function AnnotatePage() {
     updateZone(zone.id, { textContent, runPath: nextRunPath, confirmed: false });
   }
 
-  function handleSubmit() {
-    patchMutation.mutate(normalizeZonesForSave(), {
-      onSuccess: () => {
-        setSaved(true);
-        setTimeout(() => setSaved(false), 3000);
-      },
-    });
+  async function handleSubmit() {
+    if (!jobId || !templateId || submitting) return;
+    setSavingTemplate(true);
+    setSaveError(null);
+    try {
+      await patchMutation.mutateAsync(normalizeZonesForSave());
+      await injectTemplate(jobId, templateId);
+      await refreshInjectedTemplateQueries();
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSavingTemplate(false);
+    }
   }
 
-  function handleContinue() {
-    if (!jobId || !allConfirmed) return;
+  async function handleContinue() {
+    if (!jobId || !templateId || !allConfirmed || submitting) return;
     const removeZoneIds = Object.entries(removedZones)
       .filter(([, remove]) => remove)
       .map(([zoneId]) => zoneId);
-    patchMutation.mutate({
-      zones: normalizeZonesForSave().filter((zone) => !removedZones[zone.id]),
-      removeZoneIds,
-    }, {
-      onSuccess: () => navigate(`/jobs/${jobId}/documents`),
-    });
+    setSavingTemplate(true);
+    setSaveError(null);
+    try {
+      await patchMutation.mutateAsync({
+        zones: normalizeZonesForSave().filter((zone) => !removedZones[zone.id]),
+        removeZoneIds,
+      });
+      await injectTemplate(jobId, templateId);
+      await refreshInjectedTemplateQueries();
+      navigate(`/jobs/${jobId}/documents`);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSavingTemplate(false);
+    }
   }
 
   function getTopZoneId(
