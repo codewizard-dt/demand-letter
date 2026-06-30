@@ -56,6 +56,23 @@ describe('DOCX system fields', () => {
     expect(xml).not.toContain('instrText');
   });
 
+  it('normalizes double-brace placeholders in mixed template text to docxtemplater single-brace tags', () => {
+    const input = createDocx({
+      'word/document.xml': bodyDocumentXml('Claimant'),
+    });
+
+    const output = injectDelimiters(input, [{
+      zoneIndex: 0,
+      suggestedFieldName: 'claimantName',
+      templateText: 'Claimant: {{claimantName}}',
+    }]);
+    const xml = new PizZip(output).file('word/document.xml')?.asText() ?? '';
+
+    expect(xml).toContain('<w:t>Claimant: </w:t>');
+    expect(xml).toContain('{claimantName}');
+    expect(xml).not.toContain('{{claimantName}}');
+  });
+
   it('does not clear repeated adjacent page fields as duplicate variables', () => {
     const input = createDocx({
       'word/document.xml': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>

@@ -166,6 +166,10 @@ function createTagRun(text: string, runProperties?: Array<Record<string, unknown
   return { 'w:r': children };
 }
 
+function normalizeTemplateText(templateText: string): string {
+  return templateText.replace(/\{\{([a-zA-Z_][a-zA-Z0-9_.]*)\}\}/g, '{$1}');
+}
+
 function createFieldRun(
   tagName: string,
   runProperties?: Array<Record<string, unknown>>,
@@ -196,13 +200,14 @@ function createTemplateRuns(
   runProperties?: Array<Record<string, unknown>>,
 ): Record<string, unknown>[] {
   const runs: Record<string, unknown>[] = [];
+  const normalizedTemplateText = normalizeTemplateText(templateText);
   const tagPattern = /\{([a-zA-Z_][a-zA-Z0-9_.]*)\}/g;
   let cursor = 0;
 
-  for (const match of templateText.matchAll(tagPattern)) {
+  for (const match of normalizedTemplateText.matchAll(tagPattern)) {
     const matchIndex = match.index ?? 0;
     if (matchIndex > cursor) {
-      runs.push(createTagRun(templateText.slice(cursor, matchIndex), runProperties));
+      runs.push(createTagRun(normalizedTemplateText.slice(cursor, matchIndex), runProperties));
     }
     const fieldName = match[1];
     if (!fieldName) continue; // should not happen: regex group 1 always captures
@@ -210,11 +215,11 @@ function createTemplateRuns(
     cursor = matchIndex + match[0].length;
   }
 
-  if (cursor < templateText.length) {
-    runs.push(createTagRun(templateText.slice(cursor), runProperties));
+  if (cursor < normalizedTemplateText.length) {
+    runs.push(createTagRun(normalizedTemplateText.slice(cursor), runProperties));
   }
 
-  return runs.length > 0 ? runs : [createTagRun(templateText, runProperties)];
+  return runs.length > 0 ? runs : [createTagRun(normalizedTemplateText, runProperties)];
 }
 
 /**

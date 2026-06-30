@@ -33,29 +33,29 @@ export async function renderTemplate(
   // Load with PizZip and Docxtemplater
   const templateZip = new PizZip(bytes);
   const zip = new PizZip(bytes);
-  const doc = new Docxtemplater(zip, {
-    paragraphLoop: true,
-    linebreaks: true,
-    nullGetter: () => '',
-  });
 
-  // Render
   try {
+    const doc = new Docxtemplater(zip, {
+      paragraphLoop: true,
+      linebreaks: true,
+      nullGetter: () => '',
+    });
+
     doc.render(data);
+
+    const renderedZip = doc.getZip() as unknown as PizZip;
+    for (const [fileName, file] of Object.entries(templateZip.files)) {
+      if (file.dir) continue;
+      if (renderedZip.file(fileName)) continue;
+      renderedZip.file(fileName, file.asUint8Array());
+    }
+
+    // Return output buffer
+    return renderedZip.generate({ type: 'nodebuffer', compression: 'DEFLATE' }) as Buffer;
   } catch (err: any) {
     if (err.properties?.errors) {
       throw new TemplateRenderError(err.properties.errors);
     }
     throw err;
   }
-
-  const renderedZip = doc.getZip() as unknown as PizZip;
-  for (const [fileName, file] of Object.entries(templateZip.files)) {
-    if (file.dir) continue;
-    if (renderedZip.file(fileName)) continue;
-    renderedZip.file(fileName, file.asUint8Array());
-  }
-
-  // Return output buffer
-  return renderedZip.generate({ type: 'nodebuffer', compression: 'DEFLATE' }) as Buffer;
 }
