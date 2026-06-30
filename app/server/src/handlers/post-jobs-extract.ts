@@ -1,12 +1,15 @@
 import { APIGatewayProxyHandlerV2 } from 'aws-lambda';
 import { prisma } from '@demand-letter/db';
-import { extractFirmFieldsFromTemplate, logCaseDocumentSlotCoverage, runGroundedExtraction } from '../lib/extraction-service';
+import { randomUUID } from 'node:crypto';
 import { getCorsHeaders } from '../lib/cors';
-import { logJobError } from '../lib/job-logger';
-import { errorResponse } from '../lib/error-response';
+import { runExtractionJob } from '../lib/extraction-job';
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   const jobId = event.pathParameters?.id;
+  const trace = {
+    requestId: event.requestContext?.requestId,
+    traceId: randomUUID(),
+  };
   if (!jobId) {
     return { statusCode: 400,
       headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'missing_job_id', message: 'Job ID is required.' }) };
@@ -23,29 +26,15 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     ((event.requestContext as unknown as Record<string, unknown>)?.authorizer as Record<string, unknown>)?.['sub'] as string ??
     'system';
 
-  try {
-    await runGroundedExtraction(jobId, userId);
-    await extractFirmFieldsFromTemplate(jobId, userId);
-    await logCaseDocumentSlotCoverage(jobId);
+  void runExtractionJob({ jobId, userId, trace });
 
-    const fieldCount = await prisma.extractedField.count({ where: { jobId } });
-    const nullCount = await prisma.extractedField.count({
-      where: { jobId, isNull: true },
-    });
-
-    return {
-      statusCode: 200,
-      headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jobId,
-        totalFields: fieldCount,
-        filledFields: fieldCount - nullCount,
-        nullFields: nullCount,
-      }),
-    };
-  } catch (err) {
-    console.error('Extraction failed', err);
-    await logJobError(jobId, 'post-jobs-extract', err);
-    return errorResponse(event.headers?.['origin'], 500, 'internal_server_error', err);
-  }
+  return {
+    statusCode: 202,
+    headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jobId,
+      status: 'processing',
+      traceId: trace.traceId,
+    }),
+  };
 };

@@ -14,6 +14,7 @@ import AnnotatePage from './pages/AnnotatePage';
 import GapReportPage from './pages/GapReportPage';
 import EditorPage from './pages/EditorPage';
 import DocumentsPage from './pages/DocumentsPage';
+import FilesPage from './pages/FilesPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 export default function App() {
@@ -32,6 +33,7 @@ export default function App() {
               <Route path="/" element={<JobsListPage />} />
               <Route path="/upload" element={<UploadPage />} />
               <Route path="/account" element={<AccountPage />} />
+              <Route path="/documents" element={<FilesPage />} />
               <Route path="/admin/usage" element={<UsagePage />} />
               <Route path="/jobs/:id/generate" element={<GeneratePage />} />
               <Route path="/jobs/:id/gap-report" element={<GapReportPage />} />

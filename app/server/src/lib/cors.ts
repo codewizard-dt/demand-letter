@@ -18,7 +18,7 @@ export function getCorsHeaders(requestOrigin?: string): Record<string, string> {
     ? '*'
     : requestOrigin && ALLOWED_ORIGINS.includes(requestOrigin)
       ? requestOrigin
-      : ALLOWED_ORIGINS[0];
+      : ALLOWED_ORIGINS[0] ?? '*';
   return {
     'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS',

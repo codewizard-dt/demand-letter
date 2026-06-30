@@ -11,7 +11,11 @@ const BUCKET = process.env.DOCUMENTS_BUCKET ?? '';
 
 const FIRM_FIELD_NAMES = ['attorney_name', 'bar_affiliation', 'firm_name', 'firm_address'];
 
-export async function runGroundedExtraction(jobId: string, userId: string): Promise<void> {
+export async function runGroundedExtraction(
+  jobId: string,
+  userId: string,
+  trace?: { requestId?: string; traceId?: string },
+): Promise<void> {
   // 1. Fetch LINE blocks only — WORD blocks are a strict subset of LINE blocks and
   //    inflate the input context without adding information.
   const blocks = await prisma.block.findMany({
@@ -30,6 +34,9 @@ export async function runGroundedExtraction(jobId: string, userId: string): Prom
     modelId: getBasicModelId(),
     feature: LlmFeature.case_extraction,
     userId,
+    jobId,
+    requestId: trace?.requestId,
+    traceId: trace?.traceId,
     system: `You are a precise legal document extraction assistant.
 Extract the requested fields from the provided medical and legal document blocks.
 For every field, cite the exact block IDs that support the value using block_ids.
@@ -81,7 +88,11 @@ Every block_id you cite MUST appear in the provided block list.`,
   }
 }
 
-export async function extractFirmFieldsFromTemplate(jobId: string, userId: string): Promise<void> {
+export async function extractFirmFieldsFromTemplate(
+  jobId: string,
+  userId: string,
+  trace?: { requestId?: string; traceId?: string },
+): Promise<void> {
   const template = await prisma.template.findFirst({
     where: { jobId },
     orderBy: { ingestedAt: 'desc' },
@@ -108,6 +119,9 @@ export async function extractFirmFieldsFromTemplate(jobId: string, userId: strin
     modelId: getBasicModelId(),
     feature: LlmFeature.case_extraction,
     userId,
+    jobId,
+    requestId: trace?.requestId,
+    traceId: trace?.traceId,
     system: `You are a precise legal document extraction assistant.
 Extract attorney and law firm identity fields from the provided header/footer text of a demand letter template.
 For every field, set block_ids to an empty array (this is static template text, not a sourced block).

@@ -1,6 +1,7 @@
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import { prisma } from '@demand-letter/db';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { randomUUID } from 'node:crypto';
 import { renderTemplate, TemplateRenderError, buildDataObject } from '../lib';
 import { generateMedicalNarrative } from '../lib/medical-narrative';
 import { getCorsHeaders } from '../lib/cors';
@@ -13,6 +14,10 @@ const BUCKET = process.env.DOCUMENTS_BUCKET!;
 
 export const handler: APIGatewayProxyHandler = async (event) => {
   const jobId = event.pathParameters?.id;
+  const trace = {
+    requestId: event.requestContext?.requestId,
+    traceId: randomUUID(),
+  };
   if (!jobId) {
     return { statusCode: 400,
       headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'missing_job_id', message: 'Job ID is required.' }) };
@@ -29,7 +34,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   try {
     const userId = 'system';
     const { text: narrativeText, groundingReport } = await generateMedicalNarrative(
-      jobId, MODEL_ID, userId
+      jobId, MODEL_ID, userId, undefined, trace
     );
 
     console.log('Grounding report:', JSON.stringify(groundingReport));
@@ -57,7 +62,9 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
     // Emit each ~80-char chunk as a separate SSE data event for streaming effect
     const chunks = narrativeText.match(/.{1,80}/gs) ?? [narrativeText];
-    const sseBody = chunks.map(c => `data: ${c}\n\n`).join('') + 'event: complete\ndata: \n\n';
+    const sseBody =
+      chunks.map(c => `data: ${JSON.stringify({ type: 'chunk', text: c })}\n\n`).join('') +
+      'event: complete\ndata: {}\n\n';
 
     return {
       statusCode: 200,
@@ -71,6 +78,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   } catch (err) {
     if (err instanceof TemplateRenderError) {
       await prisma.job.update({ where: { id: jobId }, data: { status: 'failed' } });
+      await logJobError(jobId, 'post-jobs-generate', err);
       return {
         statusCode: 500,
         headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },

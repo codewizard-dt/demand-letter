@@ -53,7 +53,8 @@ function parseXmlReferences(xml: string, slot: 'header' | 'footer'): SectionRefe
   };
 
   const sectPrs = [...xml.matchAll(/<w:sectPr\b[^>]*>([\s\S]*?)<\/w:sectPr>/g)];
-  const sectionXml = sectPrs.length > 0 ? sectPrs[sectPrs.length - 1]?.[0] : xml;
+  const lastSectPr = sectPrs[sectPrs.length - 1];
+  const sectionXml = lastSectPr?.[0] ?? xml;
 
   const pattern = new RegExp(`<w:${slot}Reference\\b([^>]*)/>`, 'g');
   for (const match of sectionXml.matchAll(pattern)) {
@@ -128,8 +129,8 @@ function extractImageSizeFromDrawingXml(xml: string, fromIndex: number): { width
   const match = extentMatches.at(-1);
   if (!match) return undefined;
   return {
-    widthPx: Math.round(Number.parseInt(match[2], 10) / 914400 * 96),
-    heightPx: Math.round(Number.parseInt(match[4], 10) / 914400 * 96),
+    widthPx: Math.round(Number.parseInt(match[2] ?? '0', 10) / 914400 * 96),
+    heightPx: Math.round(Number.parseInt(match[4] ?? '0', 10) / 914400 * 96),
   };
 }
 

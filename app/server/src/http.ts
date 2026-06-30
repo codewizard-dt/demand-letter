@@ -37,8 +37,13 @@ export function sendSse(res: Response, chunks: string[], completeData = ''): voi
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('X-Accel-Buffering', 'no');
   for (const chunk of chunks) {
-    res.write(`data: ${chunk}\n\n`);
+    res.write(`data: ${JSON.stringify({ type: 'chunk', text: chunk })}\n\n`);
   }
   res.write(`event: complete\ndata: ${completeData}\n\n`);
   res.end();
+}
+
+export function writeSseData(res: Response, data: unknown, event?: string): void {
+  if (event) res.write(`event: ${event}\n`);
+  res.write(`data: ${JSON.stringify(data)}\n\n`);
 }

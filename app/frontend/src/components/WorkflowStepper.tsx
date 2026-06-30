@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
-import { useJobFiles, useLatestTemplate } from '../hooks/useJobQueries';
+import { useJob, useJobFiles, useLatestTemplate } from '../hooks/useJobQueries';
 
-const STEPS = ['Template', 'Case Documents', 'Gap Report', 'Generate', 'Editor', 'Done'];
+const STEPS = ['Template', 'Case Documents', 'Gap Report', 'Generate & Review', 'Done'];
 
 interface Props {
   currentStep: number; // 0-indexed
@@ -20,22 +20,24 @@ function getStepHref(step: number, jobId?: string, templateId?: string): string 
   if (step === 1) return `/jobs/${jobId}/documents`;
   if (step === 2) return `/jobs/${jobId}/gap-report`;
   if (step === 3) return `/jobs/${jobId}/generate`;
-  if (step === 4) return `/jobs/${jobId}/editor`;
   return null;
 }
 
 export default function WorkflowStepper({ currentStep, jobId, templateId, className = '' }: Props) {
   const latestTemplateQuery = useLatestTemplate(jobId, !!jobId && !templateId);
   const filesQuery = useJobFiles(jobId);
+  const jobQuery = useJob(jobId);
   const resolvedTemplateId = templateId ?? latestTemplateQuery.data?.templateId;
   const hasCaseDocuments = (filesQuery.data ?? []).some((file) => file.role === 'case_doc');
+  const isGenerated = jobQuery.data?.status === 'complete' || !!jobQuery.data?.outputS3Key;
   return (
     <nav aria-label="Workflow progress" className={`flex items-center gap-0 mb-8 ${className}`}>
       {STEPS.map((label, i) => {
         const done = i < currentStep;
         const active = i === currentStep;
         const unlockedByCaseDocuments = hasCaseDocuments && (i === 1 || i === 2);
-        const href = done || unlockedByCaseDocuments ? getStepHref(i, jobId, resolvedTemplateId) : null;
+        const unlockedByGeneration = isGenerated && i === 3;
+        const href = done || unlockedByCaseDocuments || unlockedByGeneration ? getStepHref(i, jobId, resolvedTemplateId) : null;
         const pillClassName = `flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${
           active ? 'bg-primary text-white' : done || href ? 'text-primary' : 'text-text-muted'
         } ${href ? 'hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary' : ''}`;

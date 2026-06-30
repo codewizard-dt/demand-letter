@@ -59,16 +59,23 @@ enum LlmFeature {
 
 model LlmAuditLog {
   id               String     @id @default(cuid())
+  jobId            String?
+  requestId        String?
+  traceId          String?
   userId           String
   feature          LlmFeature
   model            String
   provider         String
+  status           String     @default("success")
+  error            String?
   inputTokens      Int
   outputTokens     Int
   estimatedCostUsd Decimal    @db.Decimal(10, 6)
   durationMs       Int
   createdAt        DateTime   @default(now())
 
+  @@index([jobId])
+  @@index([traceId])
   @@index([userId])
   @@index([feature, createdAt])
   @@index([createdAt])
@@ -109,6 +116,7 @@ model Zone {
   runPath            Json
   textContent        String
   suggestedFieldName String?
+  templateText       String?
   confirmed          Boolean   @default(false)
   part               ZonePart?
   stationaryVariant  String?

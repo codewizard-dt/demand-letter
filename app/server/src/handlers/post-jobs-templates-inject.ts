@@ -33,7 +33,11 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     // Only inject into confirmed variable_populated zones that have a field name
     const confirmedZones = template.zones
       .filter(z => z.confirmed && z.type === ZoneType.variable_populated && z.suggestedFieldName)
-      .map(z => ({ zoneIndex: z.zoneIndex, suggestedFieldName: z.suggestedFieldName as string }));
+      .map(z => ({
+        zoneIndex: z.zoneIndex,
+        suggestedFieldName: z.suggestedFieldName as string,
+        templateText: z.templateText,
+      }));
 
     // Download original DOCX from S3
     const getCmd = new GetObjectCommand({ Bucket: BUCKET, Key: template.s3KeyOriginal });

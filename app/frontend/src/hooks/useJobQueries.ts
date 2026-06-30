@@ -19,6 +19,7 @@ import {
   fetchOutputDocxByUrl,
   fetchTemplateOriginalPreview,
   fetchLatestTemplate,
+  fetchJob,
 } from '../lib/api';
 
 export function useLlmCosts(days = 30) {
@@ -183,5 +184,14 @@ export function useJobs() {
   return useQuery({
     queryKey: queryKeys.jobs(),
     queryFn: fetchJobs,
+  });
+}
+
+export function useJob(jobId: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.job(jobId!),
+    queryFn: () => fetchJob(jobId!),
+    enabled: !!jobId,
+    staleTime: 30_000,
   });
 }

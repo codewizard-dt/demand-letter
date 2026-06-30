@@ -15,4 +15,5 @@ export const queryKeys = {
   jobs:            ()                                        => ['jobs']                              as const,
   jobFiles:        (jobId: string)                           => ['jobs', jobId, 'files']              as const,
   jobLogs:         (jobId: string)                           => ['jobs', jobId, 'logs']               as const,
+  job:             (jobId: string)                           => ['job', jobId]                        as const,
 };

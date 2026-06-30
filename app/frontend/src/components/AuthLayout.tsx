@@ -29,10 +29,33 @@ export default function AuthLayout() {
   return (
     <div className="min-h-screen bg-bg flex flex-col">
       <header className="bg-primary h-14 flex items-center justify-between px-6 shrink-0">
-        <Link to="/" className="flex items-center gap-3">
-          <img src="/steno-logo.svg" alt="Steno" className="h-8 w-auto brightness-0 invert" />
-          <span className="font-serif text-white text-sm tracking-widest">STENO</span>
-        </Link>
+        <div className="flex items-center gap-8">
+          <Link to="/" className="flex items-center gap-3">
+            <img src="/steno-logo.svg" alt="Steno" className="h-8 w-auto brightness-0 invert" />
+            <span className="font-serif text-white text-sm tracking-widest">STENO</span>
+          </Link>
+          <nav className="flex items-center gap-1">
+            {[
+              { to: '/', label: 'Demand Letters', exact: true },
+              { to: '/documents', label: 'Documents', exact: false },
+            ].map(({ to, label, exact }) => {
+              const isActive = exact ? location.pathname === to : location.pathname.startsWith(to);
+              return (
+                <Link
+                  key={to}
+                  to={to}
+                  className={`px-3 py-1.5 rounded text-sm transition-colors ${
+                    isActive
+                      ? 'bg-white/15 text-white font-medium'
+                      : 'text-white/70 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  {label}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
 
         <div className="relative" ref={dropdownRef}>
           <button

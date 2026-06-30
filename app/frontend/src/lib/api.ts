@@ -40,7 +40,7 @@ const looksLikeBase64 = (value: string): boolean => {
 };
 
 async function readDocxResponse(res: Response): Promise<ArrayBuffer> {
-  const contentType = res.headers.get('content-type')?.split(';')[0].trim().toLowerCase();
+  const contentType = res.headers.get('content-type')?.split(';')[0]?.trim().toLowerCase();
   const bytes = new Uint8Array(await res.arrayBuffer());
 
   if (contentType === 'application/json' || bytes[0] === '{'.charCodeAt(0)) {
@@ -82,35 +82,6 @@ export async function fetchLlmCosts(days = 30): Promise<{
   return res.json();
 }
 
-export async function generateJob(jobId: string, onChunk: (text: string) => void): Promise<void> {
-  const res = await fetch(`${API_BASE}/jobs/${jobId}/generate`, { method: 'POST' });
-  if (!res.ok) throw new Error(`POST /jobs/${jobId}/generate failed: ${res.status}`);
-  const reader = res.body?.getReader();
-  const decoder = new TextDecoder();
-  if (!reader) return;
-  let buffer = '';
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    // Split on SSE block separator (\n\n); retain last potentially incomplete block
-    const blocks = buffer.split('\n\n');
-    buffer = blocks.pop() ?? '';
-    for (const block of blocks) {
-      const lines = block.split('\n');
-      const eventLine = lines.find((l) => l.startsWith('event:'));
-      const dataLine = lines.find((l) => l.startsWith('data:'));
-      if (eventLine?.trim() === 'event: complete') {
-        reader.cancel();
-        return;
-      }
-      if (dataLine) {
-        const text = dataLine.slice('data:'.length).trimStart();
-        if (text) onChunk(text);
-      }
-    }
-  }
-}
 
 export async function refineJob(
   jobId: string,
@@ -152,8 +123,26 @@ export async function refineJob(
         reader.cancel();
         return { afterText: collected.join(''), refinementId };
       }
+      if (eventLine?.trim() === 'event: error') {
+        const fallback = 'Refinement failed.';
+        if (!dataLine) throw new Error(fallback);
+        try {
+          const payload = JSON.parse(dataLine.slice('data:'.length).trimStart()) as { message?: string };
+          throw new Error(payload.message ?? fallback);
+        } catch (err) {
+          if (err instanceof Error) throw err;
+          throw new Error(fallback);
+        }
+      }
       if (dataLine) {
-        const text = dataLine.slice('data:'.length).trimStart();
+        const raw = dataLine.slice('data:'.length).trimStart();
+        let text = raw;
+        try {
+          const payload = JSON.parse(raw) as { type?: string; text?: string };
+          text = payload.type === 'chunk' ? (payload.text ?? '') : '';
+        } catch {
+          // Backward compatibility with old raw text SSE chunks.
+        }
         if (text) {
           collected.push(text);
           onChunk(text);
@@ -236,10 +225,24 @@ export async function uploadFile(jobId: string, file: File): Promise<void> {
   if (!res.ok) throw new Error(`POST /jobs/${jobId}/files failed: ${res.status}`);
 }
 
+export interface JobFile {
+  fileName: string;
+  mimeType: string;
+  role: string;
+}
+
 export interface JobSummary {
   id: string;
   status: string;
   createdAt: string;
+  files: JobFile[];
+}
+
+export async function fetchFiles(): Promise<Array<JobFile & { jobId: string; createdAt: string }>> {
+  const jobs = await fetchJobs();
+  return jobs.flatMap((job) =>
+    job.files.map((file) => ({ ...file, jobId: job.id, createdAt: job.createdAt })),
+  );
 }
 
 export async function fetchJobs(): Promise<JobSummary[]> {
@@ -247,6 +250,15 @@ export async function fetchJobs(): Promise<JobSummary[]> {
   if (!res.ok) throw new Error(`GET /jobs failed: ${res.status}`);
   const data = await res.json() as { jobs: JobSummary[] };
   return data.jobs;
+}
+
+export async function saveEditorContent(jobId: string, doc: unknown): Promise<void> {
+  const res = await fetch(`${API_BASE}/jobs/${jobId}/editor/save`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ doc }),
+  });
+  if (!res.ok) throw new Error(`Failed to save editor content: ${res.status}`);
 }
 
 export async function exportDocx(id: string, doc: unknown): Promise<Blob> {
@@ -312,6 +324,7 @@ export type Zone = {
   };
   type: 'boilerplate_verbatim' | 'variable_populated' | null;
   suggestedFieldName: string | null;
+  templateText?: string | null;
   confirmed: boolean;
   part?: 'header' | 'body' | 'footer';
   stationaryVariant?: string;
@@ -342,7 +355,7 @@ export async function fetchTemplateOriginalPreview(jobId: string, templateId: st
 export async function patchTemplateZones(
   jobId: string,
   templateId: string,
-  zones: Array<{ id: string; type: string | null; textContent?: string; suggestedFieldName: string | null; confirmed: boolean }>,
+  zones: Array<{ id: string; type: string | null; textContent?: string; suggestedFieldName: string | null; templateText?: string | null; confirmed: boolean }>,
   removeZoneIds: string[] = [],
 ) {
   const res = await fetch(`${API_BASE}/jobs/${jobId}/templates/${templateId}/zones`, {
@@ -479,8 +492,7 @@ export interface IngestResponse {
 export async function ingestDocuments(jobId: string, options?: { force?: boolean; fileId?: string }): Promise<IngestResponse> {
   const res = await fetch(`${API_BASE}/jobs/${jobId}/documents/ingest`, {
     method: 'POST',
-    headers: options ? { 'Content-Type': 'application/json' } : undefined,
-    body: options ? JSON.stringify(options) : undefined,
+    ...(options ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(options) } : {}),
   });
   if (!res.ok) throw new Error(`POST /jobs/${jobId}/documents/ingest failed: ${res.status}`);
 
@@ -501,6 +513,7 @@ export async function segmentTemplate(jobId: string): Promise<{ templateId: stri
 export async function classifyTemplate(jobId: string, templateId: string): Promise<void> {
   const res = await fetch(`${API_BASE}/jobs/${jobId}/templates/${templateId}/classify`, { method: 'POST' });
   if (!res.ok) throw new Error(`POST /jobs/${jobId}/templates/${templateId}/classify failed: ${res.status}`);
+  await waitForOptionalStream(() => connectTemplateClassificationStream(jobId, templateId, () => {}));
 }
 
 export async function injectTemplate(
@@ -510,8 +523,7 @@ export async function injectTemplate(
 ): Promise<{ slotCount: number }> {
   const res = await fetch(`${API_BASE}/jobs/${jobId}/templates/${templateId}/inject`, {
     method: 'POST',
-    headers: options ? { 'Content-Type': 'application/json' } : undefined,
-    body: options ? JSON.stringify(options) : undefined,
+    ...(options ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(options) } : {}),
   });
   if (!res.ok) throw new Error(`POST /jobs/${jobId}/templates/${templateId}/inject failed: ${res.status}`);
   return res.json() as Promise<{ slotCount: number }>;
@@ -545,6 +557,7 @@ export async function fetchTemplateSlots(jobId: string, templateId: string): Pro
 export async function extractFields(jobId: string): Promise<void> {
   const res = await fetch(`${API_BASE}/jobs/${jobId}/extract`, { method: 'POST' });
   if (!res.ok) throw new Error(`POST /jobs/${jobId}/extract failed: ${res.status}`);
+  await waitForOptionalStream(() => connectExtractStream(jobId, () => {}));
 }
 
 export interface FileRow {
@@ -588,4 +601,97 @@ export async function triggerGenerateJob(jobId: string): Promise<void> {
     throw new Error(body.message ?? `HTTP ${res.status}`);
   }
   res.body?.cancel();
+}
+
+export async function fetchJob(jobId: string): Promise<{ id: string; status: string; outputS3Key: string | null }> {
+  const res = await fetch(`${API_BASE}/jobs/${jobId}`);
+  if (!res.ok) throw new Error(`GET /jobs/${jobId} failed: ${res.status}`);
+  return res.json() as Promise<{ id: string; status: string; outputS3Key: string | null }>;
+}
+
+export type GenerateStreamEvent =
+  | { type: 'progress'; message: string }
+  | { type: 'zone'; zoneIndex: number; content: string }
+  | { type: 'zone-chunk'; zoneIndex: number; chunk: string }
+  | { type: 'complete' }
+  | { type: 'error'; message: string };
+
+export type ExtractStreamEvent =
+  | { type: 'progress'; message: string }
+  | { type: 'complete'; jobId: string; totalFields: number; filledFields: number; nullFields: number }
+  | { type: 'error'; message: string };
+
+export type TemplateClassificationStreamEvent =
+  | { type: 'progress'; message: string }
+  | { type: 'complete'; jobId: string; templateId: string; zoneCount: number }
+  | { type: 'error'; message: string };
+
+async function connectEventStream<T extends { type: string }>(
+  url: string,
+  onEvent: (event: T) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const res = await fetch(url, { ...(signal ? { signal } : {}) });
+  if (!res.ok) throw new Error(`GET ${url} failed: ${res.status}`);
+  const reader = res.body?.getReader();
+  if (!reader) return;
+  const decoder = new TextDecoder();
+  let buffer = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const blocks = buffer.split('\n\n');
+    buffer = blocks.pop() ?? '';
+    for (const block of blocks) {
+      if (block.startsWith(':')) continue; // SSE keep-alive ping
+      const dataLine = block.split('\n').find((l) => l.startsWith('data:'));
+      if (!dataLine) continue;
+      try {
+        const event = JSON.parse(dataLine.slice(5).trimStart()) as T;
+        onEvent(event);
+        if (event.type === 'complete' || event.type === 'error') {
+          reader.cancel();
+          return;
+        }
+      } catch {
+        // ignore malformed SSE events
+      }
+    }
+  }
+}
+
+async function waitForOptionalStream(connect: () => Promise<void>): Promise<void> {
+  try {
+    await connect();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (/\bfailed:\s*404\b/.test(message) || /\bfailed:\s*405\b/.test(message)) return;
+    throw err;
+  }
+}
+
+export async function connectGenerateStream(
+  jobId: string,
+  onEvent: (event: GenerateStreamEvent) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  await connectEventStream(`${API_BASE}/jobs/${jobId}/generate/stream`, onEvent, signal);
+}
+
+export async function connectExtractStream(
+  jobId: string,
+  onEvent: (event: ExtractStreamEvent) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  await connectEventStream(`${API_BASE}/jobs/${jobId}/extract/stream`, onEvent, signal);
+}
+
+export async function connectTemplateClassificationStream(
+  jobId: string,
+  templateId: string,
+  onEvent: (event: TemplateClassificationStreamEvent) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  await connectEventStream(`${API_BASE}/jobs/${jobId}/templates/${templateId}/classify/stream`, onEvent, signal);
 }

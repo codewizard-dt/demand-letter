@@ -1,5 +1,6 @@
 import { prisma } from '@demand-letter/db';
 import { dbNameToTagName, FIELD_SCHEMA } from './field-schema';
+import { suffixedTemplateSlotName } from './template-slot-names';
 
 export type GenerationData = Record<string, string | Array<Record<string, string>>>;
 
@@ -13,6 +14,29 @@ function setValueWithAlias(
   if (dbName !== tagName) {
     result[dbName] = value;
   }
+  if (typeof value === 'string') {
+    setLineSuffixAliases(result, dbName, tagName, value);
+  }
+}
+
+function setLineSuffixAliases(
+  result: GenerationData,
+  dbName: string,
+  tagName: string,
+  value: string,
+): void {
+  const lines = value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (lines.length <= 1) return;
+  lines.forEach((line, index) => {
+    const suffixIndex = index + 1;
+    result[suffixedTemplateSlotName(dbName, suffixIndex)] = line;
+    if (dbName !== tagName) {
+      result[suffixedTemplateSlotName(tagName, suffixIndex)] = line;
+    }
+  });
 }
 
 export async function buildDataObject(jobId: string): Promise<GenerationData> {

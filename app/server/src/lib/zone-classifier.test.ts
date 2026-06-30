@@ -16,6 +16,7 @@ describe('parseZoneClassifications', () => {
       zoneIndex: 1,
       type: 'variable_populated',
       suggestedFieldName: 'claimant_name',
+      templateText: 'Re: {claimant_name}',
     },
     {
       zoneIndex: 2,
@@ -30,6 +31,7 @@ describe('parseZoneClassifications', () => {
         zoneIndex: 1,
         type: 'variable_populated',
         suggestedFieldName: 'claimant_name',
+        templateText: 'Re: {claimant_name}',
       },
       {
         zoneIndex: 2,
@@ -45,6 +47,7 @@ describe('parseZoneClassifications', () => {
         zoneIndex: 1,
         type: 'variable_populated',
         suggestedFieldName: 'claimant_name',
+        templateText: 'Re: {claimant_name}',
       },
       {
         zoneIndex: 2,
@@ -87,10 +90,68 @@ describe('classifyZones', () => {
       ],
     }));
     expect(result).toEqual([
-      { zoneIndex: 1, type: ZoneType.boilerplate_verbatim, suggestedFieldName: null },
-      { zoneIndex: 2, type: ZoneType.variable_populated, suggestedFieldName: 'claimant_name' },
-      { zoneIndex: 3, type: ZoneType.boilerplate_verbatim, suggestedFieldName: null },
-      { zoneIndex: 4, type: ZoneType.boilerplate_verbatim, suggestedFieldName: null },
+      { zoneIndex: 1, type: ZoneType.boilerplate_verbatim, suggestedFieldName: null, templateText: null },
+      { zoneIndex: 2, type: ZoneType.variable_populated, suggestedFieldName: 'claimant_name', templateText: null },
+      { zoneIndex: 3, type: ZoneType.boilerplate_verbatim, suggestedFieldName: null, templateText: null },
+      { zoneIndex: 4, type: ZoneType.boilerplate_verbatim, suggestedFieldName: null, templateText: null },
+    ]);
+  });
+
+  it('infers mixed template text for label plus proper-name zones', async () => {
+    mockInvokeModel.mockResolvedValue(JSON.stringify([
+      { zoneIndex: 14, type: 'variable_populated', suggestedFieldName: 'adjuster_name', templateText: null },
+    ]));
+
+    const result = await classifyZones([
+      { zoneIndex: 14, textContent: 'Attn.: Elaine Collins' },
+    ], 'system');
+
+    expect(result).toEqual([
+      {
+        zoneIndex: 14,
+        type: ZoneType.variable_populated,
+        suggestedFieldName: 'adjuster_name',
+        templateText: 'Attn.: {adjuster_name}',
+      },
+    ]);
+  });
+
+  it('suffixes repeated field names when template values differ', async () => {
+    mockInvokeModel.mockResolvedValue(JSON.stringify([
+      { zoneIndex: 16, type: 'variable_populated', suggestedFieldName: 'insurer_address', templateText: null },
+      { zoneIndex: 17, type: 'variable_populated', suggestedFieldName: 'insurer_address', templateText: null },
+    ]));
+
+    const result = await classifyZones([
+      { zoneIndex: 16, textContent: 'P.O. Box 25210' },
+      { zoneIndex: 17, textContent: 'Santa Ana, CA 92799' },
+    ], 'system');
+
+    expect(result).toEqual([
+      { zoneIndex: 16, type: ZoneType.variable_populated, suggestedFieldName: 'insurer_address_1', templateText: null },
+      { zoneIndex: 17, type: ZoneType.variable_populated, suggestedFieldName: 'insurer_address_2', templateText: null },
+    ]);
+  });
+
+  it('does not suffix repeated field names when mixed zones contain the same variable value', async () => {
+    mockInvokeModel.mockResolvedValue(JSON.stringify([
+      { zoneIndex: 19, type: 'variable_populated', suggestedFieldName: 'claimant_name', templateText: 'Re:Our Client:{claimant_name}' },
+      { zoneIndex: 20, type: 'variable_populated', suggestedFieldName: 'claimant_name', templateText: null },
+    ]));
+
+    const result = await classifyZones([
+      { zoneIndex: 19, textContent: 'Re:Our Client:Patrick Donahue' },
+      { zoneIndex: 20, textContent: 'Patrick Donahue' },
+    ], 'system');
+
+    expect(result).toEqual([
+      {
+        zoneIndex: 19,
+        type: ZoneType.variable_populated,
+        suggestedFieldName: 'claimant_name',
+        templateText: 'Re:Our Client:{claimant_name}',
+      },
+      { zoneIndex: 20, type: ZoneType.variable_populated, suggestedFieldName: 'claimant_name', templateText: null },
     ]);
   });
 
@@ -102,8 +163,8 @@ describe('classifyZones', () => {
 
     expect(mockInvokeModel).not.toHaveBeenCalled();
     expect(result).toEqual([
-      { zoneIndex: 1, type: ZoneType.boilerplate_verbatim, suggestedFieldName: null },
-      { zoneIndex: 2, type: ZoneType.boilerplate_verbatim, suggestedFieldName: null },
+      { zoneIndex: 1, type: ZoneType.boilerplate_verbatim, suggestedFieldName: null, templateText: null },
+      { zoneIndex: 2, type: ZoneType.boilerplate_verbatim, suggestedFieldName: null, templateText: null },
     ]);
   });
 });

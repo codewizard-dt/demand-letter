@@ -39,6 +39,21 @@ describe('buildDataObject', () => {
     expect(result.claimNumber).toBe('foo')
   })
 
+  it('adds numbered aliases for multi-line extracted values', async () => {
+    prismaMock.extractedField.findMany.mockResolvedValue([
+      { fieldName: 'insurer_address', value: 'P.O. Box 25210\nSanta Ana, CA 92799', isNull: false, source: 'llm', acceptMissing: false },
+    ] as any)
+
+    const result = await buildDataObject(JOB_ID)
+
+    expect(result.insurer_address).toBe('P.O. Box 25210\nSanta Ana, CA 92799')
+    expect(result.insurerAddress).toBe('P.O. Box 25210\nSanta Ana, CA 92799')
+    expect(result.insurer_address_1).toBe('P.O. Box 25210')
+    expect(result.insurer_address_2).toBe('Santa Ana, CA 92799')
+    expect(result.insurerAddress_1).toBe('P.O. Box 25210')
+    expect(result.insurerAddress_2).toBe('Santa Ana, CA 92799')
+  })
+
   it('omits the field entirely when isNull is true and acceptMissing is false', async () => {
     prismaMock.extractedField.findMany.mockResolvedValue([
       { fieldName: 'letter_date', value: null, isNull: true, source: 'llm', acceptMissing: false },

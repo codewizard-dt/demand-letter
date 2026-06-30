@@ -22,6 +22,9 @@ interface InvokeOptions {
   modelId: string;
   feature: LlmFeature;
   userId: string;
+  jobId?: string;
+  requestId?: string;
+  traceId?: string;
   system?: string;
   messages: Array<{ role: 'user' | 'assistant'; content: string | Array<Record<string, unknown>> }>;
   temperature?: number;
@@ -51,10 +54,10 @@ export async function invokeModel(opts: InvokeOptions): Promise<string> {
     const outputTokens: number = parsed.usage?.output_tokens ?? 0;
     const text: string = parsed.content?.[0]?.text ?? '';
 
-    logAudit(opts, inputTokens, outputTokens, Date.now() - start);
+    logAudit(opts, inputTokens, outputTokens, Date.now() - start, 'success');
     return text;
   } catch (err) {
-    logAudit(opts, 0, 0, Date.now() - start);
+    logAudit(opts, 0, 0, Date.now() - start, 'error', err);
     throw err;
   }
 }
@@ -84,19 +87,24 @@ export async function invokeModelStream(
   let outputTokens = 0;
 
   async function* generate(): AsyncIterable<string> {
-    for await (const event of response.body ?? []) {
-      const chunk = JSON.parse(Buffer.from(event.chunk?.bytes ?? []).toString());
-      if (chunk.type === 'content_block_delta') {
-        yield chunk.delta?.text ?? '';
+    try {
+      for await (const event of response.body ?? []) {
+        const chunk = JSON.parse(Buffer.from(event.chunk?.bytes ?? []).toString());
+        if (chunk.type === 'content_block_delta') {
+          yield chunk.delta?.text ?? '';
+        }
+        if (chunk.type === 'message_delta') {
+          outputTokens = chunk.usage?.output_tokens ?? outputTokens;
+        }
+        if (chunk.type === 'message_start') {
+          inputTokens = chunk.message?.usage?.input_tokens ?? inputTokens;
+        }
       }
-      if (chunk.type === 'message_delta') {
-        outputTokens = chunk.usage?.output_tokens ?? outputTokens;
-      }
-      if (chunk.type === 'message_start') {
-        inputTokens = chunk.message?.usage?.input_tokens ?? inputTokens;
-      }
+      logAudit(opts, inputTokens, outputTokens, Date.now() - start, 'success');
+    } catch (err) {
+      logAudit(opts, inputTokens, outputTokens, Date.now() - start, 'error', err);
+      throw err;
     }
-    logAudit(opts, inputTokens, outputTokens, Date.now() - start);
   }
 
   return generate();
@@ -156,10 +164,10 @@ export async function invokeModelWithTools(
       throw new Error('Claude did not return a tool_use block');
     }
 
-    logAudit(opts, inputTokens, outputTokens, Date.now() - start);
+    logAudit(opts, inputTokens, outputTokens, Date.now() - start, 'success');
     return toolUseBlock.input as Record<string, unknown>;
   } catch (err) {
-    logAudit(opts, 0, 0, Date.now() - start);
+    logAudit(opts, 0, 0, Date.now() - start, 'error', err);
     throw err;
   }
 }
@@ -169,14 +177,22 @@ function logAudit(
   inputTokens: number,
   outputTokens: number,
   durationMs: number,
+  status: 'success' | 'error',
+  err?: unknown,
 ): void {
+  const error = err instanceof Error ? err.message : err === undefined ? null : String(err);
   prisma.llmAuditLog
     .create({
       data: {
+        jobId: opts.jobId,
+        requestId: opts.requestId,
+        traceId: opts.traceId,
         userId: opts.userId,
         feature: opts.feature,
         model: opts.modelId,
         provider: 'bedrock',
+        status,
+        error,
         inputTokens,
         outputTokens,
         estimatedCostUsd: estimateCostUsd(opts.modelId, inputTokens, outputTokens),

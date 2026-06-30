@@ -62,6 +62,22 @@ describe('computeGapReport', () => {
     ])
   })
 
+  it('covers suffixed slots when the base extracted field is covered', async () => {
+    prismaMock.template.findFirst.mockResolvedValue({ id: 'tmpl-1' } as any)
+    prismaMock.templateSlot.findMany.mockResolvedValue([
+      { slotName: 'insurer_address_1' },
+      { slotName: 'insurer_address_2' },
+      { slotName: 'insurerAddress_1' },
+    ] as any)
+    prismaMock.extractedField.findMany.mockResolvedValue([
+      { fieldName: 'insurer_address', isNull: false, confidence: 0.95, source: 'llm', acceptMissing: false, nullReason: null },
+    ] as any)
+
+    const result = await computeGapReport('job-1')
+
+    expect(result).toEqual({ covered: 3, total: 3, gaps: [] })
+  })
+
   it('covers a field with acceptMissing: true', async () => {
     prismaMock.template.findFirst.mockResolvedValue({ id: 'tmpl-1' } as any)
     prismaMock.templateSlot.findMany.mockResolvedValue([

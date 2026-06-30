@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import * as Y from 'yjs';
@@ -7,12 +7,11 @@ import { WebsocketProvider } from 'y-websocket';
 import { Collaboration } from '@tiptap/extension-collaboration';
 import { CollaborationCursor } from '@tiptap/extension-collaboration-cursor';
 import { useOutputUrl, useDocxHtml } from '../hooks/useJobQueries';
-import { useExportDocx } from '../hooks/useJobMutations';
+import { useExportDocx, useSaveEditorContent } from '../hooks/useJobMutations';
 import { BoilerplateZone } from '../lib/editor/boilerplateZoneMark';
 import { useAuth } from '../lib/auth';
 import { TrackInsert, TrackDelete } from '../lib/editor/trackChangeMarks';
 import { TrackChangesToolbar } from '../components/TrackChangesToolbar';
-import WorkflowStepper from '../components/WorkflowStepper';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 /**
@@ -29,6 +28,7 @@ import { useDocumentTitle } from '../hooks/useDocumentTitle';
 export default function EditorPage() {
   useDocumentTitle('Editor — Steno');
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [trackChangesEnabled, setTrackChangesEnabled] = useState(false);
   const [wsBannerDismissed, setWsBannerDismissed] = useState(false);
 
@@ -36,6 +36,7 @@ export default function EditorPage() {
   const outputUrlQuery = useOutputUrl(id);
   const docxHtmlQuery = useDocxHtml(id, outputUrlQuery.data);
   const exportMutation = useExportDocx();
+  const saveMutation = useSaveEditorContent();
 
   const userId = user?.email ?? 'anonymous';
   const userName = user?.name ?? 'Anonymous';
@@ -76,14 +77,12 @@ export default function EditorPage() {
 
   useEffect(() => () => { provider?.destroy(); }, [provider]);
 
-  // Seed Y.Doc from mammoth HTML once both editor and HTML are ready
   useEffect(() => {
     const html = docxHtmlQuery.data ?? null;
     if (editor && html !== null) {
-      // One-time seed: only apply if the Y.Doc fragment is empty
       const fragment = ydoc.getXmlFragment('default');
       if (fragment.length === 0) {
-        editor.commands.setContent(html, { emitUpdate: false }); // don't emit history step
+        editor.commands.setContent(html, { emitUpdate: false });
       }
     }
   }, [editor, docxHtmlQuery.data, ydoc]);
@@ -109,6 +108,14 @@ export default function EditorPage() {
     );
   }
 
+  function handleSaveAndReturn() {
+    if (!id || !editor) return;
+    saveMutation.mutate(
+      { jobId: id, doc: editor.getJSON() },
+      { onSuccess: () => navigate(`/jobs/${id}/generate`) },
+    );
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -122,17 +129,40 @@ export default function EditorPage() {
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
-      <WorkflowStepper currentStep={4} jobId={id} />
-      <h1 className="text-2xl font-bold mb-6">Edit Demand Letter</h1>
-      <div className="mb-4 flex justify-end">
-        <button
-          onClick={handleExport}
-          disabled={exportMutation.isPending || !editor}
-          className="btn-primary"
-        >
-          {exportMutation.isPending ? 'Exporting…' : 'Export to Word'}
-        </button>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <Link
+            to={`/jobs/${id}/generate`}
+            className="text-sm text-primary hover:underline"
+          >
+            ← Back to Generate & Review
+          </Link>
+          <h1 className="text-2xl font-bold mt-1">Edit Demand Letter</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleSaveAndReturn}
+            disabled={saveMutation.isPending || !editor}
+            className="btn-primary"
+          >
+            {saveMutation.isPending ? 'Saving…' : 'Save & Return to Review'}
+          </button>
+          <button
+            onClick={handleExport}
+            disabled={exportMutation.isPending || !editor}
+            className="btn-outline"
+          >
+            {exportMutation.isPending ? 'Exporting…' : 'Export to Word'}
+          </button>
+        </div>
       </div>
+
+      {saveMutation.isError && (
+        <div className="mb-4 rounded-md bg-red-50 border border-red-200 px-4 py-3 text-red-700 text-sm">
+          Save failed: {saveMutation.error instanceof Error ? saveMutation.error.message : 'Unknown error'}
+        </div>
+      )}
+
       {!import.meta.env.VITE_WS_API_URL && !wsBannerDismissed && (
         <div className="mb-4 rounded-md bg-amber-50 border border-amber-300 px-4 py-3 text-amber-800 text-sm flex justify-between items-center">
           <span>Collaborative editing requires a deployed WebSocket server. Export to Word is still available.</span>

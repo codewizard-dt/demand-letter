@@ -19,6 +19,8 @@ export async function generateMedicalNarrative(
   jobId: string,
   modelId: string,
   userId: string,
+  onChunk?: (chunk: string) => void,
+  trace?: { requestId?: string; traceId?: string },
 ): Promise<{ text: string; groundingReport: { validCitations: number; unknownCitations: string[] } }> {
   const fields = await prisma.extractedField.findMany({
     where: { jobId, fieldName: { in: MEDICAL_FIELDS } },
@@ -52,6 +54,9 @@ export async function generateMedicalNarrative(
     modelId,
     feature: LlmFeature.medical_narrative,
     userId,
+    jobId,
+    requestId: trace?.requestId,
+    traceId: trace?.traceId,
     system: SYSTEM_PROMPT,
     messages: [{ role: 'user', content: userMessage }],
   });
@@ -60,13 +65,15 @@ export async function generateMedicalNarrative(
   let text = '';
   for await (const chunk of stream) {
     text += chunk;
+    onChunk?.(chunk);
   }
 
   // Grounding validation: verify all [block-<id>] citations reference known block IDs
   const CITATION_RE = /\[block-([^\]]+)\]/g;
   const cited = new Set<string>();
   for (const match of text.matchAll(CITATION_RE)) {
-    cited.add(match[1]);
+    const citedId = match[1];
+    if (citedId) cited.add(citedId);
   }
   const unknownCitations = [...cited].filter((id) => !allBlockIds.has(id));
   const validCitations = cited.size - unknownCitations.length;

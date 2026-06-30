@@ -1,118 +1,16 @@
-import { type CSSProperties, useEffect, useMemo, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useOutputUrl, useDocxHtml, useDocxPreview } from '../hooks/useJobQueries';
-import { useGenerateJob, useDownloadOutput } from '../hooks/useJobMutations';
+import { type CSSProperties, useEffect, useRef, useState } from 'react';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
+import { Link, useParams } from 'react-router-dom';
+import { connectGenerateStream, fetchJob, getTemplateZones, type OutputDocxPreview } from '../lib/api';
+import { useTriggerGenerateJob, useDownloadOutput } from '../hooks/useJobMutations';
+import { useLatestTemplate, useDocxPreview } from '../hooks/useJobQueries';
+import { queryKeys } from '../hooks/queryKeys';
 import LoadingSpinner from '../components/LoadingSpinner';
-import type { OutputDocxPreview } from '../lib/api';
-
 import { RefinementPanel } from '../components/RefinementPanel';
-import { RefinementHistory } from '../components/RefinementHistory';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
-
 import WorkflowStepper from '../components/WorkflowStepper';
 import ErrorCard from '../components/ErrorCard';
-
-function formatGeneratedDocument(text: string): JSX.Element[] {
-  const lines = text.replace(/\r\n/g, '\n').split('\n');
-  const blocks: JSX.Element[] = [];
-  let currentParagraph: string[] = [];
-  let currentList: string[] = [];
-  let listType: 'unordered' | 'ordered' | null = null;
-  let orderedStart = 1;
-
-  const flushParagraph = () => {
-    if (currentParagraph.length === 0) return;
-    blocks.push(
-      <p key={`p-${blocks.length}`} className="st-letter-paragraph">
-        {currentParagraph.map((line, index) => (
-          <span key={`${blocks.length}-p-line-${index}`}>
-            {index > 0 && <br />}
-            {line}
-          </span>
-        ))}
-      </p>,
-    );
-    currentParagraph = [];
-  };
-
-  const flushList = () => {
-    if (currentList.length === 0) return;
-    const start = orderedStart;
-    const ListTag = listType === 'ordered' ? 'ol' : 'ul';
-    const items = currentList.map((item, i) => (
-      <li key={`list-item-${blocks.length}-${i}`}>{item}</li>
-    ));
-    blocks.push(
-      <ListTag key={`list-${blocks.length}`} className="st-letter-list" start={listType === 'ordered' ? start : undefined}>
-        {items}
-      </ListTag>,
-    );
-    currentList = [];
-    listType = null;
-    orderedStart = 1;
-  };
-
-  const isSectionHeading = (line: string) => {
-    const trimmed = line.trim();
-    if (trimmed.length < 5 || trimmed.length > 96) return false;
-    if (trimmed !== trimmed.toUpperCase()) return false;
-    if (!/[A-Z]/.test(trimmed)) return false;
-    if (/^\d/.test(trimmed)) return false;
-    return true;
-  };
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) {
-      flushParagraph();
-      flushList();
-      continue;
-    }
-
-    const bulletMatch = trimmed.match(/^[-•*]\s+(.*)$/);
-    if (bulletMatch) {
-      flushParagraph();
-      if (listType === 'ordered') {
-        flushList();
-      }
-      listType = 'unordered';
-      currentList.push(bulletMatch[1]);
-      continue;
-    }
-
-    const orderedMatch = trimmed.match(/^(\d+)[\.)]\s+(.*)$/);
-    if (orderedMatch) {
-      flushParagraph();
-      if (listType === 'unordered') {
-        flushList();
-      }
-      const start = Number.parseInt(orderedMatch[1], 10);
-      if (listType !== 'ordered') {
-        orderedStart = Number.isNaN(start) ? 1 : start;
-      }
-      listType = 'ordered';
-      currentList.push(orderedMatch[2]);
-      continue;
-    }
-
-    if (isSectionHeading(trimmed) && currentParagraph.length === 0 && currentList.length === 0) {
-      flushParagraph();
-      flushList();
-      blocks.push(<h3 key={`h-${blocks.length}`}>{trimmed}</h3>);
-      continue;
-    }
-
-    if (currentList.length > 0) {
-      flushList();
-    }
-    currentParagraph.push(trimmed);
-  }
-
-  flushParagraph();
-  flushList();
-  return blocks;
-}
+import { ZoneOutputCard } from '../components/ZoneOutputCard';
 
 function getPreferredStationary(
   stationaries: OutputDocxPreview['stationaries'] | undefined,
@@ -128,220 +26,285 @@ function getStationaryStyle(
   imageWidthPx?: number,
   imageHeightPx?: number,
 ): CSSProperties | undefined {
-  if (!imageWidthPx || !imageHeightPx) {
-    return undefined;
-  }
+  if (!imageWidthPx || !imageHeightPx) return undefined;
   return { width: `${imageWidthPx}px`, height: `${imageHeightPx}px` };
 }
 
 export default function GeneratePage() {
-  useDocumentTitle('Generate — Steno');
+  useDocumentTitle('Generate & Review — Steno');
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const outputStorageKey = id ? `generated-output:${id}` : null;
-  const [output, setOutput] = useState(() => {
-    if (!outputStorageKey) return '';
-    try {
-      return sessionStorage.getItem(outputStorageKey) ?? '';
-    } catch {
-      return '';
-    }
-  });
+
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [zoneContents, setZoneContents] = useState<Map<number, string>>(new Map());
   const [isDone, setIsDone] = useState(false);
+  const [streamError, setStreamError] = useState<string | null>(null);
+  const [previewMode, setPreviewMode] = useState<'parsed' | 'docx'>('parsed');
+  const abortRef = useRef<AbortController | null>(null);
 
-  const generateMutation = useGenerateJob();
+  const triggerGenerateMutation = useTriggerGenerateJob();
   const downloadMutation = useDownloadOutput();
-  const outputUrlQuery = useOutputUrl(id);
-  const docxHtmlQuery = useDocxHtml(id, outputUrlQuery.data);
-  const docxPreviewQuery = useDocxPreview(id, outputUrlQuery.isSuccess);
 
-  const preferredHeader = getPreferredStationary(docxPreviewQuery.data?.stationaries, 'header');
-  const preferredFooter = getPreferredStationary(docxPreviewQuery.data?.stationaries, 'footer');
+  const latestTemplateQuery = useLatestTemplate(id);
+  const templateId = latestTemplateQuery.data?.templateId;
+  const zonesQuery = useQuery({
+    queryKey: ['templateZones', id, templateId],
+    queryFn: () => getTemplateZones(id!, templateId!),
+    enabled: !!id && !!templateId,
+    staleTime: Infinity,
+  });
+  const zones = (zonesQuery.data ?? []).slice().sort((a, b) => a.zoneIndex - b.zoneIndex);
+
+  const docxPreviewQuery = useDocxPreview(id, isDone);
+  const docxPreview = docxPreviewQuery.data;
+  const preferredHeader = getPreferredStationary(docxPreview?.stationaries, 'header');
+  const preferredFooter = getPreferredStationary(docxPreview?.stationaries, 'footer');
+
+  function startStream(jobId: string, ac: AbortController) {
+    setStatusMessage('Connecting…');
+    connectGenerateStream(
+      jobId,
+      (event) => {
+        if (event.type === 'progress') {
+          setStatusMessage(event.message);
+        } else if (event.type === 'zone') {
+          setZoneContents((prev) => new Map(prev).set(event.zoneIndex, event.content));
+        } else if (event.type === 'zone-chunk') {
+          setZoneContents((prev) => {
+            const m = new Map(prev);
+            m.set(event.zoneIndex, (m.get(event.zoneIndex) ?? '') + event.chunk);
+            return m;
+          });
+        } else if (event.type === 'complete') {
+          setIsDone(true);
+          setStatusMessage(null);
+          void queryClient.invalidateQueries({ queryKey: queryKeys.outputUrl(jobId) });
+          void queryClient.invalidateQueries({ queryKey: queryKeys.docxPreview(jobId) });
+        } else if (event.type === 'error') {
+          setStreamError(event.message);
+          setStatusMessage(null);
+        }
+      },
+      ac.signal,
+    ).catch((err) => {
+      if (!ac.signal.aborted) {
+        setStreamError(String(err));
+        setStatusMessage(null);
+      }
+    });
+  }
 
   useEffect(() => {
     if (!id) return;
-    queryClient.setQueryData(['generatedOutput', id], output);
-    if (!outputStorageKey) return;
-    try {
-      if (output.length > 0) {
-        sessionStorage.setItem(outputStorageKey, output);
-      } else {
-        sessionStorage.removeItem(outputStorageKey);
-      }
-    } catch {
-      // Storage can fail in private mode or restricted contexts; keep in-memory cache only.
-    }
-  }, [id, output, outputStorageKey, queryClient]);
+    let cancelled = false;
+    const ac = new AbortController();
+    abortRef.current = ac;
 
-  function handleGenerate() {
-    setOutput('');
-    setIsDone(false);
-    if (outputStorageKey) {
-      try {
-        sessionStorage.removeItem(outputStorageKey);
-      } catch {}
-    }
-    if (id) {
-      queryClient.setQueryData(['generatedOutput', id], '');
-    }
-    generateMutation.mutate(
-      { jobId: id!, onChunk: (chunk) => setOutput((prev) => prev + chunk) },
-      { onSuccess: () => setIsDone(true) },
-    );
+    fetchJob(id)
+      .then((job) => {
+        if (cancelled) return;
+        if (job.status === 'pending') return;
+        if (job.outputS3Key) setIsDone(true);
+        startStream(id, ac);
+      })
+      .catch(() => {
+        // job fetch failed — show button, let user trigger manually
+      });
+
+    return () => {
+      cancelled = true;
+      ac.abort();
+    };
+  }, [id]);
+
+  function handleTrigger() {
+    if (!id) return;
+    triggerGenerateMutation.mutate(id, {
+      onSuccess: () => {
+        setStreamError(null);
+        setZoneContents(new Map());
+        setIsDone(false);
+        setPreviewMode('parsed');
+        abortRef.current?.abort();
+        const ac = new AbortController();
+        abortRef.current = ac;
+        startStream(id, ac);
+      },
+    });
   }
 
   function handleDownload() {
-    downloadMutation.mutate(id!);
+    if (id) downloadMutation.mutate(id);
   }
 
-  const isGenerating = generateMutation.isPending;
-  const isDownloading = downloadMutation.isPending;
-  const error = generateMutation.error ? String(generateMutation.error) : null;
-  const renderedOutput = useMemo(() => formatGeneratedDocument(output), [output]);
-  const hasGeneratedOutput = output.length > 0 || outputUrlQuery.isSuccess || !!docxPreviewQuery.data || !!docxHtmlQuery.data;
-  const hasOutputHtml = !!docxPreviewQuery.data?.html || !!docxHtmlQuery.data;
-  const isPreviewReady = !!docxPreviewQuery.data?.html;
-  const previewHtml = docxPreviewQuery.data?.html ?? docxHtmlQuery.data;
-  const previewBodyStyle: CSSProperties = {};
-  const showLoadingPreview = isDone
-    && (outputUrlQuery.isLoading
-      || (outputUrlQuery.isSuccess && docxPreviewQuery.isLoading && !isPreviewReady)
-      || (!docxHtmlQuery.data && docxHtmlQuery.isLoading));
-  const showOutput = isDone || hasGeneratedOutput;
-  const canFallbackPreview = !isPreviewReady && !!docxHtmlQuery.data;
-  const canRefine = isDone || output.length > 0;
-  const canDownload = hasGeneratedOutput;
+  const showTriggerButton = !statusMessage && !isDone && zoneContents.size === 0 && !triggerGenerateMutation.isPending;
+  const isStreaming = !!statusMessage || triggerGenerateMutation.isPending;
+
+  const narrativeZone = zonesQuery.data?.find((z) => z.suggestedFieldName === 'medicalNarrative');
+  const narrativeText = narrativeZone ? (zoneContents.get(narrativeZone.zoneIndex) ?? '') : '';
 
   return (
-    <div className="p-8 max-w-3xl mx-auto">
-      <WorkflowStepper currentStep={3} jobId={id} />
-      <h1 className="text-2xl font-bold mb-6">Generate Demand Letter</h1>
+    <div className="p-8">
+      <WorkflowStepper currentStep={3} {...(id ? { jobId: id } : {})} />
+      <h1 className="text-2xl font-bold mb-4">Generate & Review</h1>
 
-      {!isDone && (
-        <div>
-          <button
-            onClick={handleGenerate}
-            disabled={isGenerating}
-            className="btn-primary"
-          >
-            Generate Demand Letter
-          </button>
-        </div>
+      {/* Full-width status / trigger bar */}
+      {showTriggerButton && (
+        <button onClick={handleTrigger} className="btn-primary mb-4">
+          Generate Demand Letter
+        </button>
       )}
-
-      {isGenerating && (
-        <div className="flex items-center gap-3 mt-4">
+      {triggerGenerateMutation.isPending && (
+        <div className="flex items-center gap-3 mb-4">
           <LoadingSpinner className="h-5 w-5 text-primary" />
-          <span className="text-primary font-medium">Building document…</span>
+          <span className="text-primary font-medium">Starting generation…</span>
+        </div>
+      )}
+      {statusMessage && (
+        <div className="flex items-center gap-3 mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <LoadingSpinner className="h-4 w-4 text-primary shrink-0" />
+          <span className="text-primary text-sm font-medium">{statusMessage}</span>
+        </div>
+      )}
+      {streamError && (
+        <div className="mb-4">
+          <ErrorCard message={streamError} onRetry={handleTrigger} />
         </div>
       )}
 
-      {error && <ErrorCard message={error} onRetry={handleGenerate} />}
+      {/* Two-column layout */}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">
 
-      {showOutput && (
-        <div
-          role="status"
-          aria-live="polite"
-          aria-atomic="false"
-          className="mt-6 st-template-document-wrap"
-        >
-          {showLoadingPreview && (
-            <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
-              <LoadingSpinner className="h-4 w-4 text-primary" />
-              <span>Rendering template preview…</span>
+        {/* Left — document preview */}
+        <section className="min-w-0">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-base font-semibold text-gray-800">Generated Document</h2>
+            <div className="flex items-center gap-2 flex-wrap">
+              {isDone && (
+                <div className="flex rounded-full border border-gray-300 bg-white p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewMode('parsed')}
+                    className={`px-3 py-1 text-xs rounded-full ${previewMode === 'parsed' ? 'bg-primary text-white' : 'text-gray-700'}`}
+                  >
+                    Parsed
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewMode('docx')}
+                    className={`px-3 py-1 text-xs rounded-full ${previewMode === 'docx' ? 'bg-primary text-white' : 'text-gray-700'}`}
+                  >
+                    DOCX
+                  </button>
+                </div>
+              )}
+              {isDone && (
+                <>
+                  <button
+                    onClick={handleDownload}
+                    disabled={downloadMutation.isPending}
+                    className="btn-outline text-xs py-1 px-3"
+                  >
+                    {downloadMutation.isPending ? 'Preparing…' : 'Download DOCX'}
+                  </button>
+                  <Link
+                    to={`/jobs/${id}/editor`}
+                    className="text-xs font-medium text-primary border border-primary/30 rounded-full px-3 py-1 hover:bg-primary/5"
+                  >
+                    Open in Editor →
+                  </Link>
+                </>
+              )}
             </div>
-          )}
-          {(docxPreviewQuery.isError || docxHtmlQuery.isError) && !hasOutputHtml && (
-            <p className="mb-3 text-sm text-red-700">
-              Template preview failed to render from DOCX. Download to verify the output directly.
-            </p>
-          )}
-          {canFallbackPreview && docxHtmlQuery.data ? (
-            <article
-              className="st-template-document st-docx-preview"
-              dangerouslySetInnerHTML={{ __html: docxHtmlQuery.data }}
-            />
-          ) : (
-            hasOutputHtml ? (
-              <div className="st-docx-preview-wrap">
-                {preferredHeader && (
-                  <div className="st-docx-stationary st-docx-stationary-header">
-                    {preferredHeader?.imageDataUrl && (
-                      <img
-                        src={preferredHeader.imageDataUrl}
-                        alt="Header stationary"
-                        style={getStationaryStyle(preferredHeader.imageWidthPx, preferredHeader.imageHeightPx)}
-                        className="st-docx-stationary-image"
-                      />
-                    )}
-                    {preferredHeader?.text ? (
-                      <div className="st-docx-stationary-text">{preferredHeader.text}</div>
-                    ) : null}
+          </div>
+
+          <div className="max-h-[72vh] overflow-y-auto rounded border border-gray-200 bg-white p-6 shadow-sm">
+            {previewMode === 'docx' && isDone ? (
+              <>
+                {docxPreviewQuery.isLoading && (
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <LoadingSpinner className="h-4 w-4 text-primary" />
+                    <span>Loading DOCX preview…</span>
                   </div>
                 )}
-                <article
-                  className="st-template-document st-docx-preview"
-                  style={previewBodyStyle}
-                  dangerouslySetInnerHTML={{ __html: previewHtml! }}
-                />
-                {preferredFooter && (
-                  <div className="st-docx-stationary st-docx-stationary-footer">
-                    {preferredFooter?.imageDataUrl && (
-                      <img
-                        src={preferredFooter.imageDataUrl}
-                        alt="Footer stationary"
-                        style={getStationaryStyle(preferredFooter.imageWidthPx, preferredFooter.imageHeightPx)}
-                        className="st-docx-stationary-image"
-                      />
+                {docxPreviewQuery.isError && (
+                  <p className="text-sm text-red-600">Failed to load DOCX preview.</p>
+                )}
+                {docxPreview && (
+                  <div className="st-docx-preview-wrap">
+                    {preferredHeader && (
+                      <div className="st-docx-stationary st-docx-stationary-header">
+                        {preferredHeader.imageDataUrl && (
+                          <img
+                            src={preferredHeader.imageDataUrl}
+                            alt="Header"
+                            style={getStationaryStyle(preferredHeader.imageWidthPx, preferredHeader.imageHeightPx)}
+                            className="st-docx-stationary-image"
+                          />
+                        )}
+                        {preferredHeader.text && (
+                          <div className="st-docx-stationary-text">{preferredHeader.text}</div>
+                        )}
+                      </div>
                     )}
-                    {preferredFooter?.text ? (
-                      <div className="st-docx-stationary-text">{preferredFooter.text}</div>
-                    ) : null}
+                    <article
+                      className="st-template-document st-docx-preview st-original-docx-preview"
+                      dangerouslySetInnerHTML={{ __html: docxPreview.html }}
+                    />
+                    {preferredFooter && (
+                      <div className="st-docx-stationary st-docx-stationary-footer">
+                        {preferredFooter.imageDataUrl && (
+                          <img
+                            src={preferredFooter.imageDataUrl}
+                            alt="Footer"
+                            style={getStationaryStyle(preferredFooter.imageWidthPx, preferredFooter.imageHeightPx)}
+                            className="st-docx-stationary-image"
+                          />
+                        )}
+                        {preferredFooter.text && (
+                          <div className="st-docx-stationary-text">{preferredFooter.text}</div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
-              </div>
+              </>
             ) : (
-              <article className="st-template-document">
-                {renderedOutput}
-                {!output && outputUrlQuery.isSuccess && (
-                  <p className="text-sm text-gray-600">Generated document is available and will be previewed in DOCX form once ready.</p>
-                )}
-              </article>
-            )
-          )}
-        </div>
-      )}
+              /* Parsed view — streams zone by zone */
+              zones.length === 0 && !isStreaming ? (
+                <p className="text-sm text-gray-400">Trigger generation to see a preview.</p>
+              ) : (
+                <article className="space-y-2 text-sm leading-6 text-gray-900">
+                  {zones.map((zone) => {
+                    const zoneContent = zoneContents.get(zone.zoneIndex);
+                    return (
+                      <ZoneOutputCard
+                        key={zone.id}
+                        zone={zone}
+                        {...(zoneContent !== undefined ? { content: zoneContent } : {})}
+                      />
+                    );
+                  })}
+                </article>
+              )
+            )}
+          </div>
+        </section>
 
-      {canRefine && (
-        <RefinementPanel
-          jobId={id!}
-          currentText={output}
-          onAccepted={(newText) => setOutput(newText)}
-        />
-      )}
-
-      {canRefine && (
-        <RefinementHistory jobId={id!} />
-      )}
-
-      {canDownload && (
-        <div className="mt-6 flex items-center gap-3">
-          <button
-            onClick={() => navigate(`/jobs/${id}/editor`)}
-            className="btn-primary"
-          >
-            Open in Editor
-          </button>
-          <button
-            onClick={handleDownload}
-            disabled={isDownloading}
-            className="btn-outline"
-          >
-            {isDownloading ? 'Preparing…' : 'Download DOCX'}
-          </button>
-        </div>
-      )}
+        {/* Right — chat/refinement panel */}
+        <aside className="min-w-0">
+          <RefinementPanel
+            jobId={id!}
+            isEnabled={isDone}
+            currentText={narrativeText}
+            onAccepted={(newText) => {
+              if (narrativeZone) {
+                setZoneContents((prev) => new Map(prev).set(narrativeZone.zoneIndex, newText));
+              }
+            }}
+          />
+        </aside>
+      </div>
     </div>
   );
 }

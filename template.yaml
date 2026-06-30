@@ -9,6 +9,12 @@ Globals:
     MemorySize: 512
     Architectures:
       - x86_64
+    VpcConfig:
+      SecurityGroupIds:
+        - !Ref LambdaSecurityGroup
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
     Environment:
       Variables:
         NODE_ENV: !Ref Stage
@@ -88,16 +94,22 @@ Resources:
       AliasName: !Sub 'alias/${Stage}-demand-letter-rds'
       TargetKeyId: !Ref DemandLetterKmsKey
 
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Lambda egress for private RDS access - Demand Letter Generator
+      VpcId: !Ref VpcId
+
   RdsSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: RDS PostgreSQL access - Demand Letter Generator
+      GroupDescription: RDS PostgreSQL access from Lambda only - Demand Letter Generator
       VpcId: !Ref VpcId
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 5432
           ToPort: 5432
-          CidrIp: 0.0.0.0/0  # dev only — lock down for production
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
 
   RdsSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
@@ -127,7 +139,7 @@ Resources:
         - !Ref RdsSecurityGroup
       BackupRetentionPeriod: 7
       MultiAZ: false
-      PubliclyAccessible: true  # dev only
+      PubliclyAccessible: false
       EnablePerformanceInsights: true
 
   DocumentsBucket:
@@ -208,6 +220,7 @@ Resources:
             Path: /jobs
             Method: get
       Policies:
+        - AWSLambdaVPCAccessExecutionRole
         - AWSLambdaBasicExecutionRole
 
   PostJobsFunction:
@@ -217,6 +230,7 @@ Resources:
       Handler: post-jobs.handler
       Runtime: nodejs24.x
       Policies:
+        - AWSLambdaVPCAccessExecutionRole
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
         - Statement:
@@ -241,6 +255,7 @@ Resources:
       Handler: post-jobs-files.handler
       Runtime: nodejs24.x
       Policies:
+        - AWSLambdaVPCAccessExecutionRole
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
         - Statement:
@@ -268,6 +283,7 @@ Resources:
       Handler: get-admin-llm-costs.handler
       Runtime: nodejs24.x
       Policies:
+        - AWSLambdaVPCAccessExecutionRole
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
         - Statement:
@@ -291,6 +307,8 @@ Resources:
       CodeUri: .build/handlers/
       Handler: post-jobs-generate.handler
       Runtime: nodejs24.x
+      Policies:
+        - AWSLambdaVPCAccessExecutionRole
       Timeout: 300
       Layers:
         - !Ref DbLayer
@@ -315,6 +333,7 @@ Resources:
       Layers:
         - !Ref DbLayer
       Policies:
+        - AWSLambdaVPCAccessExecutionRole
         - Statement:
             - Effect: Allow
               Action:
@@ -338,6 +357,7 @@ Resources:
       Handler: get-jobs-output.handler
       Runtime: nodejs24.x
       Policies:
+        - AWSLambdaVPCAccessExecutionRole
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
         - Statement:
@@ -365,6 +385,7 @@ Resources:
       Handler: get-jobs-output-docx.handler
       Runtime: nodejs24.x
       Policies:
+        - AWSLambdaVPCAccessExecutionRole
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
       Layers:
@@ -386,6 +407,7 @@ Resources:
       Handler: get-jobs-output-docx-preview.handler
       Runtime: nodejs24.x
       Policies:
+        - AWSLambdaVPCAccessExecutionRole
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
       Layers:
@@ -407,6 +429,7 @@ Resources:
       Handler: get-jobs-template-zones.handler
       Runtime: nodejs24.x
       Policies:
+        - AWSLambdaVPCAccessExecutionRole
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
         - Statement:
@@ -431,6 +454,7 @@ Resources:
       Handler: get-jobs-template-original-docx.handler
       Runtime: nodejs24.x
       Policies:
+        - AWSLambdaVPCAccessExecutionRole
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
       Layers:
@@ -449,6 +473,7 @@ Resources:
       Handler: get-jobs-template-latest.handler
       Runtime: nodejs24.x
       Policies:
+        - AWSLambdaVPCAccessExecutionRole
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
       Layers:
@@ -467,6 +492,7 @@ Resources:
       Handler: get-jobs-template-original-preview.handler
       Runtime: nodejs24.x
       Policies:
+        - AWSLambdaVPCAccessExecutionRole
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
       Layers:
@@ -485,6 +511,7 @@ Resources:
       Handler: patch-jobs-template-zones.handler
       Runtime: nodejs24.x
       Policies:
+        - AWSLambdaVPCAccessExecutionRole
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
         - Statement:
@@ -510,6 +537,7 @@ Resources:
       Runtime: nodejs24.x
       Timeout: 120
       Policies:
+        - AWSLambdaVPCAccessExecutionRole
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
         - Statement:
@@ -538,6 +566,7 @@ Resources:
       Runtime: nodejs24.x
       Timeout: 60
       Policies:
+        - AWSLambdaVPCAccessExecutionRole
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
       Layers:
@@ -559,6 +588,7 @@ Resources:
       Handler: post-jobs-templates-segment.handler
       Runtime: nodejs24.x
       Policies:
+        - AWSLambdaVPCAccessExecutionRole
         - S3ReadPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
       Layers:
@@ -579,6 +609,8 @@ Resources:
       CodeUri: .build/handlers/
       Handler: get-jobs-files.handler
       Runtime: nodejs24.x
+      Policies:
+        - AWSLambdaVPCAccessExecutionRole
       Layers:
         - !Ref DbLayer
       Events:
@@ -594,6 +626,8 @@ Resources:
       CodeUri: .build/handlers/
       Handler: get-jobs-logs.handler
       Runtime: nodejs24.x
+      Policies:
+        - AWSLambdaVPCAccessExecutionRole
       Layers:
         - !Ref DbLayer
       Events:
@@ -609,6 +643,8 @@ Resources:
       CodeUri: .build/handlers/
       Handler: get-jobs-template-slots.handler
       Runtime: nodejs24.x
+      Policies:
+        - AWSLambdaVPCAccessExecutionRole
       Layers:
         - !Ref DbLayer
       Events:
@@ -635,6 +671,7 @@ Resources:
             Path: /jobs/{id}/documents/ingest
             Method: post
       Policies:
+        - AWSLambdaVPCAccessExecutionRole
         - AWSLambdaBasicExecutionRole
         - Statement:
             - Effect: Allow
@@ -668,6 +705,7 @@ Resources:
           Properties:
             Topic: !Ref TextractCompletionTopicArn
       Policies:
+        - AWSLambdaVPCAccessExecutionRole
         - AWSLambdaBasicExecutionRole
         - Statement:
             - Effect: Allow
@@ -694,6 +732,7 @@ Resources:
             Path: /jobs/{id}/blocks
             Method: get
       Policies:
+        - AWSLambdaVPCAccessExecutionRole
         - AWSLambdaBasicExecutionRole
 
   PostJobsExtractFunction:
@@ -706,6 +745,7 @@ Resources:
       Layers:
         - !Ref DbLayer
       Policies:
+        - AWSLambdaVPCAccessExecutionRole
         - Statement:
             - Effect: Allow
               Action:
@@ -738,6 +778,7 @@ Resources:
             Path: /jobs/{id}/gap-report
             Method: get
       Policies:
+        - AWSLambdaVPCAccessExecutionRole
         - AWSLambdaBasicExecutionRole
 
   GetJobsFieldsFunction:
@@ -757,6 +798,7 @@ Resources:
             Path: /jobs/{id}/fields
             Method: get
       Policies:
+        - AWSLambdaVPCAccessExecutionRole
         - AWSLambdaBasicExecutionRole
 
   PostJobsSaveValuesFunction:
@@ -776,6 +818,7 @@ Resources:
             Path: /jobs/{id}/save-values
             Method: post
       Policies:
+        - AWSLambdaVPCAccessExecutionRole
         - AWSLambdaBasicExecutionRole
 
   PatchJobsRefineAcceptFunction:
@@ -784,7 +827,7 @@ Resources:
       CodeUri: .build/handlers/
       Handler: patch-jobs-refine-accept.handler
       Runtime: nodejs24.x
-      Timeout: 30
+      Timeout: 300
       MemorySize: 256
       Layers:
         - !Ref DbLayer
@@ -795,7 +838,13 @@ Resources:
             Path: /jobs/{id}/refine/{refinement_id}/accept
             Method: patch
       Policies:
+        - AWSLambdaVPCAccessExecutionRole
         - AWSLambdaBasicExecutionRole
+        - S3CrudPolicy:
+            BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
+      Environment:
+        Variables:
+          DOCUMENTS_BUCKET: !Ref DocumentsBucket
 
   PatchJobsRefineRejectFunction:
     Type: AWS::Serverless::Function
@@ -814,6 +863,7 @@ Resources:
             Path: /jobs/{id}/refine/{refinement_id}/reject
             Method: patch
       Policies:
+        - AWSLambdaVPCAccessExecutionRole
         - AWSLambdaBasicExecutionRole
 
   GetJobsRefinementsFunction:
@@ -833,6 +883,7 @@ Resources:
             Path: /jobs/{id}/refinements
             Method: get
       Policies:
+        - AWSLambdaVPCAccessExecutionRole
         - AWSLambdaBasicExecutionRole
 
   GetJobsChangesFunction:
@@ -852,6 +903,7 @@ Resources:
             Path: /jobs/{id}/changes
             Method: get
       Policies:
+        - AWSLambdaVPCAccessExecutionRole
         - AWSLambdaBasicExecutionRole
 
   DeleteJobsChangesFunction:
@@ -871,6 +923,7 @@ Resources:
             Path: /jobs/{id}/changes/{changeId}
             Method: delete
       Policies:
+        - AWSLambdaVPCAccessExecutionRole
         - AWSLambdaBasicExecutionRole
 
   CloudTrailLogsBucket:
@@ -975,6 +1028,7 @@ Resources:
       Layers:
         - !Ref DbLayer
       Policies:
+        - AWSLambdaVPCAccessExecutionRole
         - AWSLambdaBasicExecutionRole
         - Statement:
             - Effect: Allow
@@ -1020,6 +1074,7 @@ Resources:
       Layers:
         - !Ref DbLayer
       Policies:
+        - AWSLambdaVPCAccessExecutionRole
         - AWSLambdaBasicExecutionRole
         - Statement:
             - Effect: Allow
@@ -1048,6 +1103,8 @@ Resources:
       CodeUri: .build/handlers/
       Handler: post-jobs-export-docx.handler
       Runtime: nodejs24.x
+      Policies:
+        - AWSLambdaVPCAccessExecutionRole
       Layers:
         - !Ref DbLayer
       Events:
@@ -1063,6 +1120,8 @@ Resources:
       CodeUri: .build/handlers/
       Handler: get-jobs-export-docx.handler
       Runtime: nodejs24.x
+      Policies:
+        - AWSLambdaVPCAccessExecutionRole
       Layers:
         - !Ref DbLayer
       Events:

@@ -306,7 +306,10 @@ export function extractParagraphZones(buffer: Buffer): ParagraphZone[] {
   const zones: ParagraphZone[] = [];
   const paraIndex = { value: 0 };
   const documentRels = parseRelationships(zip.file('word/_rels/document.xml.rels')?.asText() ?? '');
-  for (const { path, variant } of referencedPartPaths(docXml, documentRels, 'header')) {
+  const HEADER_VARIANT_ORDER: Record<string, number> = { first: 0, default: 1, even: 2 };
+  const headerParts = referencedPartPaths(docXml, documentRels, 'header')
+    .sort((a, b) => (HEADER_VARIANT_ORDER[a.variant] ?? 1) - (HEADER_VARIANT_ORDER[b.variant] ?? 1));
+  for (const { path, variant } of headerParts) {
     extractPartZones(zip, path, 'header', paraIndex, zones, variant);
   }
   extractPartZones(zip, 'word/document.xml', 'body', paraIndex, zones);

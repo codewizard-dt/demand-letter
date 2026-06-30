@@ -1,5 +1,6 @@
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import { LlmFeature, prisma } from '@demand-letter/db';
+import { randomUUID } from 'node:crypto';
 import { getBasicModelId, invokeModelStream } from '../lib/ai-provider';
 import { getCorsHeaders } from '../lib/cors';
 import { errorResponse } from '../lib/error-response';
@@ -8,6 +9,10 @@ const MODEL_ID = getBasicModelId();
 
 export const handler: APIGatewayProxyHandler = async (event) => {
   const jobId = event.pathParameters?.id;
+  const trace = {
+    requestId: event.requestContext?.requestId,
+    traceId: randomUUID(),
+  };
   if (!jobId) {
     return { statusCode: 400,
       headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'missing_job_id', message: 'Job ID is required.' }) };
@@ -61,6 +66,9 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       modelId: MODEL_ID,
       feature: LlmFeature.refinement,
       userId: 'system',
+      jobId,
+      requestId: trace.requestId,
+      traceId: trace.traceId,
       system,
       messages: [{ role: 'user', content: userMessage }],
     });
@@ -83,7 +91,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     });
 
     const sseBody =
-      chunks.map((c) => `data: ${c}\n\n`).join('') +
+      chunks.map((c) => `data: ${JSON.stringify({ type: 'chunk', text: c })}\n\n`).join('') +
       `event: complete\ndata: ${JSON.stringify({ refinementId: refinement.id })}\n\n`;
 
     return {

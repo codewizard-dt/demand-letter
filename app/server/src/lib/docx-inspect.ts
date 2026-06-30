@@ -1,4 +1,5 @@
 import PizZip from 'pizzip';
+import { isSystemTemplateSlot } from './docx-system-fields';
 
 // Scan DOCX XML for {tagName} placeholders without the lodash-dependent inspect module
 export function enumerateSlots(buffer: Buffer): string[] {
@@ -6,9 +7,13 @@ export function enumerateSlots(buffer: Buffer): string[] {
   const seen = new Set<string>();
   for (const name of Object.keys(zip.files)) {
     if (!name.endsWith('.xml')) continue;
-    const content = zip.files[name].asText();
+    const content = zip.files[name]?.asText() ?? '';
     for (const match of content.matchAll(/\{([a-zA-Z_][a-zA-Z0-9_.]*)\}/g)) {
-      seen.add(match[1]);
+      const slotName = match[1];
+      if (!slotName) continue;
+      if (!isSystemTemplateSlot(slotName)) {
+        seen.add(slotName);
+      }
     }
   }
   return Array.from(seen);
@@ -22,16 +27,18 @@ export function enumerateSlotsWithContext(buffer: Buffer): { slotName: string; p
 
   for (const filename of Object.keys(zip.files)) {
     if (!filename.endsWith('.xml')) continue;
-    const content = zip.files[filename].asText();
+    const content = zip.files[filename]?.asText() ?? '';
     // Parse paragraphs by splitting on </w:p> boundaries
     const paragraphs = content.split(/<\/w:p>/i);
     for (const para of paragraphs) {
       // Extract all w:t text nodes from this paragraph
-      const textNodes = [...para.matchAll(/<w:t[^>]*>([^<]*)<\/w:t>/gi)].map(m => m[1]);
+      const textNodes = [...para.matchAll(/<w:t[^>]*>([^<]*)<\/w:t>/gi)].map(m => m[1] ?? '');
       const fullText = textNodes.join('');
       const tagMatches = [...fullText.matchAll(TAG_RE)];
       for (const match of tagMatches) {
         const slotName = match[1];
+        if (!slotName) continue;
+        if (isSystemTemplateSlot(slotName)) continue;
         if (seen.has(slotName)) continue;
         seen.add(slotName);
         // Strip all {tag} markers; if meaningful text remains, that's the context

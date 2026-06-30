@@ -1,5 +1,6 @@
 import PizZip from 'pizzip';
 import { XMLParser, XMLBuilder } from 'fast-xml-parser';
+import { getSystemFieldCode, isSystemTemplateFieldName } from './docx-system-fields';
 
 const PARSER = new XMLParser({
   ignoreAttributes: false,
@@ -17,7 +18,7 @@ const BUILDER = new XMLBuilder({
 
 export function injectDelimiters(
   buffer: Buffer,
-  confirmedZones: Array<{ zoneIndex: number; suggestedFieldName: string }>,
+  confirmedZones: Array<{ zoneIndex: number; suggestedFieldName: string; templateText?: string | null }>,
 ): Buffer {
   const zip = new PizZip(buffer);
   const docXml = zip.file('word/document.xml')?.asText();
@@ -33,16 +34,20 @@ export function injectDelimiters(
   // only the first gets the {tag}; subsequent ones get their runs cleared so
   // the same value doesn't repeat back-to-back in the output.
   const sorted = [...confirmedZones].sort((a, b) => a.zoneIndex - b.zoneIndex);
-  const confirmedSet = new Map<number, string>();
+  const confirmedSet = new Map<number, { fieldName: string; templateText?: string | null }>();
   const clearSet = new Set<number>();
   const lastSeenAt = new Map<string, number>(); // fieldName → last confirmed zoneIndex
 
   for (const zone of sorted) {
+    if (isSystemTemplateFieldName(zone.suggestedFieldName)) {
+      confirmedSet.set(zone.zoneIndex, { fieldName: zone.suggestedFieldName, templateText: zone.templateText });
+      continue;
+    }
     const prev = lastSeenAt.get(zone.suggestedFieldName);
     if (prev !== undefined && zone.zoneIndex - prev <= 3) {
       clearSet.add(zone.zoneIndex);
     } else {
-      confirmedSet.set(zone.zoneIndex, zone.suggestedFieldName);
+      confirmedSet.set(zone.zoneIndex, { fieldName: zone.suggestedFieldName, templateText: zone.templateText });
       lastSeenAt.set(zone.suggestedFieldName, zone.zoneIndex);
     }
   }
@@ -117,7 +122,7 @@ function referencedPartPaths(
 function injectPart(
   zip: PizZip,
   path: string,
-  confirmedSet: Map<number, string>,
+  confirmedSet: Map<number, { fieldName: string; templateText?: string | null }>,
   clearSet: Set<number>,
   paraIndex: { value: number },
 ): void {
@@ -154,11 +159,62 @@ function isTextOnlyRun(runChildren: Array<Record<string, unknown>>): boolean {
   return hasText && !hasImageOrNonTextContent(runChildren);
 }
 
-function createTagRun(fieldName: string, runProperties?: Array<Record<string, unknown>>): Record<string, unknown> {
+function createTagRun(text: string, runProperties?: Array<Record<string, unknown>>): Record<string, unknown> {
   const children: Array<Record<string, unknown>> = [];
-  if (runProperties) children.push({ 'w:rPr': runProperties });
-  children.push({ 'w:t': [{ '#text': `{${fieldName}}` }] });
+  if (runProperties) children.push({ 'w:rPr': cloneNode(runProperties) });
+  children.push({ 'w:t': [{ '#text': text }] });
   return { 'w:r': children };
+}
+
+function createFieldRun(
+  tagName: string,
+  runProperties?: Array<Record<string, unknown>>,
+): Record<string, unknown>[] {
+  if (!isSystemTemplateFieldName(tagName)) return [createTagRun(`{${tagName}}`, runProperties)];
+  const fieldCode = getSystemFieldCode(tagName);
+  const result = tagName === 'pageCount' ? '1' : '1';
+  const withRunProperties = (children: Array<Record<string, unknown>>): Record<string, unknown> => {
+    const runChildren: Array<Record<string, unknown>> = [];
+    if (runProperties) runChildren.push({ 'w:rPr': cloneNode(runProperties) });
+    runChildren.push(...children);
+    return { 'w:r': runChildren };
+  };
+
+  return [
+    withRunProperties([{ 'w:fldChar': [], ':@': { '@_w:fldCharType': 'begin', '@_w:dirty': 'true' } }]),
+    withRunProperties([
+      { 'w:instrText': [{ '#text': ` ${fieldCode} ` }], ':@': { '@_xml:space': 'preserve' } },
+    ]),
+    withRunProperties([{ 'w:fldChar': [], ':@': { '@_w:fldCharType': 'separate' } }]),
+    createTagRun(result, runProperties),
+    withRunProperties([{ 'w:fldChar': [], ':@': { '@_w:fldCharType': 'end' } }]),
+  ];
+}
+
+function createTemplateRuns(
+  templateText: string,
+  runProperties?: Array<Record<string, unknown>>,
+): Record<string, unknown>[] {
+  const runs: Record<string, unknown>[] = [];
+  const tagPattern = /\{([a-zA-Z_][a-zA-Z0-9_.]*)\}/g;
+  let cursor = 0;
+
+  for (const match of templateText.matchAll(tagPattern)) {
+    const matchIndex = match.index ?? 0;
+    if (matchIndex > cursor) {
+      runs.push(createTagRun(templateText.slice(cursor, matchIndex), runProperties));
+    }
+    const fieldName = match[1];
+    if (!fieldName) continue; // should not happen: regex group 1 always captures
+    runs.push(...createFieldRun(fieldName, runProperties));
+    cursor = matchIndex + match[0].length;
+  }
+
+  if (cursor < templateText.length) {
+    runs.push(createTagRun(templateText.slice(cursor), runProperties));
+  }
+
+  return runs.length > 0 ? runs : [createTagRun(templateText, runProperties)];
 }
 
 /**
@@ -171,7 +227,7 @@ function createTagRun(fieldName: string, runProperties?: Array<Record<string, un
  */
 function traverseAndInject(
   nodes: Array<Record<string, unknown>>,
-  confirmedSet: Map<number, string>,
+  confirmedSet: Map<number, { fieldName: string; templateText?: string | null }>,
   clearSet: Set<number>,
   paraIndex: { value: number },
 ): void {
@@ -181,13 +237,14 @@ function traverseAndInject(
 
       if (key === 'w:p') {
         const idx = paraIndex.value++;
-        const fieldName = confirmedSet.get(idx);
+        const zoneInfo = confirmedSet.get(idx);
         if (clearSet.has(idx)) {
           // Consecutive duplicate of a field already tagged above — clear all runs
           // so the same value doesn't appear back-to-back in the output.
           const pChildren = node[key] as Array<Record<string, unknown>>;
           node[key] = pChildren.filter((child) => !('w:r' in child));
-        } else if (fieldName) {
+        } else if (zoneInfo) {
+          const runText = zoneInfo.templateText ?? `{${zoneInfo.fieldName}}`;
           const pChildren = node[key] as Array<Record<string, unknown>>;
           const transformedChildren: Array<Record<string, unknown>> = [];
           let styleSample: Array<Record<string, unknown>> | undefined;
@@ -199,7 +256,7 @@ function traverseAndInject(
               if (Array.isArray(runChildren) && isTextOnlyRun(runChildren)) {
                 styleSample ??= collectRunProperties(runChildren);
                 if (!inserted) {
-                  transformedChildren.push(createTagRun(fieldName, styleSample));
+                  transformedChildren.push(...createTemplateRuns(runText, styleSample));
                   inserted = true;
                 }
                 continue;
@@ -211,7 +268,7 @@ function traverseAndInject(
           }
 
           if (!inserted) {
-            transformedChildren.push(createTagRun(fieldName, styleSample));
+            transformedChildren.push(...createTemplateRuns(runText, styleSample));
           }
 
           node[key] = transformedChildren;

@@ -31,7 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
 
   const login = useCallback((email: string, _password: string) => {
-    const newUser: User = { name: email.split('@')[0], email };
+    const newUser: User = { name: email.split('@')[0] ?? email, email };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));
     setUser(newUser);
     navigate('/');

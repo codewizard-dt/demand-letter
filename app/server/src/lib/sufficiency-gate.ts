@@ -1,4 +1,5 @@
 import { prisma } from '@demand-letter/db';
+import { templateSlotFieldCandidates } from './template-slot-names';
 
 export interface GapItem {
   fieldName: string;
@@ -39,7 +40,9 @@ export async function computeGapReport(jobId: string): Promise<GapReport> {
 
   const gaps: GapItem[] = [];
   for (const slot of slots) {
-    const f = fieldMap.get(slot.slotName);
+    const f = templateSlotFieldCandidates(slot.slotName)
+      .map((fieldName) => fieldMap.get(fieldName))
+      .find((field) => field !== undefined);
     const covered =
       f !== undefined &&
       (

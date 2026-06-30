@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Editor } from '@tiptap/react';
 import { Node as ProseMirrorNode } from '@tiptap/pm/model';
-import { ChangeRow } from '../lib/api';
+import type { ChangeRow } from '../lib/api';
 import { useJobChanges } from '../hooks/useJobQueries';
 import { useDeleteJobChange } from '../hooks/useJobMutations';
 

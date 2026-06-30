@@ -15,11 +15,11 @@ export function mergeEntities(phi: PhiEntity[], pii: PiiEntity[]): MergedEntity[
 
   const result: MergedEntity[] = [];
   for (const current of combined) {
-    if (result.length === 0) {
+    const last = result[result.length - 1];
+    if (result.length === 0 || !last) {
       result.push(current);
       continue;
     }
-    const last = result[result.length - 1];
     const startOverlap = Math.abs(last.startOffset - current.startOffset) <= 5;
     const endOverlap = Math.abs(last.endOffset - current.endOffset) <= 5;
     if (startOverlap && endOverlap) {

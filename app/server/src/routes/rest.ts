@@ -1,4 +1,4 @@
-import { GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Prisma } from '@prisma/client';
 import { prisma, ZoneType, LlmFeature } from '@demand-letter/db';
@@ -8,7 +8,7 @@ import { Router } from 'express';
 import type { Request, Router as ExpressRouter } from 'express';
 import { Packer } from 'docx';
 import mammoth from 'mammoth';
-import { asyncHandler, errorJson, internalError, json, sendDocx, sendSse } from '../http';
+import { asyncHandler, errorJson, internalError, json, sendDocx, writeSseData } from '../http';
 import { renderTemplate, TemplateRenderError, buildDataObject, prosemirrorToDocx, type ProseMirrorDoc } from '../lib';
 import { computeGapReport } from '../lib/sufficiency-gate';
 import { generateMedicalNarrative } from '../lib/medical-narrative';
@@ -16,15 +16,16 @@ import { getBasicModelId, getLogicModelId, invokeModel, invokeModelStream } from
 import { dbNameToTagName } from '../lib/field-schema';
 import { redactText, type RedactableEntity } from '../lib/redact-text';
 import { extractDocxStationaries } from '../lib/docx-stationary';
-import { extractFirmFieldsFromTemplate, logCaseDocumentSlotCoverage, runGroundedExtraction } from '../lib/extraction-service';
+import { runExtractionJob } from '../lib/extraction-job';
 import { detectDocumentType } from '../lib/document-type-detector';
 import { parseDocx, parsePdfNative } from '../lib/structured-parser';
 import { startTextractAnalysis } from '../lib/textract-client';
-import { classifyZones } from '../lib/zone-classifier';
+import { runTemplateClassificationJob } from '../lib/template-classification-job';
 import { injectDelimiters } from '../lib/docx-injector';
-import { enumerateSlots, enumerateSlotsWithContext } from '../lib/docx-inspect';
+import { enumerateSlotsWithContext } from '../lib/docx-inspect';
 import { extractParagraphZones } from '../lib/docx-zone-extractor';
 import { logJobError, logJobEvent } from '../lib/job-logger';
+import { EventEmitter } from 'node:events';
 
 export const restRouter: ExpressRouter = Router();
 
@@ -45,11 +46,45 @@ const DOCX_STYLE_MAP = [
   "p[style-name='Heading 3'] => h3.docx-heading-3:fresh",
 ];
 
+const jobEvents = new EventEmitter();
+jobEvents.setMaxListeners(100);
+const jobEventBuffers = new Map<string, object[]>();
+const STREAM_BUFFER_TTL_MS = 5 * 60_000;
+
 type UploadedFile = {
   filename: string;
   contentType: string;
   content: Buffer;
 };
+
+function emitJobEvent(jobId: string, event: object): void {
+  const events = jobEventBuffers.get(jobId) ?? [];
+  events.push(event);
+  jobEventBuffers.set(jobId, events.slice(-500));
+  jobEvents.emit(jobId, event);
+
+  const type = (event as { type?: string }).type;
+  if (type === 'complete' || type === 'error') {
+    setTimeout(() => jobEventBuffers.delete(jobId), STREAM_BUFFER_TTL_MS).unref?.();
+  }
+}
+
+function extractEventChannel(jobId: string): string {
+  return `extract:${jobId}`;
+}
+
+function templateClassificationEventChannel(jobId: string, templateId: string): string {
+  return `classify:${jobId}:${templateId}`;
+}
+
+async function rerenderAcceptedRefinement(jobId: string, afterText: string): Promise<string> {
+  const data = await buildDataObject(jobId);
+  (data as Record<string, unknown>).medicalNarrative = afterText;
+  const docxBuffer = await renderTemplate(jobId, data);
+  const outputS3Key = `${jobId}/output/demand-letter.docx`;
+  await s3.send(new PutObjectCommand({ Bucket: BUCKET, Key: outputS3Key, Body: docxBuffer, ContentType: DOCX_MIME }));
+  return outputS3Key;
+}
 
 function firstQuery(value: unknown): string | undefined {
   if (Array.isArray(value)) return typeof value[0] === 'string' ? value[0] : undefined;
@@ -88,7 +123,15 @@ restRouter.get('/jobs', asyncHandler(async (_req, res) => {
   const jobs = await prisma.job.findMany({
     orderBy: { createdAt: 'desc' },
     take: 50,
-    select: { id: true, status: true, createdAt: true },
+    select: {
+      id: true,
+      status: true,
+      createdAt: true,
+      files: {
+        select: { fileName: true, mimeType: true, role: true },
+        orderBy: { createdAt: 'asc' as const },
+      },
+    },
   });
   json(res, 200, { jobs });
 }));
@@ -96,6 +139,12 @@ restRouter.get('/jobs', asyncHandler(async (_req, res) => {
 restRouter.post('/jobs', asyncHandler(async (_req, res) => {
   const job = await prisma.job.create({ data: {} });
   json(res, 201, { id: job.id });
+}));
+
+restRouter.get('/jobs/:id', asyncHandler(async (req, res) => {
+  const job = await requireJob(req.params.id);
+  if (!job) return errorJson(res, 404, 'job_not_found', 'Job not found.');
+  json(res, 200, { id: job.id, status: job.status, outputS3Key: job.outputS3Key ?? null });
 }));
 
 restRouter.get('/admin/llm-costs', asyncHandler(async (req, res) => {
@@ -132,6 +181,7 @@ restRouter.get('/admin/llm-costs', asyncHandler(async (req, res) => {
 
 restRouter.post('/jobs/:id/files', asyncHandler(async (req, res) => {
   const jobId = req.params.id;
+  if (!jobId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
   const job = await requireJob(jobId);
   if (!job) return errorJson(res, 404, 'job_not_found', 'The requested job does not exist.');
 
@@ -190,12 +240,15 @@ restRouter.post('/jobs/:id/files', asyncHandler(async (req, res) => {
 }));
 
 restRouter.get('/jobs/:id/files', asyncHandler(async (req, res) => {
-  const files = await prisma.file.findMany({ where: { jobId: req.params.id }, orderBy: { createdAt: 'asc' } });
+  const jobId = req.params.id;
+  if (!jobId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
+  const files = await prisma.file.findMany({ where: { jobId }, orderBy: { createdAt: 'asc' } });
   json(res, 200, { files });
 }));
 
 restRouter.post('/jobs/:id/templates/segment', asyncHandler(async (req, res) => {
   const jobId = req.params.id;
+  if (!jobId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
   const job = await requireJob(jobId);
   if (!job) return errorJson(res, 404, 'job_not_found', 'The requested job does not exist.');
 
@@ -259,6 +312,7 @@ restRouter.post('/jobs/:id/templates/segment', asyncHandler(async (req, res) => 
 
 restRouter.get('/jobs/:id/templates/:templateId/zones', asyncHandler(async (req, res) => {
   const { id: jobId, templateId } = req.params;
+  if (!jobId || !templateId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
   const template = await prisma.template.findUnique({ where: { id: templateId }, select: { jobId: true } });
   if (!template || template.jobId !== jobId) return errorJson(res, 404, 'template_not_found', 'The requested template does not exist.');
 
@@ -269,6 +323,7 @@ restRouter.get('/jobs/:id/templates/:templateId/zones', asyncHandler(async (req,
 
 restRouter.get('/jobs/:id/templates/:templateId/original.docx', asyncHandler(async (req, res) => {
   const { id: jobId, templateId } = req.params;
+  if (!jobId || !templateId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
   const template = await prisma.template.findUnique({
     where: { id: templateId },
     select: { jobId: true, s3KeyOriginal: true },
@@ -287,6 +342,7 @@ restRouter.get('/jobs/:id/templates/:templateId/original.docx', asyncHandler(asy
 
 restRouter.get('/jobs/:id/templates/:templateId/original/preview', asyncHandler(async (req, res) => {
   const { id: jobId, templateId } = req.params;
+  if (!jobId || !templateId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
   const template = await prisma.template.findUnique({
     where: { id: templateId },
     select: { jobId: true, s3KeyOriginal: true },
@@ -308,6 +364,7 @@ restRouter.get('/jobs/:id/templates/:templateId/original/preview', asyncHandler(
 
 restRouter.patch('/jobs/:id/templates/:templateId/zones', asyncHandler(async (req, res) => {
   const { templateId } = req.params;
+  if (!templateId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
   const zones = req.body?.zones;
   const removeZoneIds = req.body?.removeZoneIds;
   if (!Array.isArray(zones)) return errorJson(res, 400, 'invalid_request_body', 'The request body is malformed or missing required fields.');
@@ -318,6 +375,7 @@ restRouter.patch('/jobs/:id/templates/:templateId/zones', asyncHandler(async (re
       data: {
         type: z.type as 'boilerplate_verbatim' | 'variable_populated' | null,
         ...(typeof z.textContent === 'string' ? { textContent: z.textContent } : {}),
+        ...(typeof z.templateText === 'string' || z.templateText === null ? { templateText: z.templateText } : {}),
         suggestedFieldName: z.suggestedFieldName,
         confirmed: z.confirmed,
         confirmedBy: 'attorney',
@@ -338,41 +396,70 @@ restRouter.patch('/jobs/:id/templates/:templateId/zones', asyncHandler(async (re
 
 restRouter.post('/jobs/:id/templates/:templateId/classify', asyncHandler(async (req, res) => {
   const { id: jobId, templateId } = req.params;
-  const zones = await prisma.zone.findMany({ where: { templateId }, orderBy: { zoneIndex: 'asc' } });
-  if (!zones.length) return errorJson(res, 404, 'no_zones_found', 'The template has no classified zones. Run classify first.');
+  if (!jobId || !templateId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
+  const trace = { requestId: req.header('x-request-id') ?? randomUUID(), traceId: randomUUID() };
+  const zoneCount = await prisma.zone.count({ where: { templateId } });
+  if (zoneCount === 0) return errorJson(res, 404, 'no_zones_found', 'The template has no classified zones. Run classify first.');
 
-  try {
-    const classifications = await classifyZones(zones, 'system');
-    const zoneMap = new Map(zones.map((z) => [z.zoneIndex, z.id]));
-    const updated = await Promise.all(classifications.map((c) => {
-      const id = zoneMap.get(c.zoneIndex);
-      if (!id) return null;
-      return prisma.zone.update({
-        where: { id },
-        data: {
-          type: c.type,
-          suggestedFieldName: c.suggestedFieldName,
-          confirmed: c.type === 'variable_populated',
-        },
-      });
-    }));
-    json(res, 200, updated.filter(Boolean));
-  } catch (err) {
-    if (err instanceof SyntaxError) return errorJson(res, 502, 'llm_invalid_json', 'The LLM returned an unparseable response. Please retry.');
-    await logJobError(jobId, 'post-jobs-templates-classify', err);
-    throw err;
+  const channel = templateClassificationEventChannel(jobId, templateId);
+  emitJobEvent(channel, { type: 'progress', message: 'Template classification queued...' });
+  void runTemplateClassificationJob({
+    jobId,
+    templateId,
+    userId: 'system',
+    trace,
+    emit: (event) => emitJobEvent(channel, event),
+  });
+
+  json(res, 202, { jobId, templateId, status: 'processing', traceId: trace.traceId });
+}));
+
+restRouter.get('/jobs/:id/templates/:templateId/classify/stream', asyncHandler(async (req, res) => {
+  const { id: jobId, templateId } = req.params;
+  if (!jobId || !templateId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
+  const job = await requireJob(jobId);
+  if (!job) return errorJson(res, 404, 'job_not_found', 'Job not found.');
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+
+  const channel = templateClassificationEventChannel(jobId, templateId);
+  const send = (event: object) => writeSseData(res, event);
+  const listener = (event: object) => {
+    send(event);
+    const type = (event as { type?: string }).type;
+    if (type === 'complete' || type === 'error') res.end();
+  };
+
+  jobEvents.on(channel, listener);
+  for (const event of jobEventBuffers.get(channel) ?? []) {
+    listener(event);
+    const type = (event as { type?: string }).type;
+    if (type === 'complete' || type === 'error') {
+      jobEvents.off(channel, listener);
+      return;
+    }
   }
+
+  const ping = setInterval(() => res.write(': ping\n\n'), 15_000);
+  req.on('close', () => {
+    jobEvents.off(channel, listener);
+    clearInterval(ping);
+  });
 }));
 
 restRouter.post('/jobs/:id/templates/:templateId/inject', asyncHandler(async (req, res) => {
   const { id: jobId, templateId } = req.params;
+  if (!jobId || !templateId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
   try {
     const template = await prisma.template.findUnique({ where: { id: templateId }, include: { zones: true } });
     if (!template || template.jobId !== jobId) return errorJson(res, 404, 'template_not_found', 'The requested template does not exist.');
 
     const confirmedZones = template.zones
       .filter((z) => z.confirmed && z.type === ZoneType.variable_populated && z.suggestedFieldName)
-      .map((z) => ({ zoneIndex: z.zoneIndex, suggestedFieldName: z.suggestedFieldName as string }));
+      .map((z) => ({ zoneIndex: z.zoneIndex, suggestedFieldName: z.suggestedFieldName as string, templateText: z.templateText }));
 
     const s3Obj = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: template.s3KeyOriginal }));
     const bodyBytes = await s3Obj.Body?.transformToByteArray();
@@ -409,6 +496,7 @@ restRouter.post('/jobs/:id/templates/:templateId/inject', asyncHandler(async (re
 
 restRouter.get('/jobs/:id/templates/:templateId/slots', asyncHandler(async (req, res) => {
   const { id: jobId, templateId } = req.params;
+  if (!jobId || !templateId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
   const template = await prisma.template.findUnique({ where: { id: templateId }, select: { id: true, jobId: true, slotCount: true } });
   if (!template || template.jobId !== jobId) return errorJson(res, 404, 'template_not_found', 'The requested template does not exist.');
   const slots = await prisma.templateSlot.findMany({
@@ -421,6 +509,7 @@ restRouter.get('/jobs/:id/templates/:templateId/slots', asyncHandler(async (req,
 
 restRouter.get('/jobs/:id/templates/latest', asyncHandler(async (req, res) => {
   const jobId = req.params.id;
+  if (!jobId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
   const job = await requireJob(jobId);
   if (!job) return errorJson(res, 404, 'job_not_found', 'The requested job does not exist.');
 
@@ -440,6 +529,7 @@ restRouter.get('/jobs/:id/templates/latest', asyncHandler(async (req, res) => {
 
 restRouter.post('/jobs/:id/documents/ingest', asyncHandler(async (req, res) => {
   const jobId = req.params.id;
+  if (!jobId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
   const job = await requireJob(jobId);
   if (!job) return errorJson(res, 404, 'job_not_found', 'The requested job does not exist.');
   const force = req.body?.force === true;
@@ -522,23 +612,62 @@ restRouter.post('/jobs/:id/documents/ingest', asyncHandler(async (req, res) => {
 
 restRouter.post('/jobs/:id/extract', asyncHandler(async (req, res) => {
   const jobId = req.params.id;
+  if (!jobId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
+  const trace = { requestId: req.header('x-request-id') ?? randomUUID(), traceId: randomUUID() };
   const job = await requireJob(jobId);
   if (!job) return errorJson(res, 404, 'job_not_found', 'The requested job does not exist.');
-  try {
-    await runGroundedExtraction(jobId, 'system');
-    await extractFirmFieldsFromTemplate(jobId, 'system');
-    await logCaseDocumentSlotCoverage(jobId);
-    const fieldCount = await prisma.extractedField.count({ where: { jobId } });
-    const nullCount = await prisma.extractedField.count({ where: { jobId, isNull: true } });
-    json(res, 200, { jobId, totalFields: fieldCount, filledFields: fieldCount - nullCount, nullFields: nullCount });
-  } catch (err) {
-    await logJobError(jobId, 'post-jobs-extract', err);
-    internalError(res, err);
+
+  const channel = extractEventChannel(jobId);
+  emitJobEvent(channel, { type: 'progress', message: 'Extraction queued...' });
+  void runExtractionJob({
+    jobId,
+    userId: 'system',
+    trace,
+    emit: (event) => emitJobEvent(channel, event),
+  });
+
+  json(res, 202, { jobId, status: 'processing', traceId: trace.traceId });
+}));
+
+restRouter.get('/jobs/:id/extract/stream', asyncHandler(async (req, res) => {
+  const jobId = req.params.id;
+  if (!jobId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
+  const job = await requireJob(jobId);
+  if (!job) return errorJson(res, 404, 'job_not_found', 'Job not found.');
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+
+  const send = (event: object) => writeSseData(res, event);
+  const listener = (event: object) => {
+    send(event);
+    const type = (event as { type?: string }).type;
+    if (type === 'complete' || type === 'error') res.end();
+  };
+
+  const channel = extractEventChannel(jobId);
+  jobEvents.on(channel, listener);
+  for (const event of jobEventBuffers.get(channel) ?? []) {
+    listener(event);
+    const type = (event as { type?: string }).type;
+    if (type === 'complete' || type === 'error') {
+      jobEvents.off(channel, listener);
+      return;
+    }
   }
+
+  const ping = setInterval(() => res.write(': ping\n\n'), 15_000);
+  req.on('close', () => {
+    jobEvents.off(channel, listener);
+    clearInterval(ping);
+  });
 }));
 
 restRouter.get('/jobs/:id/gap-report', asyncHandler(async (req, res) => {
   const jobId = req.params.id;
+  if (!jobId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
   const job = await requireJob(jobId);
   if (!job) return errorJson(res, 404, 'job_not_found', `Job ${jobId} does not exist.`);
   const template = await prisma.template.findFirst({ where: { jobId }, orderBy: { ingestedAt: 'desc' }, select: { id: true } });
@@ -548,6 +677,7 @@ restRouter.get('/jobs/:id/gap-report', asyncHandler(async (req, res) => {
 
 restRouter.get('/jobs/:id/fields', asyncHandler(async (req, res) => {
   const jobId = req.params.id;
+  if (!jobId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
   const job = await requireJob(jobId);
   if (!job) return errorJson(res, 404, 'job_not_found', 'The requested job does not exist.');
   const fields = await prisma.extractedField.findMany({
@@ -569,6 +699,7 @@ restRouter.get('/jobs/:id/fields', asyncHandler(async (req, res) => {
 
 restRouter.post('/jobs/:id/save-values', asyncHandler(async (req, res) => {
   const jobId = req.params.id;
+  if (!jobId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
   const job = await requireJob(jobId);
   if (!job) return errorJson(res, 404, 'job_not_found', 'The requested job does not exist.');
 
@@ -621,6 +752,7 @@ restRouter.post('/jobs/:id/save-values', asyncHandler(async (req, res) => {
 
 restRouter.get('/jobs/:id/blocks', asyncHandler(async (req, res) => {
   const jobId = req.params.id;
+  if (!jobId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
   const job = await requireJob(jobId);
   if (!job) return errorJson(res, 404, 'job_not_found', 'The requested job does not exist.');
 
@@ -665,44 +797,89 @@ restRouter.get('/jobs/:id/blocks', asyncHandler(async (req, res) => {
   json(res, 200, { blocks: responseBlocks, page, limit, totalCount, hasMore: page * limit < totalCount });
 }));
 
-restRouter.post('/jobs/:id/generate', asyncHandler(async (req, res) => {
-  const jobId = req.params.id;
-  const files = await prisma.file.findMany({ where: { jobId } });
-  if (!files.length) return errorJson(res, 422, 'no_files_uploaded', 'This job has no uploaded files yet.');
-
-  await prisma.job.update({ where: { id: jobId }, data: { status: 'processing' } });
+async function runGenerationJob(jobId: string): Promise<void> {
+  const trace = { traceId: randomUUID() };
+  const emit = (event: object) => emitJobEvent(jobId, event);
   try {
-    const logicModelId = getLogicModelId();
-    const { text: narrativeText, groundingReport } = await generateMedicalNarrative(jobId, logicModelId, 'system');
-    console.log('Grounding report:', JSON.stringify(groundingReport));
-    const data = await buildDataObject(jobId);
-    (data as Record<string, unknown>).medicalNarrative = narrativeText;
-
-    // Fill any template slots missing from data via LLM rather than erroring
-    const templateRecord = await prisma.template.findFirst({
+    // Step 1: fetch template + zones immediately, emit boilerplate zones
+    emit({ type: 'progress', message: 'Loading template…' });
+    const template = await prisma.template.findFirst({
       where: { jobId },
       orderBy: { ingestedAt: 'desc' },
-      select: { slots: { select: { slotName: true } } },
+      include: {
+        zones: { orderBy: { zoneIndex: 'asc' } },
+        slots: { select: { slotName: true } },
+      },
     });
-    const missingSlots = (templateRecord?.slots ?? [])
-      .map(s => s.slotName)
-      .filter(name => !(name in data));
+    const zones = template?.zones ?? [];
+    for (const z of zones) {
+      if (z.type === 'boilerplate_verbatim') {
+        emit({ type: 'zone', zoneIndex: z.zoneIndex, content: z.textContent });
+      }
+    }
 
+    // Step 2: build data object from extracted fields (fast), emit non-narrative variable zones
+    emit({ type: 'progress', message: 'Preparing template data…' });
+    const data = await buildDataObject(jobId);
+    for (const z of zones) {
+      if (
+        z.type === 'variable_populated' &&
+        z.suggestedFieldName &&
+        z.suggestedFieldName !== 'medicalNarrative' &&
+        typeof (data as Record<string, unknown>)[z.suggestedFieldName] === 'string'
+      ) {
+        const value = (data as Record<string, unknown>)[z.suggestedFieldName] as string;
+        const content = z.templateText
+          ? z.templateText.replace(`{${z.suggestedFieldName}}`, value)
+          : value;
+        emit({ type: 'zone', zoneIndex: z.zoneIndex, content });
+      }
+    }
+
+    // Step 3: generate narrative with token streaming
+    emit({ type: 'progress', message: 'Analyzing medical records…' });
+    const logicModelId = getLogicModelId();
+    const narrativeZone = zones.find((z) => z.suggestedFieldName === 'medicalNarrative');
+    const { text: narrativeText, groundingReport } = await generateMedicalNarrative(
+      jobId,
+      logicModelId,
+      'system',
+      narrativeZone
+        ? (chunk) => emit({ type: 'zone-chunk', zoneIndex: narrativeZone.zoneIndex, chunk })
+        : undefined,
+      trace,
+    );
+    console.log('Grounding report:', JSON.stringify(groundingReport));
+
+    // Emit canonical narrative zone (replaces accumulated zone-chunk events)
+    if (narrativeZone) {
+      const content = narrativeZone.templateText
+        ? narrativeZone.templateText.replace(`{${narrativeZone.suggestedFieldName}}`, narrativeText)
+        : narrativeText;
+      emit({ type: 'zone', zoneIndex: narrativeZone.zoneIndex, content });
+    }
+    (data as Record<string, unknown>).medicalNarrative = narrativeText;
+
+    // Step 4: fill any missing template slots via LLM, emit their zones too
+    const allSlotNames = (template?.slots ?? []).map((s) => s.slotName);
+    const missingSlots = allSlotNames.filter((name) => !(name in data));
     if (missingSlots.length > 0) {
+      emit({ type: 'progress', message: 'Filling missing fields…' });
       const contextRows = await prisma.extractedField.findMany({
         where: { jobId, isNull: false },
         select: { fieldName: true, value: true },
       });
       const context = contextRows
-        .filter(r => r.value)
-        .map(r => `${r.fieldName}: ${r.value}`)
+        .filter((r) => r.value)
+        .map((r) => `${r.fieldName}: ${r.value}`)
         .join('\n');
-
       for (const slotName of missingSlots) {
         const generated = await invokeModel({
           modelId: logicModelId,
           feature: LlmFeature.skeleton_generation,
           userId: 'system',
+          jobId,
+          traceId: trace.traceId,
           temperature: 0,
           system:
             'You are a legal assistant completing a personal injury demand letter. ' +
@@ -719,26 +896,122 @@ restRouter.post('/jobs/:id/generate', asyncHandler(async (req, res) => {
         data[slotName] = value;
         const tagName = dbNameToTagName(slotName);
         if (tagName && tagName !== slotName) data[tagName] = value;
+        const matchingZone = zones.find((z) => z.suggestedFieldName === slotName);
+        if (matchingZone) {
+          const content = matchingZone.templateText
+            ? matchingZone.templateText.replace(`{${slotName}}`, value)
+            : value;
+          emit({ type: 'zone', zoneIndex: matchingZone.zoneIndex, content });
+        }
       }
     }
 
+    // Step 5: render DOCX + upload
+    emit({ type: 'progress', message: 'Rendering document…' });
     const docxBuffer = await renderTemplate(jobId, data);
+
+    emit({ type: 'progress', message: 'Uploading document…' });
     const outputS3Key = `${jobId}/output/demand-letter.docx`;
     await s3.send(new PutObjectCommand({ Bucket: BUCKET, Key: outputS3Key, Body: docxBuffer, ContentType: DOCX_MIME }));
-    await prisma.job.update({ where: { id: jobId }, data: { status: 'complete', output: narrativeText, outputS3Key } });
-    sendSse(res, narrativeText.match(/.{1,80}/gs) ?? [narrativeText]);
+    await prisma.job.update({
+      where: { id: jobId },
+      data: { status: 'complete', output: narrativeText, outputS3Key },
+    });
+
+    emit({ type: 'complete' });
   } catch (err) {
-    await prisma.job.update({ where: { id: jobId }, data: { status: 'failed' } });
+    await prisma.job.update({ where: { id: jobId }, data: { status: 'failed' } }).catch(() => {});
     if (err instanceof TemplateRenderError) {
-      return json(res, 500, { error: 'template_render_failed', errors: err.errors });
+      emit({ type: 'error', message: 'Template render failed' });
+    } else {
+      await logJobError(jobId, 'post-jobs-generate', err);
+      emit({ type: 'error', message: err instanceof Error ? err.message : 'Generation failed' });
     }
-    await logJobError(jobId, 'post-jobs-generate', err);
-    throw err;
   }
+}
+
+restRouter.post('/jobs/:id/generate', asyncHandler(async (req, res) => {
+  const jobId = req.params.id;
+  if (!jobId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
+  const files = await prisma.file.findMany({ where: { jobId } });
+  if (!files.length) return errorJson(res, 422, 'no_files_uploaded', 'This job has no uploaded files yet.');
+  await prisma.job.update({ where: { id: jobId }, data: { status: 'processing' } });
+  jobEventBuffers.delete(jobId);
+  json(res, 202, { status: 'processing' });
+  void runGenerationJob(jobId);
+}));
+
+restRouter.get('/jobs/:id/generate/stream', asyncHandler(async (req, res) => {
+  const jobId = req.params.id;
+  if (!jobId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
+  const job = await requireJob(jobId);
+  if (!job) return errorJson(res, 404, 'job_not_found', 'Job not found.');
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+
+  const send = (event: object) => writeSseData(res, event);
+
+  if (job.status === 'complete') {
+    const template = await prisma.template.findFirst({
+      where: { jobId },
+      orderBy: { ingestedAt: 'desc' },
+      include: { zones: { orderBy: { zoneIndex: 'asc' } } },
+    });
+    const data = await buildDataObject(jobId);
+    (data as Record<string, unknown>).medicalNarrative = job.output ?? '';
+    for (const zone of template?.zones ?? []) {
+      let content: string;
+      if (zone.type === 'boilerplate_verbatim') {
+        content = zone.textContent;
+      } else if (zone.suggestedFieldName) {
+        const value = ((data as Record<string, unknown>)[zone.suggestedFieldName] as string | undefined) ?? '';
+        content = zone.templateText
+          ? zone.templateText.replace(`{${zone.suggestedFieldName}}`, value)
+          : value;
+      } else {
+        content = '';
+      }
+      send({ type: 'zone', zoneIndex: zone.zoneIndex, content });
+    }
+    send({ type: 'complete' });
+    res.end();
+    return;
+  }
+
+  if (job.status === 'failed') {
+    send({ type: 'error', message: 'Generation failed' });
+    res.end();
+    return;
+  }
+
+  const listener = (event: object) => {
+    send(event);
+    const t = (event as { type: string }).type;
+    if (t === 'complete' || t === 'error') res.end();
+  };
+  jobEvents.on(jobId, listener);
+  for (const event of jobEventBuffers.get(jobId) ?? []) {
+    listener(event);
+    const t = (event as { type?: string }).type;
+    if (t === 'complete' || t === 'error') {
+      jobEvents.off(jobId, listener);
+      return;
+    }
+  }
+  const ping = setInterval(() => res.write(': ping\n\n'), 15_000);
+  req.on('close', () => {
+    jobEvents.off(jobId, listener);
+    clearInterval(ping);
+  });
 }));
 
 restRouter.post('/jobs/:id/refine', asyncHandler(async (req, res) => {
   const jobId = req.params.id;
+  if (!jobId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
+  const trace = { requestId: req.header('x-request-id') ?? randomUUID(), traceId: randomUUID() };
   const instruction = req.body?.instruction;
   const scope = req.body?.scope;
   if (!instruction) return errorJson(res, 400, 'missing_instruction', 'A refinement instruction is required.');
@@ -759,18 +1032,36 @@ restRouter.post('/jobs/:id/refine', asyncHandler(async (req, res) => {
       modelId: MODEL_ID,
       feature: LlmFeature.refinement,
       userId: 'system',
+      jobId,
+      requestId: trace.requestId,
+      traceId: trace.traceId,
       system,
       messages: [{ role: 'user', content: userMessage }],
     });
+    res.status(200);
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
     const chunks: string[] = [];
-    for await (const chunk of stream) chunks.push(chunk);
+    for await (const chunk of stream) {
+      chunks.push(chunk);
+      writeSseData(res, { type: 'chunk', text: chunk });
+    }
     const afterText = chunks.join('');
     const refinement = await prisma.refinement.create({
       data: { jobId, instruction, scope: scope ?? 'all', beforeText: job.output, afterText, accepted: false },
     });
-    sendSse(res, chunks, JSON.stringify({ refinementId: refinement.id }));
+    writeSseData(res, { refinementId: refinement.id }, 'complete');
+    res.end();
   } catch (err) {
     console.error('refine handler error', err);
+    await logJobError(jobId, 'post-jobs-refine', err);
+    if (res.headersSent) {
+      writeSseData(res, { message: err instanceof Error ? err.message : 'Refinement failed' }, 'error');
+      res.end();
+      return;
+    }
     internalError(res, err);
   }
 }));
@@ -818,6 +1109,21 @@ restRouter.post('/jobs/:id/export/docx', asyncHandler(async (req, res) => {
   sendDocx(res, await Packer.toBuffer(document));
 }));
 
+restRouter.post('/jobs/:id/editor/save', asyncHandler(async (req, res) => {
+  const jobId = req.params.id;
+  if (!jobId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
+  const doc = req.body?.doc as ProseMirrorDoc | undefined;
+  if (!doc) return errorJson(res, 400, 'missing_document', 'No document provided in the request.');
+  const job = await requireJob(jobId);
+  if (!job) return errorJson(res, 404, 'job_not_found', 'The requested job does not exist.');
+  const document = prosemirrorToDocx(doc);
+  const docxBuffer = await Packer.toBuffer(document);
+  const outputS3Key = `${jobId}/output/demand-letter.docx`;
+  await s3.send(new PutObjectCommand({ Bucket: BUCKET, Key: outputS3Key, Body: docxBuffer, ContentType: DOCX_MIME }));
+  await prisma.job.update({ where: { id: jobId }, data: { outputS3Key } });
+  json(res, 200, { ok: true });
+}));
+
 restRouter.get('/jobs/:id/export/docx', asyncHandler(async (req, res) => {
   const job = await requireJob(req.params.id);
   if (!job) return errorJson(res, 404, 'job_not_found', 'The requested job does not exist.');
@@ -832,8 +1138,10 @@ restRouter.get('/jobs/:id/export/docx', asyncHandler(async (req, res) => {
 }));
 
 restRouter.get('/jobs/:id/refinements', asyncHandler(async (req, res) => {
+  const jobId = req.params.id;
+  if (!jobId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
   const refinements = await prisma.refinement.findMany({
-    where: { jobId: req.params.id },
+    where: { jobId },
     orderBy: { createdAt: 'desc' },
     select: { id: true, instruction: true, scope: true, accepted: true, createdAt: true },
   });
@@ -842,18 +1150,21 @@ restRouter.get('/jobs/:id/refinements', asyncHandler(async (req, res) => {
 
 restRouter.patch('/jobs/:id/refine/:refinement_id/accept', asyncHandler(async (req, res) => {
   const { id: jobId, refinement_id: refinementId } = req.params;
+  if (!jobId || !refinementId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
   const refinement = await prisma.refinement.findUnique({ where: { id: refinementId } });
   if (!refinement) return errorJson(res, 404, 'refinement_not_found', 'The requested refinement does not exist.');
   if (refinement.jobId !== jobId) return errorJson(res, 403, 'refinement_job_mismatch', 'This refinement does not belong to the specified job.');
+  const outputS3Key = await rerenderAcceptedRefinement(jobId, refinement.afterText);
   await prisma.$transaction([
     prisma.refinement.update({ where: { id: refinementId }, data: { accepted: true } }),
-    prisma.job.update({ where: { id: jobId }, data: { output: refinement.afterText } }),
+    prisma.job.update({ where: { id: jobId }, data: { output: refinement.afterText, outputS3Key } }),
   ]);
   json(res, 200, { ok: true });
 }));
 
 restRouter.patch('/jobs/:id/refine/:refinement_id/reject', asyncHandler(async (req, res) => {
   const { id: jobId, refinement_id: refinementId } = req.params;
+  if (!jobId || !refinementId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
   const refinement = await prisma.refinement.findUnique({ where: { id: refinementId } });
   if (!refinement) return errorJson(res, 404, 'refinement_not_found', 'The requested refinement does not exist.');
   if (refinement.jobId !== jobId) return errorJson(res, 403, 'refinement_job_mismatch', 'This refinement does not belong to the specified job.');
@@ -862,8 +1173,10 @@ restRouter.patch('/jobs/:id/refine/:refinement_id/reject', asyncHandler(async (r
 }));
 
 restRouter.get('/jobs/:id/changes', asyncHandler(async (req, res) => {
+  const jobId = req.params.id;
+  if (!jobId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
   const changes = await prisma.collaborativeChange.findMany({
-    where: { jobId: req.params.id },
+    where: { jobId },
     orderBy: { createdAt: 'asc' },
     select: { id: true, userId: true, userName: true, operationType: true, contentDelta: true, createdAt: true },
   });
@@ -872,6 +1185,7 @@ restRouter.get('/jobs/:id/changes', asyncHandler(async (req, res) => {
 
 restRouter.delete('/jobs/:id/changes/:changeId', asyncHandler(async (req, res) => {
   const { id: jobId, changeId } = req.params;
+  if (!jobId || !changeId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
   const change = await prisma.collaborativeChange.findUnique({ where: { id: changeId } });
   if (!change) return errorJson(res, 404, 'change_not_found', 'The requested change does not exist.');
   if (change.jobId !== jobId) return errorJson(res, 403, 'change_job_mismatch', 'This change does not belong to the specified job.');
@@ -880,6 +1194,8 @@ restRouter.delete('/jobs/:id/changes/:changeId', asyncHandler(async (req, res) =
 }));
 
 restRouter.get('/jobs/:id/logs', asyncHandler(async (req, res) => {
-  const logs = await prisma.jobLog.findMany({ where: { jobId: req.params.id }, orderBy: { createdAt: 'desc' }, take: 100 });
+  const jobId = req.params.id;
+  if (!jobId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
+  const logs = await prisma.jobLog.findMany({ where: { jobId }, orderBy: { createdAt: 'desc' }, take: 100 });
   json(res, 200, { logs });
 }));

@@ -134,7 +134,7 @@ export default function DocumentsPage() {
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
-      <WorkflowStepper currentStep={1} jobId={jobId} />
+      <WorkflowStepper currentStep={1} {...(jobId ? { jobId } : {})} />
 
       <h1 className="text-2xl font-bold mb-6">Upload Case Documents</h1>
 

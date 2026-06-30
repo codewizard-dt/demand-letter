@@ -4,10 +4,10 @@ import {
   createJob,
   uploadFile,
   fetchGapReport,
-  generateJob,
   triggerGenerateJob,
   refineJob,
   exportDocx,
+  saveEditorContent,
   downloadExportDocx,
   downloadOutput,
   patchTemplateZones,
@@ -246,17 +246,6 @@ export function useProcessSingleCaseDocument(jobId: string) {
   });
 }
 
-export function useGenerateJob() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ jobId, onChunk }: { jobId: string; onChunk: (text: string) => void }) =>
-      generateJob(jobId, onChunk),
-    onSuccess: (_, { jobId }) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.outputUrl(jobId) });
-    },
-  });
-}
-
 export function useTriggerGenerateJob() {
   return useMutation({
     mutationFn: (jobId: string) => triggerGenerateJob(jobId),
@@ -287,6 +276,8 @@ export function useAcceptRefinement(jobId: string) {
     mutationFn: (refinementId: string) => acceptRefinement(jobId, refinementId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.refinements(jobId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.outputUrl(jobId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.docxPreview(jobId) });
     },
   });
 }
@@ -353,6 +344,12 @@ export function useDownloadExportDocx() {
 export function useExportDocx() {
   return useMutation({
     mutationFn: ({ jobId, doc }: { jobId: string; doc: unknown }) => exportDocx(jobId, doc),
+  });
+}
+
+export function useSaveEditorContent() {
+  return useMutation({
+    mutationFn: ({ jobId, doc }: { jobId: string; doc: unknown }) => saveEditorContent(jobId, doc),
   });
 }
 

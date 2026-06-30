@@ -104,6 +104,18 @@
   .btn-primary:active {
     transform: translateY(0.5px);
   }
+  .btn-secondary {
+    @apply px-6 py-2.5 text-[12px] uppercase tracking-[0.25px] font-normal rounded-lg text-white transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed;
+    background-color: var(--color-secondary);
+    box-shadow: 0 1px 12px 0 rgba(25, 61, 61, 0.1);
+  }
+  .btn-secondary:hover,
+  .btn-secondary:focus-visible {
+    background-color: var(--color-secondary-steel);
+  }
+  .btn-secondary:active {
+    transform: translateY(0.5px);
+  }
   .btn-outline {
     @apply px-6 py-2.5 text-[12px] uppercase tracking-[0.25px] font-normal rounded-lg border border-border text-primary-gold bg-transparent transition-colors cursor-pointer hover:bg-surface disabled:opacity-60 disabled:cursor-not-allowed;
   }
@@ -321,6 +333,12 @@
     margin: 0;
     padding: 0;
   }
+}
+
+/* ── Zone card field name input ───────────────────────────────── */
+.st-zone-field-input:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 /* ── Global scrollbar styling ─────────────────────────────────── */

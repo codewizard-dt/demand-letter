@@ -7,6 +7,7 @@ type ZonePatch = {
   type: string;
   textContent?: string;
   suggestedFieldName: string | null;
+  templateText?: string | null;
   confirmed: boolean;
 };
 
@@ -42,6 +43,7 @@ let zones: ZonePatch[];
           type: z.type as 'boilerplate_verbatim' | 'variable_populated' | null,
           ...(typeof z.textContent === 'string' ? { textContent: z.textContent } : {}),
           suggestedFieldName: z.suggestedFieldName,
+          templateText: z.templateText ?? null,
           confirmed: z.confirmed,
           confirmedBy: 'attorney',
           confirmedAt: new Date(),
