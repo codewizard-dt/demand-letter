@@ -28,16 +28,34 @@ export function injectDelimiters(
     return buffer;
   }
 
-  const confirmedSet = new Map(confirmedZones.map(z => [z.zoneIndex, z.suggestedFieldName]));
+  // Sort zones by index, then collapse consecutive duplicates:
+  // if the same field name appears at adjacent paragraph indices (within 3),
+  // only the first gets the {tag}; subsequent ones get their runs cleared so
+  // the same value doesn't repeat back-to-back in the output.
+  const sorted = [...confirmedZones].sort((a, b) => a.zoneIndex - b.zoneIndex);
+  const confirmedSet = new Map<number, string>();
+  const clearSet = new Set<number>();
+  const lastSeenAt = new Map<string, number>(); // fieldName → last confirmed zoneIndex
+
+  for (const zone of sorted) {
+    const prev = lastSeenAt.get(zone.suggestedFieldName);
+    if (prev !== undefined && zone.zoneIndex - prev <= 3) {
+      clearSet.add(zone.zoneIndex);
+    } else {
+      confirmedSet.set(zone.zoneIndex, zone.suggestedFieldName);
+      lastSeenAt.set(zone.suggestedFieldName, zone.zoneIndex);
+    }
+  }
+
   const documentRels = parseRelationships(zip.file('word/_rels/document.xml.rels')?.asText() ?? '');
 
   const paraIndex = { value: 0 };
   for (const headerPath of referencedPartPaths(docXml, documentRels, 'header')) {
-    injectPart(zip, headerPath, confirmedSet, paraIndex);
+    injectPart(zip, headerPath, confirmedSet, clearSet, paraIndex);
   }
-  injectPart(zip, 'word/document.xml', confirmedSet, paraIndex);
+  injectPart(zip, 'word/document.xml', confirmedSet, clearSet, paraIndex);
   for (const footerPath of referencedPartPaths(docXml, documentRels, 'footer')) {
-    injectPart(zip, footerPath, confirmedSet, paraIndex);
+    injectPart(zip, footerPath, confirmedSet, clearSet, paraIndex);
   }
   return Buffer.from(zip.generate({ type: 'nodebuffer', compression: 'DEFLATE' }));
 }
@@ -100,12 +118,13 @@ function injectPart(
   zip: PizZip,
   path: string,
   confirmedSet: Map<number, string>,
+  clearSet: Set<number>,
   paraIndex: { value: number },
 ): void {
   const xml = zip.file(path)?.asText();
   if (!xml) return;
   const parsed = PARSER.parse(xml) as Array<Record<string, unknown>>;
-  traverseAndInject(parsed, confirmedSet, paraIndex);
+  traverseAndInject(parsed, confirmedSet, clearSet, paraIndex);
   zip.file(path, BUILDER.build(parsed) as string);
 }
 
@@ -153,6 +172,7 @@ function createTagRun(fieldName: string, runProperties?: Array<Record<string, un
 function traverseAndInject(
   nodes: Array<Record<string, unknown>>,
   confirmedSet: Map<number, string>,
+  clearSet: Set<number>,
   paraIndex: { value: number },
 ): void {
   for (const node of nodes) {
@@ -162,7 +182,12 @@ function traverseAndInject(
       if (key === 'w:p') {
         const idx = paraIndex.value++;
         const fieldName = confirmedSet.get(idx);
-        if (fieldName) {
+        if (clearSet.has(idx)) {
+          // Consecutive duplicate of a field already tagged above — clear all runs
+          // so the same value doesn't appear back-to-back in the output.
+          const pChildren = node[key] as Array<Record<string, unknown>>;
+          node[key] = pChildren.filter((child) => !('w:r' in child));
+        } else if (fieldName) {
           const pChildren = node[key] as Array<Record<string, unknown>>;
           const transformedChildren: Array<Record<string, unknown>> = [];
           let styleSample: Array<Record<string, unknown>> | undefined;
@@ -195,7 +220,7 @@ function traverseAndInject(
         // Recurse into any other element that has children
         const children = node[key];
         if (Array.isArray(children)) {
-          traverseAndInject(children as Array<Record<string, unknown>>, confirmedSet, paraIndex);
+          traverseAndInject(children as Array<Record<string, unknown>>, confirmedSet, clearSet, paraIndex);
         }
       }
     }

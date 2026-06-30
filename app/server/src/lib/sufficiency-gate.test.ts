@@ -76,13 +76,13 @@ describe('computeGapReport', () => {
     expect(result).toEqual({ covered: 1, total: 1, gaps: [] })
   })
 
-  it('covers a field with source: attorney-judgment', async () => {
+  it('covers a field with source: user-provided', async () => {
     prismaMock.template.findFirst.mockResolvedValue({ id: 'tmpl-1' } as any)
     prismaMock.templateSlot.findMany.mockResolvedValue([
       { slotName: 'demand_amount' },
     ] as any)
     prismaMock.extractedField.findMany.mockResolvedValue([
-      { fieldName: 'demand_amount', isNull: true, confidence: 0, source: 'attorney-judgment', acceptMissing: false, nullReason: null },
+      { fieldName: 'demand_amount', isNull: true, confidence: 0, source: 'user-provided', acceptMissing: false, nullReason: null },
     ] as any)
 
     const result = await computeGapReport('job-1')
@@ -144,14 +144,14 @@ describe('computeGapReport', () => {
     prismaMock.template.findFirst.mockResolvedValue({ id: 'tmpl-1' } as any)
     prismaMock.templateSlot.findMany.mockResolvedValue([
       { slotName: 'letter_date' },     // covered: high confidence
-      { slotName: 'claim_number' },    // covered: attorney-judgment
+      { slotName: 'claim_number' },    // covered: user-provided
       { slotName: 'demand_amount' },   // covered: acceptMissing
       { slotName: 'adjuster_name' },   // gap: low confidence
       { slotName: 'insurer_name' },    // gap: no matching field
     ] as any)
     prismaMock.extractedField.findMany.mockResolvedValue([
       { fieldName: 'letter_date', isNull: false, confidence: 0.90, source: 'llm', acceptMissing: false, nullReason: null },
-      { fieldName: 'claim_number', isNull: true, confidence: 0, source: 'attorney-judgment', acceptMissing: false, nullReason: null },
+      { fieldName: 'claim_number', isNull: true, confidence: 0, source: 'user-provided', acceptMissing: false, nullReason: null },
       { fieldName: 'demand_amount', isNull: true, confidence: 0, source: 'llm', acceptMissing: true, nullReason: 'N/A' },
       { fieldName: 'adjuster_name', isNull: false, confidence: 0.50, source: 'llm', acceptMissing: false, nullReason: null },
     ] as any)

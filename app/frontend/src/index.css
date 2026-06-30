@@ -174,36 +174,39 @@
   }
 
   .st-docx-stationary {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 2;
-    width: calc(100% - 2rem);
+    width: 100%;
     max-width: 8.5in;
-    pointer-events: none;
+    margin: 0 auto;
     color: #111827;
   }
 
   .st-docx-stationary-header {
-    top: 0.4rem;
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.25rem;
+    border-bottom: 1px solid #e5e7eb;
+    text-align: center;
   }
 
   .st-docx-stationary-footer {
-    bottom: 0.4rem;
+    padding-top: 0.5rem;
+    margin-top: 0.25rem;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
   }
 
   .st-docx-stationary-image {
     display: block;
     max-width: 100%;
     height: auto;
-    margin: 0 auto;
   }
 
   .st-docx-stationary-text {
     white-space: pre-wrap;
     font-size: 10pt;
     line-height: 1.25;
-    text-align: center;
+    text-align: left;
   }
 
   .st-template-document p {
@@ -318,6 +321,26 @@
     margin: 0;
     padding: 0;
   }
+}
+
+/* ── Global scrollbar styling ─────────────────────────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db transparent;
+}
+*::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: #d1d5db;
+  border-radius: 9999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: #9ca3af;
 }
 
 /* TipTap / ProseMirror editor styles */

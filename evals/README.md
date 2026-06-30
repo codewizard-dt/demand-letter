@@ -58,8 +58,8 @@ Run on every commit. Zero LLM cost — assertions over recorded output.
 | gs-048 | headingNodeToDocx() maps level 2 heading to Heading2 style (not Heading1 default) | word_export | prosemirror-to-docx.ts | 2026-06-25 |
 | gs-049 | GET /jobs/:id/changes returns change log with operationType and contentDelta fields | collab_editing | get-jobs-changes.ts | 2026-06-25 |
 | gs-050 | POST /jobs/:id/refine appends scope suffix to Bedrock message when scope is a named section | attorney_refinement | post-jobs-refine.ts | 2026-06-25 |
-| gs-051 | POST /jobs/:id/attorney-judgment upserts field with confidence=1.0 and source=attorney-judgment | attorney_judgment | post-jobs-attorney-judgment.ts | 2026-06-26 |
-| gs-052 | POST /jobs/:id/attorney-judgment sets acceptMissing=true with nullReason for dismissed slots | attorney_judgment | post-jobs-attorney-judgment.ts | 2026-06-26 |
+| gs-051 | POST /jobs/:id/save-values upserts field with confidence=1.0 and source=user-provided | save_values | post-jobs-save-values.ts | 2026-06-26 |
+| gs-052 | POST /jobs/:id/save-values sets acceptMissing=true with nullReason for dismissed slots | save_values | post-jobs-save-values.ts | 2026-06-26 |
 | gs-053 | GET /jobs/:id/gap-report returns 404 template_not_ready when no template classified yet | generation_gate | get-jobs-gap-report.ts | 2026-06-26 |
 | gs-054 | POST /jobs/:id/templates/:templateId/inject returns deterministic slotCount for Pat Donahue template | template_classification | post-jobs-templates-inject.ts | 2026-06-28 |
 

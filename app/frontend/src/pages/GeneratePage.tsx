@@ -1,7 +1,7 @@
 import { type CSSProperties, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useGapReport, useOutputUrl, useDocxHtml, useDocxPreview } from '../hooks/useJobQueries';
+import { useOutputUrl, useDocxHtml, useDocxPreview } from '../hooks/useJobQueries';
 import { useGenerateJob, useDownloadOutput } from '../hooks/useJobMutations';
 import LoadingSpinner from '../components/LoadingSpinner';
 import type { OutputDocxPreview } from '../lib/api';
@@ -134,11 +134,6 @@ function getStationaryStyle(
   return { width: `${imageWidthPx}px`, height: `${imageHeightPx}px` };
 }
 
-function getStationaryPadding(imageHeightPx?: number, fallback = 0): string | undefined {
-  if (!imageHeightPx) return fallback > 0 ? `${fallback}px` : undefined;
-  return `${imageHeightPx + 12}px`;
-}
-
 export default function GeneratePage() {
   useDocumentTitle('Generate — Steno');
   const { id } = useParams<{ id: string }>();
@@ -155,7 +150,6 @@ export default function GeneratePage() {
   });
   const [isDone, setIsDone] = useState(false);
 
-  const gapReportQuery = useGapReport(id);
   const generateMutation = useGenerateJob();
   const downloadMutation = useDownloadOutput();
   const outputUrlQuery = useOutputUrl(id);
@@ -201,20 +195,6 @@ export default function GeneratePage() {
     downloadMutation.mutate(id!);
   }
 
-  const canGenerate =
-    !gapReportQuery.isLoading &&
-    !gapReportQuery.isError &&
-    gapReportQuery.data !== undefined &&
-    gapReportQuery.data.gaps.length === 0;
-
-  const disabledReason = gapReportQuery.isLoading
-    ? 'Checking sufficiency — please wait…'
-    : gapReportQuery.isError
-      ? `Could not check gap report: ${String(gapReportQuery.error)}`
-      : gapReportQuery.data && gapReportQuery.data.gaps.length > 0
-        ? `${gapReportQuery.data.gaps.length} required slot${gapReportQuery.data.gaps.length === 1 ? '' : 's'} still uncovered. Go to the Gap Report to fill or accept them before generating.`
-        : null;
-
   const isGenerating = generateMutation.isPending;
   const isDownloading = downloadMutation.isPending;
   const error = generateMutation.error ? String(generateMutation.error) : null;
@@ -224,16 +204,6 @@ export default function GeneratePage() {
   const isPreviewReady = !!docxPreviewQuery.data?.html;
   const previewHtml = docxPreviewQuery.data?.html ?? docxHtmlQuery.data;
   const previewBodyStyle: CSSProperties = {};
-  if (preferredHeader?.imageHeightPx) {
-    previewBodyStyle.paddingTop = getStationaryPadding(preferredHeader.imageHeightPx, 32);
-  } else if (preferredHeader?.text) {
-    previewBodyStyle.paddingTop = '1.25rem';
-  }
-  if (preferredFooter?.imageHeightPx) {
-    previewBodyStyle.paddingBottom = getStationaryPadding(preferredFooter.imageHeightPx, 24);
-  } else if (preferredFooter?.text) {
-    previewBodyStyle.paddingBottom = '1.25rem';
-  }
   const showLoadingPreview = isDone
     && (outputUrlQuery.isLoading
       || (outputUrlQuery.isSuccess && docxPreviewQuery.isLoading && !isPreviewReady)
@@ -252,15 +222,11 @@ export default function GeneratePage() {
         <div>
           <button
             onClick={handleGenerate}
-            disabled={!canGenerate || isGenerating}
-            title={disabledReason ?? undefined}
+            disabled={isGenerating}
             className="btn-primary"
           >
             Generate Demand Letter
           </button>
-          {disabledReason && !isGenerating && (
-            <p className="mt-2 text-sm text-yellow-700">{disabledReason}</p>
-          )}
         </div>
       )}
 

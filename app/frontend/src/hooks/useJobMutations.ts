@@ -14,7 +14,7 @@ import {
   acceptRefinement,
   rejectRefinement,
   deleteJobChange,
-  submitAttorneyJudgment,
+  saveValues,
   ingestDocuments,
   segmentTemplate,
   classifyTemplate,
@@ -43,7 +43,7 @@ const sleep = (ms: number): Promise<void> =>
     setTimeout(resolve, ms);
   });
 
-const GAP_REPORT_RECHECK_ATTEMPTS = 10;
+const GAP_REPORT_RECHECK_ATTEMPTS = 60;
 const GAP_REPORT_RECHECK_INTERVAL_MS = 3000;
 
 const hasGapReportChanged = (a: { covered: number; total: number; gaps: Array<{ fieldName: string }> }, b: { covered: number; total: number; gaps: Array<{ fieldName: string }> }) => {
@@ -163,7 +163,7 @@ export function useAddCaseDocuments(jobId: string) {
             queryFn: () => fetchGapReport(jobId),
           });
 
-          if (hasGapReportChanged(initialGapReport, latestGapReport)) {
+          if (remainingPending === 0 && hasGapReportChanged(initialGapReport, latestGapReport)) {
             break;
           }
 
@@ -178,6 +178,70 @@ export function useAddCaseDocuments(jobId: string) {
         queryKey: queryKeys.gapReport(jobId),
         queryFn: () => fetchGapReport(jobId),
       });
+    },
+  });
+}
+
+export function useProcessCaseDocuments(jobId: string) {
+  const queryClient = useQueryClient();
+
+  const refreshCaseQueries = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.gapReport(jobId) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.extractedFields(jobId) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.blocks(jobId) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.jobFiles(jobId) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.jobLogs(jobId) }),
+    ]);
+
+  return useMutation({
+    mutationFn: async ({ onStatus, force = false }: { onStatus?: (status: string) => void; force?: boolean } = {}) => {
+      onStatus?.('Ingesting uploaded case documents…');
+      let { pending } = await ingestDocuments(jobId, { force });
+
+      onStatus?.('Extracting case facts…');
+      await extractFields(jobId);
+      await refreshCaseQueries();
+
+      let attempts = 0;
+      while (pending > 0 && attempts < GAP_REPORT_RECHECK_ATTEMPTS) {
+        attempts += 1;
+        onStatus?.(`Waiting for scanned documents (${attempts}/${GAP_REPORT_RECHECK_ATTEMPTS})…`);
+        await sleep(GAP_REPORT_RECHECK_INTERVAL_MS);
+        const result = await ingestDocuments(jobId);
+        pending = result.pending;
+        await extractFields(jobId);
+        await refreshCaseQueries();
+      }
+
+      await queryClient.fetchQuery({
+        queryKey: queryKeys.gapReport(jobId),
+        queryFn: () => fetchGapReport(jobId),
+      });
+    },
+  });
+}
+
+export function useProcessSingleCaseDocument(jobId: string) {
+  const queryClient = useQueryClient();
+
+  const refreshCaseQueries = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.gapReport(jobId) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.extractedFields(jobId) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.blocks(jobId) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.jobFiles(jobId) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.jobLogs(jobId) }),
+    ]);
+
+  return useMutation({
+    mutationFn: async ({ fileId, onStatus }: { fileId: string; onStatus?: (status: string) => void }) => {
+      onStatus?.('Reprocessing document…');
+      await ingestDocuments(jobId, { fileId });
+
+      onStatus?.('Extracting case facts…');
+      await extractFields(jobId);
+      await refreshCaseQueries();
     },
   });
 }
@@ -263,7 +327,7 @@ export function useDeleteJobChange(jobId: string) {
   });
 }
 
-export function useSubmitAttorneyJudgment(jobId: string) {
+export function useSaveValues(jobId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
@@ -272,9 +336,10 @@ export function useSubmitAttorneyJudgment(jobId: string) {
     }: {
       fields: Array<{ fieldName: string; value: string }>;
       acceptMissing: string[];
-    }) => submitAttorneyJudgment(jobId, fields, acceptMissing),
+    }) => saveValues(jobId, fields, acceptMissing),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.gapReport(jobId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.extractedFields(jobId) });
     },
   });
 }

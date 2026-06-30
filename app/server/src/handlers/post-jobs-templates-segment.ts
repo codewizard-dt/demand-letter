@@ -96,6 +96,8 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
           zoneIndex: z.zoneIndex,
           textContent: z.textContent,
           runPath: z.runPath as unknown as Prisma.InputJsonValue,
+          part: z.runPath.source?.part ?? 'body',
+          stationaryVariant: z.runPath.source?.variant ?? null,
         })),
         skipDuplicates: true,
       });

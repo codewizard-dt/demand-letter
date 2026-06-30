@@ -759,21 +759,21 @@ Resources:
       Policies:
         - AWSLambdaBasicExecutionRole
 
-  PostJobsAttorneyJudgmentFunction:
+  PostJobsSaveValuesFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: .build/handlers/
-      Handler: post-jobs-attorney-judgment.handler
+      Handler: post-jobs-save-values.handler
       Runtime: nodejs24.x
       Timeout: 30
       MemorySize: 256
       Layers:
         - !Ref DbLayer
       Events:
-        PostJobsAttorneyJudgment:
+        PostJobsSaveValues:
           Type: Api
           Properties:
-            Path: /jobs/{id}/attorney-judgment
+            Path: /jobs/{id}/save-values
             Method: post
       Policies:
         - AWSLambdaBasicExecutionRole

@@ -13,7 +13,6 @@ const { mockS3Send } = vi.hoisted(() => ({
 vi.mock('@aws-sdk/client-s3', () => ({
   S3Client: vi.fn().mockImplementation(() => ({ send: mockS3Send })),
   GetObjectCommand: vi.fn(),
-  ListObjectsV2Command: vi.fn(),
 }))
 
 import { describe, it, expect, beforeEach } from 'vitest'
@@ -37,26 +36,26 @@ describe('post-jobs-documents-ingest handler', () => {
     mockS3Send.mockReset()
     prismaMock.job.findUnique.mockReset()
     prismaMock.sourceFile.findMany.mockReset()
+    prismaMock.file.findMany.mockReset()
     prismaMock.sourceFile.create.mockReset()
     prismaMock.sourceFile.update.mockReset()
+    prismaMock.sourceFile.deleteMany.mockReset()
+    prismaMock.extractedField.deleteMany.mockReset()
   })
 
   it('skips already ingested S3 objects and only processes new uploads', async () => {
     prismaMock.job.findUnique.mockResolvedValue({ id: 'job-1' } as any)
     prismaMock.sourceFile.findMany.mockResolvedValue([
-      { s3Key: 'job-1/old.pdf' },
+      { s3Key: 'job-1/old.pdf', status: 'complete' },
+    ] as any)
+    prismaMock.file.findMany.mockResolvedValue([
+      { s3Key: 'job-1/old.pdf', fileName: 'old.pdf' },
+      { s3Key: 'job-1/new.pdf', fileName: 'new.pdf' },
     ] as any)
 
-    mockS3Send
-      .mockResolvedValueOnce({
-        Contents: [
-          { Key: 'job-1/old.pdf' },
-          { Key: 'job-1/new.pdf' },
-        ],
-      })
-      .mockResolvedValueOnce({
-        Body: { transformToByteArray: async () => Buffer.from('new doc bytes') },
-      })
+    mockS3Send.mockResolvedValueOnce({
+      Body: { transformToByteArray: async () => Buffer.from('new doc bytes') },
+    })
 
     mockDetectDocumentType.mockResolvedValue('docx' as any)
     mockParseDocx.mockResolvedValue([
@@ -84,5 +83,38 @@ describe('post-jobs-documents-ingest handler', () => {
     expect(mockParseDocx).toHaveBeenCalledTimes(1)
     expect(mockParsePdfNative).not.toHaveBeenCalled()
     expect(JSON.parse(result.body)).toMatchObject({ processed: 1, pending: 0, blocks: 1 })
+  })
+
+  it('reports existing Textract source files as pending while polling', async () => {
+    prismaMock.job.findUnique.mockResolvedValue({ id: 'job-1' } as any)
+    prismaMock.sourceFile.findMany.mockResolvedValue([
+      { s3Key: 'job-1/scanned.pdf', status: 'processing' },
+    ] as any)
+    prismaMock.file.findMany.mockResolvedValue([
+      { s3Key: 'job-1/scanned.pdf', fileName: 'scanned.pdf' },
+    ] as any)
+
+    const result = await handler({ pathParameters: { id: 'job-1' }, headers: {} } as any)
+
+    expect(result.statusCode).toBe(200)
+    expect(prismaMock.sourceFile.create).not.toHaveBeenCalled()
+    expect(JSON.parse(result.body)).toMatchObject({ processed: 0, pending: 1, blocks: 0 })
+  })
+
+  it('clears previous source files and extracted fields when force reprocessing', async () => {
+    prismaMock.job.findUnique.mockResolvedValue({ id: 'job-1' } as any)
+    prismaMock.sourceFile.findMany.mockResolvedValue([] as any)
+    prismaMock.file.findMany.mockResolvedValue([] as any)
+
+    const result = await handler({
+      pathParameters: { id: 'job-1' },
+      headers: {},
+      body: JSON.stringify({ force: true }),
+    } as any)
+
+    expect(result.statusCode).toBe(200)
+    expect(prismaMock.extractedField.deleteMany).toHaveBeenCalledWith({ where: { jobId: 'job-1' } })
+    expect(prismaMock.sourceFile.deleteMany).toHaveBeenCalledWith({ where: { jobId: 'job-1' } })
+    expect(JSON.parse(result.body)).toMatchObject({ processed: 0, pending: 0, blocks: 0 })
   })
 })

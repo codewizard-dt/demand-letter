@@ -16,6 +16,7 @@ export interface ParagraphZone {
     source?: {
       part: 'header' | 'body' | 'footer';
       path: string;
+      variant?: 'default' | 'first' | 'even';
     };
     paragraph: {
       style?: string;
@@ -259,18 +260,24 @@ function referencedPartPaths(
   documentXml: string,
   documentRels: Record<string, Relationship>,
   slot: 'header' | 'footer',
-): string[] {
-  const paths: string[] = [];
+): Array<{ path: string; variant: 'default' | 'first' | 'even' }> {
+  const results: Array<{ path: string; variant: 'default' | 'first' | 'even' }> = [];
   const pattern = new RegExp(`<w:${slot}Reference\\b([^>]*)/>`, 'g');
   for (const match of documentXml.matchAll(pattern)) {
-    const relId = /r:id=("|')([^"']*)\1/.exec(match[1] ?? '')?.[2];
+    const attrs = match[1] ?? '';
+    const relId = /r:id=("|')([^"']*)(\1)/.exec(attrs)?.[2];
     if (!relId) continue;
     const rel = documentRels[relId];
     if (!rel) continue;
     const path = normalizeTarget('word/document.xml', rel.target);
-    if (!paths.includes(path)) paths.push(path);
+    const rawType = /w:type=("|')([^"']*)(\1)/.exec(attrs)?.[2];
+    const variant: 'default' | 'first' | 'even' =
+      rawType === 'first' ? 'first' : rawType === 'even' ? 'even' : 'default';
+    if (!results.find((r) => r.path === path && r.variant === variant)) {
+      results.push({ path, variant });
+    }
   }
-  return paths;
+  return results;
 }
 
 function extractPartZones(
@@ -279,6 +286,7 @@ function extractPartZones(
   part: 'header' | 'body' | 'footer',
   paraIndex: { value: number },
   zones: ParagraphZone[],
+  variant?: 'default' | 'first' | 'even',
 ): void {
   const xml = zip.file(path)?.asText();
   if (!xml) return;
@@ -286,7 +294,7 @@ function extractPartZones(
   const relationships = parseRelationships(zip.file(relationshipPathForXml(path))?.asText() ?? '');
   traverseExtract(parsed, paraIndex, zones, {
     zip,
-    source: { part, path },
+    source: { part, path, ...(variant !== undefined ? { variant } : {}) },
     relationships,
   });
 }
@@ -298,12 +306,12 @@ export function extractParagraphZones(buffer: Buffer): ParagraphZone[] {
   const zones: ParagraphZone[] = [];
   const paraIndex = { value: 0 };
   const documentRels = parseRelationships(zip.file('word/_rels/document.xml.rels')?.asText() ?? '');
-  for (const headerPath of referencedPartPaths(docXml, documentRels, 'header')) {
-    extractPartZones(zip, headerPath, 'header', paraIndex, zones);
+  for (const { path, variant } of referencedPartPaths(docXml, documentRels, 'header')) {
+    extractPartZones(zip, path, 'header', paraIndex, zones, variant);
   }
   extractPartZones(zip, 'word/document.xml', 'body', paraIndex, zones);
-  for (const footerPath of referencedPartPaths(docXml, documentRels, 'footer')) {
-    extractPartZones(zip, footerPath, 'footer', paraIndex, zones);
+  for (const { path, variant } of referencedPartPaths(docXml, documentRels, 'footer')) {
+    extractPartZones(zip, path, 'footer', paraIndex, zones, variant);
   }
   return zones;
 }

@@ -74,6 +74,12 @@ model LlmAuditLog {
   @@index([createdAt])
 }
 
+enum ZonePart {
+  header
+  body
+  footer
+}
+
 enum ZoneType {
   boilerplate_verbatim
   variable_populated
@@ -104,6 +110,8 @@ model Zone {
   textContent        String
   suggestedFieldName String?
   confirmed          Boolean   @default(false)
+  part               ZonePart?
+  stationaryVariant  String?
   confirmedBy        String?
   confirmedAt        DateTime?
 
@@ -117,7 +125,8 @@ model TemplateSlot {
   templateId String
   template   Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
   slotName   String
-  required   Boolean  @default(true)
+  required     Boolean @default(true)
+  defaultValue String? @map("default_value")
 
   @@unique([templateId, slotName])
   @@index([templateId])
@@ -134,7 +143,7 @@ model ExtractedField {
   confidence  Float    @default(0)
   isNull      Boolean  @default(false)
   nullReason    String?
-  source        String?   // null = grounded extraction; "attorney-judgment" = attorney override
+  source        String?   // null = grounded extraction; "llm" = AI extracted; "user-provided" = manually entered by user
   acceptMissing Boolean  @default(false)
   createdAt     DateTime @default(now())
   updatedAt   DateTime @updatedAt

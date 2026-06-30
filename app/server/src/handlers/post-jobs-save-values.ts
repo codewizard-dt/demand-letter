@@ -27,7 +27,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'invalid_json_body', message: 'Request body must be valid JSON.' }) };
   }
 
-  // Upsert attorney-judgment fields
+  // Upsert user-provided fields
   for (const { fieldName, value } of body.fields ?? []) {
     await prisma.extractedField.upsert({
       where: { jobId_fieldName: { jobId, fieldName } },
@@ -39,7 +39,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
         confidence: 1.0,
         isNull: false,
         nullReason: null,
-        source: 'attorney-judgment',
+        source: 'user-provided',
         acceptMissing: false,
       },
       update: {
@@ -48,7 +48,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
         confidence: 1.0,
         isNull: false,
         nullReason: null,
-        source: 'attorney-judgment',
+        source: 'user-provided',
         updatedAt: new Date(),
       },
     });

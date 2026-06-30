@@ -1,15 +1,15 @@
 - id: "gs-052"
-  description: "POST /jobs/:id/attorney-judgment sets acceptMissing=true for named slots without supplying a value"
+  description: "POST /jobs/:id/save-values sets acceptMissing=true for named slots without supplying a value"
   query: |
-    POST /jobs/job-1/attorney-judgment
+    POST /jobs/job-1/save-values
     Body: { "fields": [], "acceptMissing": ["return_to_work_date"] }
     Expected: extractedField upserted with acceptMissing: true, isNull: true,
       nullReason: "attorney accepted as missing".
     Returns: { "ok": true }
   tested_files:
-    - app/server/src/handlers/post-jobs-attorney-judgment.ts
+    - app/server/src/handlers/post-jobs-save-values.ts
   expected_tools:
-    - post-jobs-attorney-judgment
+    - post-jobs-save-values
   must_contain:
     - '"ok": true'
     - '"acceptMissing": true'

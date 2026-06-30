@@ -5,6 +5,7 @@ import { prisma } from '@demand-letter/db';
 import * as parser from 'lambda-multipart-parser';
 import { getCorsHeaders } from '../lib/cors';
 import { errorResponse } from '../lib/error-response';
+import { logJobEvent } from '../lib/job-logger';
 
 const s3 = new S3Client({ region: process.env.AWS_REGION ?? 'us-east-1' });
 const BUCKET = process.env.DOCUMENTS_BUCKET!;
@@ -64,6 +65,16 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         const record = await prisma.file.create({
           data: { jobId, contentHash, s3Key: reusableFile.s3Key, mimeType: mime, role, fileName: file.filename },
         });
+        if (role === 'case_doc') {
+          await logJobEvent(jobId, 'post-jobs-files', 'info', `Case document uploaded: ${file.filename}`, {
+            context: {
+              fileId: record.id,
+              s3Key: record.s3Key,
+              mimeType: mime,
+              reusedContent: true,
+            },
+          });
+        }
         created.push(record);
         continue;
       }
@@ -83,6 +94,16 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       const record = await prisma.file.create({
         data: { jobId, contentHash, s3Key, mimeType: mime, role, fileName: file.filename },
       });
+      if (role === 'case_doc') {
+        await logJobEvent(jobId, 'post-jobs-files', 'info', `Case document uploaded: ${file.filename}`, {
+          context: {
+            fileId: record.id,
+            s3Key: record.s3Key,
+            mimeType: mime,
+            reusedContent: false,
+          },
+        });
+      }
       created.push(record);
     }
 

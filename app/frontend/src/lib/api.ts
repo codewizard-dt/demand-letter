@@ -287,6 +287,7 @@ export type Zone = {
     source?: {
       part: 'header' | 'body' | 'footer';
       path: string;
+      variant?: 'default' | 'first' | 'even';
     };
     images?: Array<{
       relId: string;
@@ -312,6 +313,8 @@ export type Zone = {
   type: 'boilerplate_verbatim' | 'variable_populated' | null;
   suggestedFieldName: string | null;
   confirmed: boolean;
+  part?: 'header' | 'body' | 'footer';
+  stationaryVariant?: string;
 };
 
 export async function getTemplateZones(jobId: string, templateId: string): Promise<Zone[]> {
@@ -417,6 +420,7 @@ export async function fetchExtractedFields(jobId: string): Promise<ExtractedFiel
 export interface BlockRow {
   id: string;
   sourceFileId: string;
+  sourceFile?: { s3Key: string };
   type: string;
   text: string;
   page: number;
@@ -453,17 +457,17 @@ export async function deleteJobChange(jobId: string, changeId: string): Promise<
   if (!res.ok && res.status !== 204) throw new Error(`DELETE /jobs/${jobId}/changes/${changeId} failed: ${res.status}`);
 }
 
-export async function submitAttorneyJudgment(
+export async function saveValues(
   jobId: string,
   fields: Array<{ fieldName: string; value: string }>,
   acceptMissing: string[],
 ): Promise<void> {
-  const res = await fetch(`${API_BASE}/jobs/${jobId}/attorney-judgment`, {
+  const res = await fetch(`${API_BASE}/jobs/${jobId}/save-values`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ fields, acceptMissing }),
   });
-  if (!res.ok) throw new Error(`POST /jobs/${jobId}/attorney-judgment failed: ${res.status}`);
+  if (!res.ok) throw new Error(`POST /jobs/${jobId}/save-values failed: ${res.status}`);
 }
 
 export interface IngestResponse {
@@ -472,8 +476,12 @@ export interface IngestResponse {
   blocks: number;
 }
 
-export async function ingestDocuments(jobId: string): Promise<IngestResponse> {
-  const res = await fetch(`${API_BASE}/jobs/${jobId}/documents/ingest`, { method: 'POST' });
+export async function ingestDocuments(jobId: string, options?: { force?: boolean; fileId?: string }): Promise<IngestResponse> {
+  const res = await fetch(`${API_BASE}/jobs/${jobId}/documents/ingest`, {
+    method: 'POST',
+    headers: options ? { 'Content-Type': 'application/json' } : undefined,
+    body: options ? JSON.stringify(options) : undefined,
+  });
   if (!res.ok) throw new Error(`POST /jobs/${jobId}/documents/ingest failed: ${res.status}`);
 
   const data = await res.json().catch(() => ({})) as Partial<IngestResponse>;
@@ -495,8 +503,16 @@ export async function classifyTemplate(jobId: string, templateId: string): Promi
   if (!res.ok) throw new Error(`POST /jobs/${jobId}/templates/${templateId}/classify failed: ${res.status}`);
 }
 
-export async function injectTemplate(jobId: string, templateId: string): Promise<{ slotCount: number }> {
-  const res = await fetch(`${API_BASE}/jobs/${jobId}/templates/${templateId}/inject`, { method: 'POST' });
+export async function injectTemplate(
+  jobId: string,
+  templateId: string,
+  options?: { confirmed?: boolean },
+): Promise<{ slotCount: number }> {
+  const res = await fetch(`${API_BASE}/jobs/${jobId}/templates/${templateId}/inject`, {
+    method: 'POST',
+    headers: options ? { 'Content-Type': 'application/json' } : undefined,
+    body: options ? JSON.stringify(options) : undefined,
+  });
   if (!res.ok) throw new Error(`POST /jobs/${jobId}/templates/${templateId}/inject failed: ${res.status}`);
   return res.json() as Promise<{ slotCount: number }>;
 }
@@ -516,6 +532,7 @@ export async function fetchLatestTemplate(jobId: string): Promise<LatestTemplate
 export interface TemplateSlotRow {
   slotName: string;
   required: boolean;
+  defaultValue?: string | null;
 }
 
 export async function fetchTemplateSlots(jobId: string, templateId: string): Promise<TemplateSlotRow[]> {

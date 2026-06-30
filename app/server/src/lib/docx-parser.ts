@@ -58,3 +58,46 @@ export function parseDocxToZones(buffer: Buffer): OoxmlZone[] {
     return { zoneIndex, paragraphStyle: pStyle, runs, textContent };
   });
 }
+
+export function parseDocxHeaderFooter(buffer: Buffer): string {
+  const zip = new PizZip(buffer);
+  const parts: string[] = [];
+
+  for (const filename of Object.keys(zip.files)) {
+    if (!/^word\/(header|footer)\d*\.xml$/.test(filename)) continue;
+    const xml = zip.file(filename)?.asText();
+    if (!xml) continue;
+    const parsed = XML_PARSER.parse(xml);
+    const hdrFtr =
+      parsed['w:hdr'] ?? parsed['w:ftr'] ??
+      parsed['w:header'] ?? parsed['w:footer'];
+    if (!hdrFtr) continue;
+
+    const paragraphs: unknown[] = Array.isArray(hdrFtr['w:p'])
+      ? hdrFtr['w:p']
+      : hdrFtr['w:p']
+      ? [hdrFtr['w:p']]
+      : [];
+
+    for (const para of paragraphs) {
+      const p = para as Record<string, unknown>;
+      const rawRuns: unknown[] = Array.isArray(p['w:r'])
+        ? p['w:r']
+        : p['w:r']
+        ? [p['w:r']]
+        : [];
+      const line = rawRuns
+        .map((run) => {
+          const r = run as Record<string, unknown>;
+          const tNode = r['w:t'];
+          return typeof tNode === 'string'
+            ? tNode
+            : (tNode as Record<string, unknown> | undefined)?.['#text'] as string ?? '';
+        })
+        .join('');
+      if (line.trim()) parts.push(line.trim());
+    }
+  }
+
+  return parts.join('\n');
+}

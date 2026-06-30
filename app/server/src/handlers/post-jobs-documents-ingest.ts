@@ -1,5 +1,5 @@
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { GetObjectCommand, ListObjectsV2Command, S3Client } from '@aws-sdk/client-s3';
+import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@demand-letter/db';
 import { detectDocumentType } from '../lib/document-type-detector';
@@ -25,30 +25,61 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'job_not_found', message: 'The requested job does not exist.' }) };
   }
 
-  const existingSourceFiles = await prisma.sourceFile.findMany({
-    where: { jobId },
-    select: { s3Key: true },
-  });
+  const body = event.body ? JSON.parse(event.body) as { force?: boolean; fileId?: string } : {};
+  const force = body.force === true;
+  const fileId = body.fileId;
+
+  if (force) {
+    await prisma.extractedField.deleteMany({ where: { jobId } });
+    await prisma.sourceFile.deleteMany({ where: { jobId } });
+    await logJobEvent(jobId, 'post-jobs-documents-ingest', 'info', 'Reprocessing all uploaded case documents from scratch');
+  }
+
+  if (fileId && !force) {
+    const specificFile = await prisma.file.findFirst({
+      where: { id: fileId, jobId, role: 'case_doc' },
+      select: { s3Key: true, fileName: true },
+    });
+    if (!specificFile) {
+      return {
+        statusCode: 404,
+        headers: { ...getCorsHeaders(event.headers?.['origin']) },
+        body: JSON.stringify({ error: 'file_not_found', message: 'The requested file does not exist or does not belong to this job.' }),
+      };
+    }
+    await prisma.sourceFile.deleteMany({ where: { jobId, s3Key: specificFile.s3Key } });
+    await logJobEvent(jobId, 'post-jobs-documents-ingest', 'info', `Reprocessing single case document: ${specificFile.fileName}`);
+  }
+
+  const [existingSourceFiles, caseFiles] = await Promise.all([
+    prisma.sourceFile.findMany({
+      where: { jobId },
+      select: { s3Key: true, status: true },
+    }),
+    fileId && !force
+      ? prisma.file.findMany({
+          where: { id: fileId, jobId, role: 'case_doc' },
+          select: { s3Key: true, fileName: true },
+          orderBy: { createdAt: 'asc' },
+        })
+      : prisma.file.findMany({
+          where: { jobId, role: 'case_doc' },
+          select: { s3Key: true, fileName: true },
+          orderBy: { createdAt: 'asc' },
+        }),
+  ]);
   const processedS3Keys = new Set(existingSourceFiles.map((sourceFile) => sourceFile.s3Key));
 
-  // List uploaded files from S3 under the job prefix
-  const listCmd = new ListObjectsV2Command({
-    Bucket: BUCKET,
-    Prefix: `${jobId}/`,
-  });
-  const listed = await s3.send(listCmd);
-  const objects = listed.Contents ?? [];
-
   let processed = 0;
-  let pending = 0;
+  let pending = existingSourceFiles.filter((sourceFile) => sourceFile.status === 'processing').length;
   let totalBlocks = 0;
 
-  for (const obj of objects) {
-    const s3Key = obj.Key!;
+  for (const file of caseFiles) {
+    const s3Key = file.s3Key;
     if (processedS3Keys.has(s3Key)) {
       continue;
     }
-    const filename = s3Key.split('/').pop() ?? s3Key;
+    const filename = file.fileName;
 
     // Download file buffer
     const getCmd = new GetObjectCommand({ Bucket: BUCKET, Key: s3Key });

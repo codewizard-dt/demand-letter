@@ -24,6 +24,7 @@ interface InvokeOptions {
   userId: string;
   system?: string;
   messages: Array<{ role: 'user' | 'assistant'; content: string | Array<Record<string, unknown>> }>;
+  temperature?: number;
 }
 
 export async function invokeModel(opts: InvokeOptions): Promise<string> {
@@ -32,6 +33,7 @@ export async function invokeModel(opts: InvokeOptions): Promise<string> {
     max_tokens: 8192,
     system: opts.system,
     messages: opts.messages,
+    ...(opts.temperature === undefined ? {} : { temperature: opts.temperature }),
   });
 
   const start = Date.now();
@@ -65,6 +67,7 @@ export async function invokeModelStream(
     max_tokens: 8192,
     system: opts.system,
     messages: opts.messages,
+    ...(opts.temperature === undefined ? {} : { temperature: opts.temperature }),
   });
 
   const start = Date.now();
@@ -115,11 +118,12 @@ export async function invokeModelWithTools(
 ): Promise<Record<string, unknown>> {
   const body = JSON.stringify({
     anthropic_version: 'bedrock-2023-05-31',
-    max_tokens: 4096,
+    max_tokens: 8192,
     system: opts.system,
     messages: opts.messages,
     tools: opts.tools,
     tool_choice: opts.tool_choice ?? { type: 'any' },
+    ...(opts.temperature === undefined ? {} : { temperature: opts.temperature }),
   });
 
   const start = Date.now();
@@ -135,6 +139,14 @@ export async function invokeModelWithTools(
     const parsed = JSON.parse(Buffer.from(response.body).toString());
     const inputTokens: number = parsed.usage?.input_tokens ?? 0;
     const outputTokens: number = parsed.usage?.output_tokens ?? 0;
+
+    if (parsed.stop_reason === 'max_tokens') {
+      console.warn(
+        `[invokeModelWithTools] Output truncated at max_tokens for model=${opts.modelId} feature=${opts.feature}. ` +
+        `Input tokens: ${inputTokens}, output tokens: ${outputTokens}. ` +
+        'Some fields may be missing from the result. Consider raising max_tokens or reducing input size.',
+      );
+    }
 
     // Find the tool_use content block
     const toolUseBlock = parsed.content?.find(

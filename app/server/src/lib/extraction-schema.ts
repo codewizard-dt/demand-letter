@@ -78,9 +78,9 @@ export interface Tool {
   input_schema: Record<string, unknown>;
 }
 
-export function buildExtractionTool(): Tool {
+export function buildExtractionTool(fieldNames: readonly string[] = CANONICAL_FIELDS): Tool {
   const properties: Record<string, unknown> = {};
-  for (const field of CANONICAL_FIELDS) {
+  for (const field of fieldNames) {
     properties[field] = FIELD_SCHEMA;
   }
 
@@ -91,7 +91,7 @@ export function buildExtractionTool(): Tool {
     input_schema: {
       type: 'object',
       properties,
-      required: [...CANONICAL_FIELDS],
+      required: [...fieldNames],
     },
   };
 }

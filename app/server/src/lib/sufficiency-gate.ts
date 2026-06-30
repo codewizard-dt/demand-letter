@@ -44,7 +44,7 @@ export async function computeGapReport(jobId: string): Promise<GapReport> {
       f !== undefined &&
       (
         f.acceptMissing ||
-        f.source === 'attorney-judgment' ||
+        f.source === 'user-provided' ||
         (!f.isNull && f.confidence >= threshold)
       );
     if (!covered) {

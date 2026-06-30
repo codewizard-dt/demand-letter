@@ -1,6 +1,6 @@
 import { APIGatewayProxyHandlerV2 } from 'aws-lambda';
 import { prisma } from '@demand-letter/db';
-import { runGroundedExtraction } from '../lib/extraction-service';
+import { extractFirmFieldsFromTemplate, logCaseDocumentSlotCoverage, runGroundedExtraction } from '../lib/extraction-service';
 import { getCorsHeaders } from '../lib/cors';
 import { logJobError } from '../lib/job-logger';
 import { errorResponse } from '../lib/error-response';
@@ -25,6 +25,8 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
   try {
     await runGroundedExtraction(jobId, userId);
+    await extractFirmFieldsFromTemplate(jobId, userId);
+    await logCaseDocumentSlotCoverage(jobId);
 
     const fieldCount = await prisma.extractedField.count({ where: { jobId } });
     const nullCount = await prisma.extractedField.count({

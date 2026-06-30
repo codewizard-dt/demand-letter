@@ -1,7 +1,8 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
+import { UserRound } from 'lucide-react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useGapReport, useExtractedFields, useBlocks, useLatestTemplate, useTemplateSlots } from '../hooks/useJobQueries';
-import { useAddCaseDocuments, useSubmitAttorneyJudgment, useTriggerGenerateJob } from '../hooks/useJobMutations';
+import { useGapReport, useExtractedFields, useBlocks, useJobFiles, useLatestTemplate, useTemplateSlots } from '../hooks/useJobQueries';
+import { useAddCaseDocuments, useProcessCaseDocuments, useProcessSingleCaseDocument, useSaveValues, useTriggerGenerateJob } from '../hooks/useJobMutations';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 
@@ -17,28 +18,60 @@ export default function GapReportPage() {
   const gapReportQuery = useGapReport(jobId);
   const extractedFieldsQuery = useExtractedFields(jobId);
   const blocksQuery = useBlocks(jobId);
+  const filesQuery = useJobFiles(jobId);
   const latestTemplateQuery = useLatestTemplate(jobId);
   const templateSlotsQuery = useTemplateSlots(jobId, latestTemplateQuery.data?.templateId);
-  const submitJudgmentMutation = useSubmitAttorneyJudgment(jobId!);
+  const submitJudgmentMutation = useSaveValues(jobId!);
   const addCaseDocumentsMutation = useAddCaseDocuments(jobId!);
+  const processCaseDocumentsMutation = useProcessCaseDocuments(jobId!);
+  const processSingleDocMutation = useProcessSingleCaseDocument(jobId!);
   const triggerGenerateMutation = useTriggerGenerateJob();
 
-  const [fillValues, setFillValues] = useState<Record<string, string>>({});
-  const [acceptMissing, setAcceptMissing] = useState<Record<string, boolean>>({});
+  const [fillValues, setFillValues] = useState<Record<string, string>>({
+    letter_date: new Date().toLocaleDateString('en-CA'),
+  });
+  const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
   const [caseDrag, setCaseDrag] = useState(false);
   const [caseUploadStatus, setCaseUploadStatus] = useState<string | null>(null);
+  const [showFilled, setShowFilled] = useState(true);
+  const autoProcessJobRef = useRef<string | null>(null);
   const blockRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const extractedFields = extractedFieldsQuery.data ?? [];
+  const files = filesQuery.data ?? [];
+  const hasCaseDocuments = files.some((file) => file.role === 'case_doc');
+  const caseDocuments = files.filter((f) => f.role === 'case_doc');
   const templateSlots = templateSlotsQuery.data ?? [];
   const templateSlotNames = useMemo(
     () => new Set(templateSlots.map((slot) => slot.slotName)),
     [templateSlots],
   );
-  const citationFields = templateSlotNames.size > 0
-    ? extractedFields.filter((field) => templateSlotNames.has(field.fieldName))
-    : extractedFields;
+  const templateSlotMap = useMemo(
+    () => new Map(templateSlots.map(s => [s.slotName, s])),
+    [templateSlots],
+  );
+  const extractedFieldMap = useMemo(
+    () => new Map(extractedFields.map((field) => [field.fieldName, field])),
+    [extractedFields],
+  );
+  const hasUserProvided = useMemo(
+    () => extractedFields.some((f) => f.source === 'user-provided'),
+    [extractedFields],
+  );
+
+  const citationFields = templateSlots.length > 0
+    ? templateSlots.map((slot) => extractedFieldMap.get(slot.slotName) ?? {
+      fieldName: slot.slotName,
+      value: null,
+      blockIds: [],
+      confidence: 0,
+      isNull: true,
+      source: null,
+      nullReason: null,
+      acceptMissing: false,
+    })
+    : extractedFields.filter((field) => templateSlotNames.size === 0 || templateSlotNames.has(field.fieldName));
   const blocks = blocksQuery.data ?? [];
 
   const blockMap = useMemo(
@@ -46,20 +79,27 @@ export default function GapReportPage() {
     [blocks]
   );
 
-  const hasAnyAction = Object.values(fillValues).some(v => v.trim() !== '') ||
-    Object.values(acceptMissing).some(Boolean);
+  const s3KeyToFileName = useMemo(
+    () => new Map(files.map((f) => [f.s3Key, f.fileName])),
+    [files]
+  );
+
+  const blockFileName = (blockId: string): string | null => {
+    const b = blockMap.get(blockId);
+    if (!b?.sourceFile?.s3Key) return null;
+    return s3KeyToFileName.get(b.sourceFile.s3Key) ?? null;
+  };
+
+  const hasAnyAction = Object.values(fillValues).some(v => v.trim() !== '');
 
   const handleSubmit = () => {
     if (!jobId) return;
     const fields = Object.entries(fillValues)
-      .filter(([fieldName, v]) => v.trim() !== '' && !acceptMissing[fieldName])
+      .filter(([, v]) => v.trim() !== '')
       .map(([fieldName, value]) => ({ fieldName, value }));
-    const acceptList = Object.entries(acceptMissing)
-      .filter(([, checked]) => checked)
-      .map(([fieldName]) => fieldName);
     submitJudgmentMutation.mutate(
-      { fields, acceptMissing: acceptList },
-      { onSuccess: () => { setFillValues({}); setAcceptMissing({}); } },
+      { fields, acceptMissing: [] },
+      { onSuccess: () => setFillValues({}) },
     );
   };
 
@@ -77,15 +117,52 @@ export default function GapReportPage() {
 
   const handleGenerate = () => {
     if (!jobId) return;
-    triggerGenerateMutation.mutate(jobId, {
+    const unfilledGaps = report.gaps.filter(g => !fillValues[g.fieldName]?.trim());
+    if (unfilledGaps.length > 0) {
+      setShowGenerateModal(true);
+    } else {
+      triggerGenerateMutation.mutate(jobId, {
+        onSuccess: () => navigate(`/jobs/${jobId}/generate`),
+      });
+    }
+  };
+
+  const confirmGenerate = () => {
+    if (!jobId) return;
+    setShowGenerateModal(false);
+    const filledFields = Object.entries(fillValues)
+      .filter(([, v]) => v.trim() !== '')
+      .map(([fieldName, value]) => ({ fieldName, value }));
+    const doGenerate = () => triggerGenerateMutation.mutate(jobId, {
       onSuccess: () => navigate(`/jobs/${jobId}/generate`),
     });
+    if (filledFields.length > 0) {
+      submitJudgmentMutation.mutate(
+        { fields: filledFields, acceptMissing: [] },
+        { onSuccess: () => { setFillValues({}); doGenerate(); } },
+      );
+    } else {
+      doGenerate();
+    }
+  };
+
+  const handleReprocessCaseDocuments = () => {
+    if (!jobId || processingExistingDocuments || addingCaseDocuments) return;
+    processCaseDocumentsMutation.mutate(
+      { force: true, onStatus: setCaseUploadStatus },
+      { onSettled: () => setCaseUploadStatus(null) },
+    );
   };
 
   const submitting = submitJudgmentMutation.isPending;
   const addingCaseDocuments = addCaseDocumentsMutation.isPending;
+  const processingExistingDocuments = processCaseDocumentsMutation.isPending;
   const generating = triggerGenerateMutation.isPending;
-  const mutationError = submitJudgmentMutation.error?.message ?? addCaseDocumentsMutation.error?.message ?? triggerGenerateMutation.error?.message ?? null;
+  const mutationError = submitJudgmentMutation.error?.message
+    ?? addCaseDocumentsMutation.error?.message
+    ?? processCaseDocumentsMutation.error?.message
+    ?? triggerGenerateMutation.error?.message
+    ?? null;
 
   const errorCode = gapReportQuery.isError
     ? ((gapReportQuery.error as unknown as Record<string, unknown>).code as string | undefined)
@@ -104,6 +181,28 @@ export default function GapReportPage() {
     }, 3000);
     return () => clearInterval(interval);
   }, [errorCode, gapReportQuery]);
+
+  useEffect(() => {
+    if (!jobId || autoProcessJobRef.current === jobId) return;
+    if (filesQuery.isLoading || blocksQuery.isLoading || gapReportQuery.isLoading) return;
+    if (!hasCaseDocuments || blocks.length > 0 || addingCaseDocuments || processingExistingDocuments) return;
+
+    autoProcessJobRef.current = jobId;
+    processCaseDocumentsMutation.mutate(
+      { onStatus: setCaseUploadStatus },
+      { onSettled: () => setCaseUploadStatus(null) },
+    );
+  }, [
+    addingCaseDocuments,
+    blocks.length,
+    blocksQuery.isLoading,
+    filesQuery.isLoading,
+    gapReportQuery.isLoading,
+    hasCaseDocuments,
+    jobId,
+    processCaseDocumentsMutation,
+    processingExistingDocuments,
+  ]);
 
   if (gapReportQuery.isLoading) return <div className="p-8">Loading gap report…</div>;
 
@@ -134,18 +233,8 @@ export default function GapReportPage() {
   }
 
   const report = gapReportQuery.data!;
-  const allMissingAccepted = report.gaps.length > 0 &&
-    report.gaps.every((gap) => acceptMissing[gap.fieldName]);
-
-  const handleAcceptAllMissing = (checked: boolean) => {
-    setAcceptMissing((prev) => {
-      const next = { ...prev };
-      for (const gap of report.gaps) {
-        next[gap.fieldName] = checked;
-      }
-      return next;
-    });
-  };
+  const gapSet = new Set(report.gaps.map((g) => g.fieldName));
+  const gapMap = new Map(report.gaps.map((g) => [g.fieldName, g]));
 
   const handleBlockClick = (blockId: string) => {
     setActiveBlockId(blockId);
@@ -169,21 +258,22 @@ export default function GapReportPage() {
             <div className="text-red-600 mb-4">{mutationError}</div>
           )}
 
+
+
           <div className="mb-6">
             <label className="block mb-1.5 font-semibold">Add Missed Case Documents (.pdf)</label>
             <div
-              className={`border-2 border-dashed rounded-lg px-4 py-5 text-center cursor-pointer transition-colors ${
-                caseDrag ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/60'
-              } ${addingCaseDocuments ? 'opacity-70 cursor-wait' : ''}`}
-              onDragOver={(e) => { e.preventDefault(); if (!addingCaseDocuments) setCaseDrag(true); }}
+              className={`border-2 border-dashed rounded-lg px-4 py-5 text-center cursor-pointer transition-colors ${caseDrag ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/60'
+                } ${addingCaseDocuments || processingExistingDocuments ? 'opacity-70 cursor-wait' : ''}`}
+              onDragOver={(e) => { e.preventDefault(); if (!addingCaseDocuments && !processingExistingDocuments) setCaseDrag(true); }}
               onDragLeave={() => setCaseDrag(false)}
               onDrop={(e) => {
                 e.preventDefault();
                 setCaseDrag(false);
-                if (!addingCaseDocuments) handleAddCaseDocuments(e.dataTransfer.files);
+                if (!addingCaseDocuments && !processingExistingDocuments) handleAddCaseDocuments(e.dataTransfer.files);
               }}
               onClick={() => {
-                if (!addingCaseDocuments) document.getElementById('gapCaseDocs')?.click();
+                if (!addingCaseDocuments && !processingExistingDocuments) document.getElementById('gapCaseDocs')?.click();
               }}
             >
               <input
@@ -193,14 +283,14 @@ export default function GapReportPage() {
                 multiple
                 aria-hidden="true"
                 className="hidden"
-                disabled={addingCaseDocuments}
+                disabled={addingCaseDocuments || processingExistingDocuments}
                 onChange={(e) => {
                   handleAddCaseDocuments(e.target.files ?? []);
                   e.currentTarget.value = '';
                 }}
               />
               <p className="text-sm text-text-muted">
-                {addingCaseDocuments ? (
+                {addingCaseDocuments || processingExistingDocuments ? (
                   caseUploadStatus ?? 'Uploading & processing…'
                 ) : (
                   <>Drag additional .pdf files here or <span className="text-primary underline">browse</span></>
@@ -208,7 +298,7 @@ export default function GapReportPage() {
               </p>
             </div>
 
-            {addingCaseDocuments && caseUploadStatus && (
+            {(addingCaseDocuments || processingExistingDocuments) && caseUploadStatus && (
               <div role="status" aria-live="polite" className="mt-2 flex items-center gap-2 text-sm text-blue-700">
                 <LoadingSpinner className="h-4 w-4 text-primary" />
                 <span>{caseUploadStatus}</span>
@@ -216,82 +306,162 @@ export default function GapReportPage() {
             )}
           </div>
 
-          {report.gaps.length > 0 && (
+          {citationFields.length > 0 && (
             <>
-              <div className="mb-3 flex justify-end">
-                <label className="flex w-fit items-center gap-2 text-sm font-medium text-gray-700">
+              <div className="mb-4 flex items-center justify-end gap-3">
+                <label className="ml-auto flex items-center gap-2 text-sm font-medium text-gray-700">
                   <input
                     type="checkbox"
-                    checked={allMissingAccepted}
-                    onChange={(e) => handleAcceptAllMissing(e.target.checked)}
+                    checked={showFilled}
+                    onChange={(e) => setShowFilled(e.target.checked)}
                   />
-                  Accept All Missing
+                  Show filled slots
                 </label>
+                {report.gaps.length > 0 && (
+                  <button
+                    onClick={handleSubmit}
+                    disabled={!hasAnyAction || submitting}
+                    className="btn-primary"
+                  >
+                    {submitting ? 'Saving…' : 'Save Values'}
+                  </button>
+                )}
+                <button
+                  onClick={handleGenerate}
+                  disabled={generating}
+                  className="btn-primary"
+                >
+                  {generating ? 'Generating…' : 'Proceed to Generate'}
+                </button>
               </div>
 
-              <table className="w-full border-collapse mb-6">
+              <div className="mb-3 flex items-center gap-3 text-sm text-gray-500 justify-between">
+                <span>Fields left blank will be filled in by AI during generation.</span>
+                {hasUserProvided && (
+                  <span className="flex items-center gap-1 text-xs">
+                    <UserRound className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                    user provided
+                  </span>
+                )}
+              </div>
+              <table className="w-full border-collapse mb-6 text-sm">
                 <thead>
                   <tr className="bg-gray-100">
                     <th className="p-2 text-left border border-gray-300">Slot Name</th>
+                    <th className="p-2 text-left border border-gray-300">Template Value</th>
+                    <th className="p-2 text-left border border-gray-300">Value</th>
                     <th className="p-2 text-left border border-gray-300">Null Reason</th>
-                    <th className="p-2 text-left border border-gray-300">Fill Value</th>
-                    <th className="p-2 text-center border border-gray-300">Accept Missing</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {report.gaps.map((gap) => {
+                  {citationFields.filter((field) => showFilled || gapSet.has(field.fieldName)).map((field) => {
+                    const isGap = gapSet.has(field.fieldName);
+                    const gap = gapMap.get(field.fieldName);
                     return (
-                      <tr key={gap.fieldName}>
-                        <td className="p-2 border border-gray-300">
-                          {gap.fieldName}
+                      <tr
+                        key={field.fieldName}
+                        className={isGap ? '' : 'bg-green-50'}
+                      >
+                        <td className="p-2 border border-gray-300 font-medium whitespace-nowrap">
+                          <span className={`mr-1.5 ${isGap ? 'text-red-400' : 'text-green-600'}`}>
+                            {isGap ? '✗' : '✓'}
+                          </span>
+                          {field.fieldName}
                         </td>
-                        <td className="p-2 border border-gray-300 text-gray-500">
-                          {gap.nullReason ?? '—'}
+                        <td className="p-2 border border-gray-300 text-gray-700 max-w-[160px] text-xs break-words">
+                          {templateSlotMap.get(field.fieldName)?.defaultValue ?? <span className="text-gray-300">—</span>}
                         </td>
-                        <td className="p-2 border border-gray-300">
-                          <input
-                            type="text"
-                            value={fillValues[gap.fieldName] ?? ''}
-                            onChange={(e) => setFillValues(prev => ({ ...prev, [gap.fieldName]: e.target.value }))}
-                            placeholder="Enter value…"
-                            className="w-full px-1 py-0.5 border rounded"
-                            disabled={acceptMissing[gap.fieldName]}
-                          />
+                        <td className="p-2 border border-gray-300 max-w-[220px]">
+                          {field.value && (
+                            <div className="max-h-24 overflow-y-auto mb-1 flex items-start gap-1 justify-between">
+                              <span className={
+                                !isGap
+                                  ? 'text-gray-800'
+                                  : field.confidence >= 0.5
+                                    ? 'text-amber-700'
+                                    : 'text-gray-400'
+                              }>
+                                {field.value}
+                              </span>
+                              {field.source === 'user-provided' && (
+                                <span title="user provided" className="shrink-0 mt-0.5">
+                                  <UserRound className="h-3.5 w-3.5 text-blue-500" />
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          {isGap ? (
+                            field.fieldName.endsWith('_date') ? (
+                              <input
+                                type="date"
+                                value={fillValues[field.fieldName] ?? ''}
+                                onChange={(e) => setFillValues(prev => ({ ...prev, [field.fieldName]: e.target.value }))}
+                                className="w-full px-1 py-0.5 border rounded"
+                              />
+                            ) : (
+                              <textarea
+                                rows={1}
+                                value={fillValues[field.fieldName] ?? ''}
+                                onChange={(e) => {
+                                  setFillValues(prev => ({ ...prev, [field.fieldName]: e.target.value }));
+                                  e.target.style.height = 'auto';
+                                  e.target.style.height = `${Math.min(e.target.scrollHeight, 96)}px`;
+                                }}
+                                placeholder="Enter value…"
+                                className="w-full px-1 py-0.5 border rounded resize-none overflow-y-auto"
+                              />
+                            )
+                          ) : !field.value ? (
+                            <span className="text-gray-300">—</span>
+                          ) : null}
                         </td>
-                        <td className="p-2 border border-gray-300 text-center">
-                          <input
-                            type="checkbox"
-                            checked={acceptMissing[gap.fieldName] ?? false}
-                            onChange={(e) => setAcceptMissing(prev => ({ ...prev, [gap.fieldName]: e.target.checked }))}
-                          />
+                        <td className="p-2 border border-gray-300 text-gray-500 max-w-[180px]">
+                          <div className="max-h-24 overflow-y-auto">
+                            {gap?.nullReason ?? field.nullReason ?? '—'}
+                          </div>
                         </td>
+
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
 
-              <button
-                onClick={handleSubmit}
-                disabled={!hasAnyAction || submitting}
-                className="btn-primary mr-4"
-              >
-                {submitting ? 'Submitting…' : 'Submit Attorney Judgment'}
-              </button>
             </>
           )}
-
-          <button
-            onClick={handleGenerate}
-            disabled={report.gaps.length > 0 || generating}
-            className="btn-primary"
-          >
-            {generating ? 'Generating…' : 'Proceed to Generate'}
-          </button>
         </div>
 
         {/* Right column: citation sidebar */}
-        <div className="border border-gray-200 rounded-lg p-4 h-fit max-h-[80vh] overflow-y-auto bg-gray-50">
+        <div className="border border-gray-200 rounded-md p-4 h-fit max-h-[80vh] overflow-y-auto bg-gray-50">
+          {caseDocuments.length > 0 && (
+            <>
+              <h3 className="mt-0 text-base font-semibold">Case Documents</h3>
+              <div className="space-y-1 mb-2">
+                {caseDocuments.map((file) => (
+                  <div key={file.id} className="flex items-center justify-between gap-2">
+                    <span className="text-sm text-gray-700 truncate">{file.fileName}</span>
+                    <button
+                      type="button"
+                      onClick={() => processSingleDocMutation.mutate({ fileId: file.id, onStatus: setCaseUploadStatus })}
+                      disabled={processSingleDocMutation.isPending || processingExistingDocuments || addingCaseDocuments}
+                      className="shrink-0 rounded border border-primary px-2 py-0.5 text-xs font-medium text-primary hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Reprocess
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={handleReprocessCaseDocuments}
+                disabled={addingCaseDocuments || processingExistingDocuments}
+                className="w-full rounded border border-primary px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {processingExistingDocuments ? 'Reprocessing…' : 'Reprocess All Case Documents'}
+              </button>
+              <hr className="my-3 border-gray-200" />
+            </>
+          )}
           <h3 className="mt-0 text-base font-semibold">Citation Sources</h3>
           {citationFields.length === 0 && <p className="text-gray-400 text-sm">No extracted fields yet.</p>}
           {citationFields.map((field) => (
@@ -305,15 +475,16 @@ export default function GapReportPage() {
                     <button
                       key={bid}
                       onClick={() => handleBlockClick(bid)}
-                      className={`px-2 py-0.5 text-xs border rounded cursor-pointer ${
-                        activeBlockId === bid
-                          ? 'bg-blue-600 text-white border-blue-300'
-                          : 'bg-blue-50 text-blue-600 border-blue-200'
-                      }`}
+                      className={`px-2 py-0.5 text-xs border rounded cursor-pointer ${activeBlockId === bid
+                        ? 'bg-blue-600 text-white border-blue-300'
+                        : 'bg-blue-50 text-blue-600 border-blue-200'
+                        }`}
                     >
                       {(() => {
                         const b = blockMap.get(bid);
-                        return b ? `p.${b.page} · ${b.type.slice(0, 4).toUpperCase()}` : `${bid.slice(0, 8)}…`;
+                        if (!b) return `${bid.slice(0, 8)}…`;
+                        const name = blockFileName(bid);
+                        return name ? `${name} · pg ${b.page}` : `pg ${b.page}`;
                       })()}
                     </button>
                   ))}
@@ -324,27 +495,71 @@ export default function GapReportPage() {
         </div>
       </div>
 
-      {/* Source document preview panel */}
+      {/* Citation details panel */}
       {blocks.length > 0 && (
-        <div className="mt-8 border border-gray-200 rounded-lg p-4 max-h-[500px] overflow-y-auto bg-white">
-          <h3 className="mt-0 text-base font-semibold">Source Document Preview</h3>
-          {blocks.map((block) => (
-            <div
-              key={block.id}
-              id={block.id}
-              ref={(el) => { blockRefs.current[block.id] = el; }}
-              className={`px-3 py-2 mb-2 rounded transition-colors duration-150 ${
-                activeBlockId === block.id
-                  ? 'border-2 border-blue-600 bg-blue-50'
-                  : 'border border-gray-200 bg-gray-50'
-              }`}
-            >
-              <div className="text-[11px] text-gray-400 mb-1">
-                [{block.type}] p.{block.page} · id: {block.id}
-              </div>
-              <div className="text-sm text-gray-900 whitespace-pre-wrap">{block.text}</div>
+        <div className="mt-8">
+          <h3 className="mt-0 mb-2 font-semibold">Source Document Details</h3>
+          <div className="border border-gray-200 rounded-md p-4 max-h-[500px] overflow-y-auto bg-white">
+            {blocks.map((block) => {
+              const fileName = block.sourceFile?.s3Key ? s3KeyToFileName.get(block.sourceFile.s3Key) : null;
+              return (
+                <div
+                  key={block.id}
+                  id={block.id}
+                  ref={(el) => { blockRefs.current[block.id] = el; }}
+                  className={`px-3 py-2 mb-2 rounded transition-colors duration-150 ${activeBlockId === block.id
+                    ? 'border-2 border-blue-600 bg-blue-50'
+                    : 'border border-gray-200 bg-gray-50'
+                    }`}
+                >
+                  <div className="text-[11px] text-gray-400 mb-1">
+                    {fileName && <span className="font-medium text-gray-500">{fileName}</span>}
+                    {fileName && ' · '}
+                    pg {block.page}
+                  </div>
+                  <div className="text-sm text-gray-900 whitespace-pre-wrap">{block.text}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {showGenerateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-md shadow-lg w-full max-w-md mx-4 p-6">
+            <h2 className="text-lg font-semibold mb-2">Proceed to Generate?</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              The following slots have no value and will be filled by AI:
+            </p>
+            <ul className="mb-5 space-y-1 max-h-60 overflow-y-auto">
+              {report.gaps
+                .filter(g => !fillValues[g.fieldName]?.trim())
+                .map(g => (
+                  <li key={g.fieldName} className="text-sm font-mono text-gray-800 bg-gray-50 rounded px-2 py-1">
+                    {g.fieldName}
+                  </li>
+                ))}
+            </ul>
+            <p className="text-xs text-gray-500 mb-5">
+              To enter a value manually instead, close this dialog and type it in the Value column.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowGenerateModal(false)}
+                className="px-4 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50"
+              >
+                Go Back
+              </button>
+              <button
+                onClick={confirmGenerate}
+                disabled={generating || submitting}
+                className="btn-primary"
+              >
+                {generating || submitting ? 'Working…' : 'Generate with AI'}
+              </button>
             </div>
-          ))}
+          </div>
         </div>
       )}
     </div>

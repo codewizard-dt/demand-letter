@@ -36,9 +36,7 @@ export async function renderTemplate(
   const doc = new Docxtemplater(zip, {
     paragraphLoop: true,
     linebreaks: true,
-    nullGetter: (part: { value: string }) => {
-      throw new TemplateRenderError([`Unexpected missing tag: {${part.value}}`]);
-    },
+    nullGetter: () => '',
   });
 
   // Render

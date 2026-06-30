@@ -4,7 +4,7 @@ import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3
 import { injectDelimiters } from '../lib/docx-injector';
 import { enumerateSlots } from '../lib/docx-inspect';
 import { getCorsHeaders } from '../lib/cors';
-import { logJobError } from '../lib/job-logger';
+import { logJobError, logJobEvent } from '../lib/job-logger';
 import { errorResponse } from '../lib/error-response';
 
 const s3 = new S3Client({});
@@ -81,6 +81,17 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         }),
       ),
     );
+    const body = event.body ? JSON.parse(event.body) as { confirmed?: boolean } : {};
+    if (body.confirmed === true) {
+      await logJobEvent(jobId, 'post-jobs-templates-inject', 'info',
+        `Template confirmed: ${slots.length} variable slots`, {
+          context: {
+            templateId,
+            slotCount: slots.length,
+            slots,
+          },
+        });
+    }
 
     return {
       statusCode: 200,

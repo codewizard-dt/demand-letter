@@ -102,13 +102,18 @@ function decodeXmlText(text: string): string {
 function extractTextFromXml(xml: string): string {
   const withoutTabs = xml.replace(/<w:tab\/?>/g, ' ');
   const paragraphs: string[] = [];
+  const seen = new Set<string>();
   const paraRegex = /<w:p\b[^>]*>([\s\S]*?)<\/w:p>/g;
 
   for (const paraMatch of withoutTabs.matchAll(paraRegex)) {
     const paraBody = paraMatch[1] ?? '';
     const textChunks = [...paraBody.matchAll(/<w:t\b[^>]*>([\s\S]*?)<\/w:t>/g)].map((m) => decodeXmlText(m[1] ?? ''));
     const text = textChunks.join('');
-    if (text.trim()) paragraphs.push(text);
+    const trimmed = text.trim();
+    if (trimmed && !seen.has(trimmed)) {
+      seen.add(trimmed);
+      paragraphs.push(text);
+    }
   }
 
   return paragraphs.join('\n');

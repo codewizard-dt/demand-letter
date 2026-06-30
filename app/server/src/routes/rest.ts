@@ -12,16 +12,17 @@ import { asyncHandler, errorJson, internalError, json, sendDocx, sendSse } from 
 import { renderTemplate, TemplateRenderError, buildDataObject, prosemirrorToDocx, type ProseMirrorDoc } from '../lib';
 import { computeGapReport } from '../lib/sufficiency-gate';
 import { generateMedicalNarrative } from '../lib/medical-narrative';
-import { getBasicModelId, invokeModelStream } from '../lib/ai-provider';
+import { getBasicModelId, getLogicModelId, invokeModel, invokeModelStream } from '../lib/ai-provider';
+import { dbNameToTagName } from '../lib/field-schema';
 import { redactText, type RedactableEntity } from '../lib/redact-text';
 import { extractDocxStationaries } from '../lib/docx-stationary';
-import { runGroundedExtraction } from '../lib/extraction-service';
+import { extractFirmFieldsFromTemplate, logCaseDocumentSlotCoverage, runGroundedExtraction } from '../lib/extraction-service';
 import { detectDocumentType } from '../lib/document-type-detector';
 import { parseDocx, parsePdfNative } from '../lib/structured-parser';
 import { startTextractAnalysis } from '../lib/textract-client';
 import { classifyZones } from '../lib/zone-classifier';
 import { injectDelimiters } from '../lib/docx-injector';
-import { enumerateSlots } from '../lib/docx-inspect';
+import { enumerateSlots, enumerateSlotsWithContext } from '../lib/docx-inspect';
 import { extractParagraphZones } from '../lib/docx-zone-extractor';
 import { logJobError, logJobEvent } from '../lib/job-logger';
 
@@ -149,18 +150,40 @@ restRouter.post('/jobs/:id/files', asyncHandler(async (req, res) => {
     const reusableFile = await prisma.file.findFirst({ where: { contentHash }, orderBy: { createdAt: 'asc' } });
 
     if (reusableFile) {
-      created.push(await prisma.file.create({
+      const record = await prisma.file.create({
         data: { jobId, contentHash, s3Key: reusableFile.s3Key, mimeType: mime, role, fileName: file.filename },
-      }));
+      });
+      if (role === 'case_doc') {
+        await logJobEvent(jobId, 'post-jobs-files', 'info', `Case document uploaded: ${file.filename}`, {
+          context: {
+            fileId: record.id,
+            s3Key: record.s3Key,
+            mimeType: mime,
+            reusedContent: true,
+          },
+        });
+      }
+      created.push(record);
       continue;
     }
 
     const fileId = randomUUID();
     const s3Key = `${jobId}/${fileId}-${file.filename}`;
     await s3.send(new PutObjectCommand({ Bucket: BUCKET, Key: s3Key, Body: file.content, ContentType: mime }));
-    created.push(await prisma.file.create({
+    const record = await prisma.file.create({
       data: { jobId, contentHash, s3Key, mimeType: mime, role, fileName: file.filename },
-    }));
+    });
+    if (role === 'case_doc') {
+      await logJobEvent(jobId, 'post-jobs-files', 'info', `Case document uploaded: ${file.filename}`, {
+        context: {
+          fileId: record.id,
+          s3Key: record.s3Key,
+          mimeType: mime,
+          reusedContent: false,
+        },
+      });
+    }
+    created.push(record);
   }
 
   json(res, 201, { files: created });
@@ -187,7 +210,8 @@ restRouter.post('/jobs/:id/templates/segment', asyncHandler(async (req, res) => 
     if (!bodyBytes) return errorJson(res, 502, 's3_empty_response', 'The S3 object returned no content.');
 
     const buffer = Buffer.from(bodyBytes);
-    const slots = enumerateSlots(buffer);
+    const slotsWithCtx = enumerateSlotsWithContext(buffer);
+    const slots = slotsWithCtx.map(s => s.slotName);
     const template = await prisma.template.create({
       data: {
         jobId,
@@ -197,9 +221,14 @@ restRouter.post('/jobs/:id/templates/segment', asyncHandler(async (req, res) => 
       },
     });
 
-    if (slots.length > 0) {
+    if (slotsWithCtx.length > 0) {
       await prisma.templateSlot.createMany({
-        data: slots.map((slotName) => ({ templateId: template.id, slotName, required: true })),
+        data: slotsWithCtx.map(({ slotName, paragraphText }) => ({
+          templateId: template.id,
+          slotName,
+          required: true,
+          defaultValue: paragraphText,
+        })),
         skipDuplicates: true,
       });
     }
@@ -212,6 +241,8 @@ restRouter.post('/jobs/:id/templates/segment', asyncHandler(async (req, res) => 
           zoneIndex: z.zoneIndex,
           textContent: z.textContent,
           runPath: z.runPath as unknown as Prisma.InputJsonValue,
+          part: z.runPath.source?.part ?? 'body',
+          stationaryVariant: z.runPath.source?.variant ?? null,
         })),
         skipDuplicates: true,
       });
@@ -351,13 +382,24 @@ restRouter.post('/jobs/:id/templates/:templateId/inject', asyncHandler(async (re
     const s3KeyTagged = `templates/${templateId}/tagged.docx`;
     await s3.send(new PutObjectCommand({ Bucket: BUCKET, Key: s3KeyTagged, Body: taggedBuffer, ContentType: DOCX_MIME }));
 
-    const slots = enumerateSlots(taggedBuffer);
+    const slotsWithCtxTagged = enumerateSlotsWithContext(taggedBuffer);
+    const slots = slotsWithCtxTagged.map(s => s.slotName);
     await prisma.template.update({ where: { id: templateId }, data: { s3KeyTagged, slotCount: slots.length } });
-    await Promise.all(slots.map((slotName) => prisma.templateSlot.upsert({
+    await Promise.all(slotsWithCtxTagged.map(({ slotName, paragraphText }) => prisma.templateSlot.upsert({
       where: { templateId_slotName: { templateId, slotName } },
       update: {},
-      create: { templateId, slotName, required: true },
+      create: { templateId, slotName, required: true, defaultValue: paragraphText },
     })));
+    if (req.body?.confirmed === true) {
+      await logJobEvent(jobId, 'post-jobs-templates-inject', 'info',
+        `Template confirmed: ${slots.length} variable slots`, {
+          context: {
+            templateId,
+            slotCount: slots.length,
+            slots,
+          },
+        });
+    }
     json(res, 200, { s3KeyTagged, slotCount: slots.length, slots });
   } catch (err) {
     await logJobError(jobId, 'post-jobs-templates-inject', err);
@@ -372,7 +414,7 @@ restRouter.get('/jobs/:id/templates/:templateId/slots', asyncHandler(async (req,
   const slots = await prisma.templateSlot.findMany({
     where: { templateId },
     orderBy: { slotName: 'asc' },
-    select: { slotName: true, required: true },
+    select: { slotName: true, required: true, defaultValue: true },
   });
   json(res, 200, { slotCount: template.slotCount ?? slots.length, slots });
 }));
@@ -400,19 +442,35 @@ restRouter.post('/jobs/:id/documents/ingest', asyncHandler(async (req, res) => {
   const jobId = req.params.id;
   const job = await requireJob(jobId);
   if (!job) return errorJson(res, 404, 'job_not_found', 'The requested job does not exist.');
+  const force = req.body?.force === true;
 
-  const existingSourceFiles = await prisma.sourceFile.findMany({ where: { jobId }, select: { s3Key: true } });
+  if (force) {
+    await prisma.extractedField.deleteMany({ where: { jobId } });
+    await prisma.sourceFile.deleteMany({ where: { jobId } });
+    await logJobEvent(jobId, 'post-jobs-documents-ingest', 'info', 'Reprocessing all uploaded case documents from scratch');
+  }
+
+  const [existingSourceFiles, caseFiles] = await Promise.all([
+    prisma.sourceFile.findMany({
+      where: { jobId },
+      select: { s3Key: true, status: true },
+    }),
+    prisma.file.findMany({
+      where: { jobId, role: 'case_doc' },
+      select: { s3Key: true, fileName: true },
+      orderBy: { createdAt: 'asc' },
+    }),
+  ]);
   const processedS3Keys = new Set(existingSourceFiles.map((sourceFile) => sourceFile.s3Key));
-  const listed = await s3.send(new ListObjectsV2Command({ Bucket: BUCKET, Prefix: `${jobId}/` }));
 
   let processed = 0;
-  let pending = 0;
+  let pending = existingSourceFiles.filter((sourceFile) => sourceFile.status === 'processing').length;
   let totalBlocks = 0;
 
-  for (const obj of listed.Contents ?? []) {
-    const s3Key = obj.Key!;
+  for (const file of caseFiles) {
+    const s3Key = file.s3Key;
     if (processedS3Keys.has(s3Key)) continue;
-    const filename = s3Key.split('/').pop() ?? s3Key;
+    const filename = file.fileName;
     const s3Obj = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: s3Key }));
     const bodyBytes = await s3Obj.Body?.transformToByteArray();
     if (!bodyBytes) continue;
@@ -468,6 +526,8 @@ restRouter.post('/jobs/:id/extract', asyncHandler(async (req, res) => {
   if (!job) return errorJson(res, 404, 'job_not_found', 'The requested job does not exist.');
   try {
     await runGroundedExtraction(jobId, 'system');
+    await extractFirmFieldsFromTemplate(jobId, 'system');
+    await logCaseDocumentSlotCoverage(jobId);
     const fieldCount = await prisma.extractedField.count({ where: { jobId } });
     const nullCount = await prisma.extractedField.count({ where: { jobId, isNull: true } });
     json(res, 200, { jobId, totalFields: fieldCount, filledFields: fieldCount - nullCount, nullFields: nullCount });
@@ -507,7 +567,7 @@ restRouter.get('/jobs/:id/fields', asyncHandler(async (req, res) => {
   json(res, 200, { fields });
 }));
 
-restRouter.post('/jobs/:id/attorney-judgment', asyncHandler(async (req, res) => {
+restRouter.post('/jobs/:id/save-values', asyncHandler(async (req, res) => {
   const jobId = req.params.id;
   const job = await requireJob(jobId);
   if (!job) return errorJson(res, 404, 'job_not_found', 'The requested job does not exist.');
@@ -523,7 +583,7 @@ restRouter.post('/jobs/:id/attorney-judgment', asyncHandler(async (req, res) => 
         confidence: 1.0,
         isNull: false,
         nullReason: null,
-        source: 'attorney-judgment',
+        source: 'user-provided',
         acceptMissing: false,
       },
       update: {
@@ -532,7 +592,7 @@ restRouter.post('/jobs/:id/attorney-judgment', asyncHandler(async (req, res) => 
         confidence: 1.0,
         isNull: false,
         nullReason: null,
-        source: 'attorney-judgment',
+        source: 'user-provided',
         updatedAt: new Date(),
       },
     });
@@ -581,6 +641,7 @@ restRouter.get('/jobs/:id/blocks', asyncHandler(async (req, res) => {
       select: {
         id: true,
         sourceFileId: true,
+        sourceFile: { select: { s3Key: true } },
         type: true,
         text: true,
         page: true,
@@ -609,21 +670,58 @@ restRouter.post('/jobs/:id/generate', asyncHandler(async (req, res) => {
   const files = await prisma.file.findMany({ where: { jobId } });
   if (!files.length) return errorJson(res, 422, 'no_files_uploaded', 'This job has no uploaded files yet.');
 
-  const gapReport = await computeGapReport(jobId);
-  if (gapReport.gaps.length > 0) {
-    return json(res, 400, {
-      error: 'sufficiency_precheck_failed',
-      message: `${gapReport.gaps.length} required slot(s) are not covered. Run /jobs/:id/gap-report to see details.`,
-      gaps: gapReport.gaps,
-    });
-  }
-
   await prisma.job.update({ where: { id: jobId }, data: { status: 'processing' } });
   try {
-    const { text: narrativeText, groundingReport } = await generateMedicalNarrative(jobId, MODEL_ID, 'system');
+    const logicModelId = getLogicModelId();
+    const { text: narrativeText, groundingReport } = await generateMedicalNarrative(jobId, logicModelId, 'system');
     console.log('Grounding report:', JSON.stringify(groundingReport));
     const data = await buildDataObject(jobId);
     (data as Record<string, unknown>).medicalNarrative = narrativeText;
+
+    // Fill any template slots missing from data via LLM rather than erroring
+    const templateRecord = await prisma.template.findFirst({
+      where: { jobId },
+      orderBy: { ingestedAt: 'desc' },
+      select: { slots: { select: { slotName: true } } },
+    });
+    const missingSlots = (templateRecord?.slots ?? [])
+      .map(s => s.slotName)
+      .filter(name => !(name in data));
+
+    if (missingSlots.length > 0) {
+      const contextRows = await prisma.extractedField.findMany({
+        where: { jobId, isNull: false },
+        select: { fieldName: true, value: true },
+      });
+      const context = contextRows
+        .filter(r => r.value)
+        .map(r => `${r.fieldName}: ${r.value}`)
+        .join('\n');
+
+      for (const slotName of missingSlots) {
+        const generated = await invokeModel({
+          modelId: logicModelId,
+          feature: LlmFeature.skeleton_generation,
+          userId: 'system',
+          temperature: 0,
+          system:
+            'You are a legal assistant completing a personal injury demand letter. ' +
+            'Generate a concise, appropriate value for the requested field. ' +
+            'Return only the field value — no explanation, no quotes, no preamble.',
+          messages: [
+            {
+              role: 'user',
+              content: `Generate a value for the field "${slotName}" based on the following case information:\n\n${context}\n\nReturn only the value.`,
+            },
+          ],
+        });
+        const value = generated.trim();
+        data[slotName] = value;
+        const tagName = dbNameToTagName(slotName);
+        if (tagName && tagName !== slotName) data[tagName] = value;
+      }
+    }
+
     const docxBuffer = await renderTemplate(jobId, data);
     const outputS3Key = `${jobId}/output/demand-letter.docx`;
     await s3.send(new PutObjectCommand({ Bucket: BUCKET, Key: outputS3Key, Body: docxBuffer, ContentType: DOCX_MIME }));

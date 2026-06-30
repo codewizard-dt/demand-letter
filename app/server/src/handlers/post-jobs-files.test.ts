@@ -1,6 +1,7 @@
 import { vi } from 'vitest'
 
 vi.mock('@demand-letter/db')
+vi.mock('../lib/job-logger')
 
 const { mockS3Send, mockPutObjectCommand, mockParseMultipart } = vi.hoisted(() => ({
   mockS3Send: vi.fn(),
@@ -21,9 +22,11 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import type { DeepMockProxy } from 'vitest-mock-extended'
 import type { PrismaClient } from '@demand-letter/db'
 import { prisma } from '@demand-letter/db'
+import { logJobEvent } from '../lib/job-logger'
 import { handler } from './post-jobs-files'
 
 const prismaMock = prisma as DeepMockProxy<PrismaClient>
+const mockLogJobEvent = vi.mocked(logJobEvent)
 
 describe('post-jobs-files handler', () => {
   beforeEach(() => {
@@ -32,6 +35,7 @@ describe('post-jobs-files handler', () => {
     prismaMock.job.findUnique.mockReset()
     prismaMock.file.findFirst.mockReset()
     prismaMock.file.create.mockReset()
+    mockLogJobEvent.mockReset()
   })
 
   it('stores a new file with a content hash and uploads it to S3', async () => {
@@ -69,6 +73,19 @@ describe('post-jobs-files handler', () => {
           mimeType: 'application/pdf',
           role: 'case_doc',
           fileName: 'case.pdf',
+        }),
+      }),
+    )
+    expect(mockLogJobEvent).toHaveBeenCalledWith(
+      'job-1',
+      'post-jobs-files',
+      'info',
+      'Case document uploaded: case.pdf',
+      expect.objectContaining({
+        context: expect.objectContaining({
+          fileId: 'file-1',
+          mimeType: 'application/pdf',
+          reusedContent: false,
         }),
       }),
     )

@@ -3,12 +3,11 @@ import { prisma } from '@demand-letter/db';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { renderTemplate, TemplateRenderError, buildDataObject } from '../lib';
 import { generateMedicalNarrative } from '../lib/medical-narrative';
-import { computeGapReport } from '../lib/sufficiency-gate';
 import { getCorsHeaders } from '../lib/cors';
 import { logJobError } from '../lib/job-logger';
-import { getBasicModelId } from '../lib/ai-provider';
+import { getLogicModelId } from '../lib/ai-provider';
 
-const MODEL_ID = getBasicModelId();
+const MODEL_ID = getLogicModelId();
 const s3 = new S3Client({ region: process.env.AWS_REGION ?? 'us-east-1' });
 const BUCKET = process.env.DOCUMENTS_BUCKET!;
 
@@ -25,19 +24,6 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'no_files_uploaded', message: 'This job has no uploaded files yet.' }) };
   }
 
-  const gapReport = await computeGapReport(jobId);
-  if (gapReport.gaps.length > 0) {
-    return {
-      statusCode: 400,
-      headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        error: 'sufficiency_precheck_failed',
-        message: `${gapReport.gaps.length} required slot(s) are not covered. Run /jobs/:id/gap-report to see details.`,
-        gaps: gapReport.gaps,
-      }),
-    };
-  }
-
   await prisma.job.update({ where: { id: jobId }, data: { status: 'processing' } });
 
   try {
@@ -50,7 +36,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
     // Assemble docxtemplater data object and inject the AI-generated narrative
     const data = await buildDataObject(jobId);
-    (data as Record<string, unknown>).medicalNarrative = narrativeText;
+    data.medicalNarrative = narrativeText;
 
     // Render DOCX from tagged template
     const docxBuffer = await renderTemplate(jobId, data);

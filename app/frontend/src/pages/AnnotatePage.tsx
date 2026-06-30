@@ -32,22 +32,6 @@ function getStationaryStyle(
   return { width: `${imageWidthPx}px`, height: `${imageHeightPx}px` };
 }
 
-function getStationaryPadding(imageHeightPx?: number, fallback = 0): string | undefined {
-  if (!imageHeightPx) return fallback > 0 ? `${fallback}px` : undefined;
-  return `${imageHeightPx + 12}px`;
-}
-
-function getOriginalHeaderPadding(
-  imageHeightPx: number | undefined,
-  text: string | undefined,
-): string | undefined {
-  const imageHeight = imageHeightPx ?? 0;
-  const textLineCount = text ? Math.max(text.split('\n').length, 1) : 0;
-  const textHeight = textLineCount > 0 ? textLineCount * 14 + 10 : 0;
-  const total = imageHeight + textHeight + 24;
-  return total > 0 ? `${total}px` : undefined;
-}
-
 export default function AnnotatePage() {
   useDocumentTitle('Annotate Template — Steno');
   const { id: jobId, templateId } = useParams<{ id: string; templateId: string }>();
@@ -76,16 +60,6 @@ export default function AnnotatePage() {
   const preferredHeader = getPreferredStationary(originalPreviewQuery.data?.stationaries, 'header');
   const preferredFooter = getPreferredStationary(originalPreviewQuery.data?.stationaries, 'footer');
   const originalPreviewBodyStyle: CSSProperties = {};
-  if (preferredHeader?.imageHeightPx || preferredHeader?.text) {
-    originalPreviewBodyStyle.paddingTop = getOriginalHeaderPadding(preferredHeader.imageHeightPx, preferredHeader.text);
-  } else if (preferredHeader?.text) {
-    originalPreviewBodyStyle.paddingTop = '1.25rem';
-  }
-  if (preferredFooter?.imageHeightPx) {
-    originalPreviewBodyStyle.paddingBottom = getStationaryPadding(preferredFooter.imageHeightPx, 24);
-  } else if (preferredFooter?.text) {
-    originalPreviewBodyStyle.paddingBottom = '1.25rem';
-  }
 
   useEffect(() => {
     if (zonesQuery.data) {
@@ -233,7 +207,7 @@ export default function AnnotatePage() {
     setSaveError(null);
     try {
       await patchMutation.mutateAsync(normalizeZonesForSave());
-      await injectTemplate(jobId, templateId);
+      await injectTemplate(jobId, templateId, { confirmed: true });
       await refreshInjectedTemplateQueries();
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -256,7 +230,7 @@ export default function AnnotatePage() {
         zones: normalizeZonesForSave().filter((zone) => !removedZones[zone.id]),
         removeZoneIds,
       });
-      await injectTemplate(jobId, templateId);
+      await injectTemplate(jobId, templateId, { confirmed: true });
       await refreshInjectedTemplateQueries();
       navigate(`/jobs/${jobId}/documents`);
     } catch (err) {
@@ -398,13 +372,6 @@ export default function AnnotatePage() {
           className="btn-primary"
         >
           Confirm All Sections
-        </button>
-        <button
-          onClick={handleSubmit}
-          disabled={submitting}
-          className="btn-primary"
-        >
-          {submitting ? 'Saving…' : 'Submit Annotations'}
         </button>
         <button
           onClick={handleContinue}
@@ -578,6 +545,14 @@ export default function AnnotatePage() {
                   }`}
               >
                 <p className="text-sm text-gray-500 mb-1">Zone {zone.zoneIndex}</p>
+                {(zone.part === 'header' || zone.part === 'footer') && (
+                  <span className="inline-block mb-1 px-2 py-0.5 text-xs rounded bg-indigo-100 text-indigo-700 border border-indigo-200">
+                    {zone.part === 'header' ? 'Header' : 'Footer'}
+                    {zone.stationaryVariant && zone.stationaryVariant !== 'default'
+                      ? ` (${zone.stationaryVariant} page)`
+                      : ' (all pages)'}
+                  </span>
+                )}
                 <div className="mb-3">
                   {getZoneImages(zone).length > 0 && (
                     <div className="mb-3 rounded border border-gray-200 bg-white p-2">
