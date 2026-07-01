@@ -180,23 +180,39 @@ function normalizeTarget(sourcePath: string, target: string): string {
   return normalized.join('/');
 }
 
+// Header parts must be visited in the SAME order the zone extractor used, or the
+// global paragraph counter drifts and confirmed zones land in the wrong part —
+// e.g. a "Claim Number" zone from the default header injected into the first-page
+// header's logo paragraph. The extractor sorts headers first → default → even
+// (docx-zone-extractor.ts), so mirror that here.
+const HEADER_VARIANT_ORDER: Record<string, number> = { first: 0, default: 1, even: 2 };
+
 function referencedPartPaths(
   documentXml: string,
   documentRels: Record<string, Relationship>,
   slot: 'header' | 'footer',
 ): string[] {
-  const paths: string[] = [];
+  const parts: Array<{ path: string; variant: 'default' | 'first' | 'even' }> = [];
   // Accept both self-closing and expanded open/close reference tags.
   const pattern = new RegExp(`<w:${slot}Reference\\b([^>]*?)\\s*/?>`, 'g');
   for (const match of documentXml.matchAll(pattern)) {
-    const relId = /r:id=("|')([^"']*)\1/.exec(match[1] ?? '')?.[2];
+    const attrs = match[1] ?? '';
+    const relId = /r:id=("|')([^"']*)\1/.exec(attrs)?.[2];
     if (!relId) continue;
     const rel = documentRels[relId];
     if (!rel) continue;
     const path = normalizeTarget('word/document.xml', rel.target);
-    if (!paths.includes(path)) paths.push(path);
+    const rawType = /w:type=("|')([^"']*)\1/.exec(attrs)?.[2];
+    const variant: 'default' | 'first' | 'even' =
+      rawType === 'first' ? 'first' : rawType === 'even' ? 'even' : 'default';
+    if (!parts.find((p) => p.path === path && p.variant === variant)) {
+      parts.push({ path, variant });
+    }
   }
-  return paths;
+  if (slot === 'header') {
+    parts.sort((a, b) => (HEADER_VARIANT_ORDER[a.variant] ?? 1) - (HEADER_VARIANT_ORDER[b.variant] ?? 1));
+  }
+  return parts.map((p) => p.path);
 }
 
 function injectPart(

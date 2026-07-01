@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import PizZip from 'pizzip';
 import { injectDelimiters } from './docx-injector';
+import { extractParagraphZones } from './docx-zone-extractor';
 import { enumerateSlots, enumerateSlotsWithContext } from './docx-inspect';
 
 function createDocx(parts: Record<string, string>): Buffer {
@@ -231,6 +232,60 @@ describe('DOCX system fields', () => {
     ]);
     const xml = new PizZip(output).file('word/document.xml')?.asText() ?? '';
     expect(xml).toContain('{release_scope}');
+  });
+
+  it('injects a default-header zone into the default header, not the first-page header logo', () => {
+    // Word references headers default-then-first, but the zone extractor visits
+    // them first-then-default. The injector must use the extractor's order or the
+    // global paragraph counter drifts and a default-header "Claim Number" zone
+    // lands in the first-page header's logo paragraph.
+    const input = createDocx({
+      'word/document.xml': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <w:body>
+    <w:p><w:r><w:t>Body paragraph.</w:t></w:r></w:p>
+    <w:sectPr>
+      <w:headerReference w:type="default" r:id="rIdD"/>
+      <w:headerReference w:type="first" r:id="rIdF"/>
+    </w:sectPr>
+  </w:body>
+</w:document>`,
+      // First-page header: a logo paragraph (image, no text) then an email line.
+      'word/header2.xml': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <w:p><w:r><w:drawing/></w:r></w:p>
+  <w:p><w:r><w:t>faby@stalwartlaw.com</w:t></w:r></w:p>
+</w:hdr>`,
+      // Default header: the Claim Number line that should receive the injection.
+      'word/header1.xml': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <w:p><w:r><w:t>Claim Number: 12345</w:t></w:r></w:p>
+</w:hdr>`,
+      'word/_rels/document.xml.rels': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rIdD" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header1.xml"/>
+  <Relationship Id="rIdF" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header2.xml"/>
+</Relationships>`,
+    });
+
+    // Use the extractor's own zone index for the Claim Number zone so the test
+    // exercises the extractor/injector ordering contract rather than a hard-coded index.
+    const zones = extractParagraphZones(input);
+    const claimZone = zones.find((z) => z.textContent.includes('Claim Number'));
+    expect(claimZone).toBeDefined();
+
+    const output = injectDelimiters(input, [
+      { zoneIndex: claimZone!.zoneIndex, suggestedFieldName: 'insurer_claim_number', templateText: 'Claim Number: {insurer_claim_number}' },
+    ]);
+    const zip = new PizZip(output);
+    const firstHeader = zip.file('word/header2.xml')?.asText() ?? '';
+    const defaultHeader = zip.file('word/header1.xml')?.asText() ?? '';
+
+    // The Claim Number tag goes into the default header...
+    expect(defaultHeader).toContain('{insurer_claim_number}');
+    // ...and the first-page header's logo paragraph is left untouched.
+    expect(firstHeader).toContain('<w:drawing');
+    expect(firstHeader).not.toContain('{insurer_claim_number}');
   });
 
   it('excludes reserved page fields from template slot enumeration', () => {
