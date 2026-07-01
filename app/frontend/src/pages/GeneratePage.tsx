@@ -11,6 +11,7 @@ import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import WorkflowStepper from '../components/WorkflowStepper';
 import ErrorCard from '../components/ErrorCard';
 import { DocxRender } from '../components/DocxRender';
+import { OutputImagesPanel } from '../components/OutputImagesPanel';
 
 export default function GeneratePage() {
   useDocumentTitle('Generate & Review — Steno');
@@ -201,6 +202,8 @@ export default function GeneratePage() {
               <p className="text-sm text-gray-400">Trigger generation to see a preview.</p>
             )}
           </div>
+
+          {id && <OutputImagesPanel jobId={id} isDone={isDone} />}
         </section>
 
         {/* Right — chat/refinement panel */}

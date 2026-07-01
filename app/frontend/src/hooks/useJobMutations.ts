@@ -12,6 +12,8 @@ import {
   downloadOutput,
   patchTemplateZones,
   replaceTemplateImage,
+  replaceOutputImage,
+  addOutputImage,
   acceptRefinement,
   rejectRefinement,
   deleteJobChange,
@@ -315,6 +317,30 @@ export function useReplaceTemplateImage(jobId: string, templateId: string) {
       queryClient.invalidateQueries({ queryKey: queryKeys.templateZones(jobId, templateId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.templateOriginalPreview(jobId, templateId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.templateSlots(jobId, templateId) });
+    },
+  });
+}
+
+// Swap an image in the body of the generated letter, then refresh the preview + image list.
+export function useReplaceOutputImage(jobId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ target, file }: { target: string; file: File }) => replaceOutputImage(jobId, target, file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.docxPreview(jobId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.outputImages(jobId) });
+    },
+  });
+}
+
+// Add an image to the body of the generated letter, then refresh the preview + image list.
+export function useAddOutputImage(jobId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => addOutputImage(jobId, file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.docxPreview(jobId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.outputImages(jobId) });
     },
   });
 }

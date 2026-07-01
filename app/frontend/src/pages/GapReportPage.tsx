@@ -10,8 +10,40 @@ import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import WorkflowStepper from '../components/WorkflowStepper';
 import ErrorCard from '../components/ErrorCard';
 
-// should match date at beginning or end of field name
-const DATE_FIELD_REGEX = /(^|_)date($|_)/i;
+// An inline-editable value cell, styled to match the template page's editable
+// divs. It is uncontrolled while focused (commits on blur), so typing never
+// fights a re-render; the parent only re-renders after the value is committed.
+function EditableValueCell({
+  value,
+  placeholder,
+  textClass,
+  onCommit,
+}: {
+  value: string;
+  placeholder: string;
+  textClass: string;
+  onCommit: (next: string) => void;
+}) {
+  const baseline = useRef<string | null>(null);
+  return (
+    <div
+      contentEditable
+      suppressContentEditableWarning
+      role="textbox"
+      aria-label="Value"
+      data-placeholder={placeholder}
+      onFocus={(e) => { baseline.current = e.currentTarget.innerText; }}
+      onBlur={(e) => {
+        const next = e.currentTarget.innerText.replace(/\s+$/, '').trim();
+        if (next !== (baseline.current ?? '').trim()) onCommit(next);
+        baseline.current = null;
+      }}
+      className={`min-h-[1.75rem] w-full rounded border border-gray-200 px-2 py-1 text-sm leading-5 outline-none whitespace-pre-wrap break-words cursor-text hover:border-gray-300 focus:border-gray-400 focus:bg-white focus:ring-1 focus:ring-primary empty:before:content-[attr(data-placeholder)] empty:before:text-gray-300 ${textClass}`}
+    >
+      {value}
+    </div>
+  );
+}
 
 export default function GapReportPage() {
   useDocumentTitle('Gap Report — Steno');
@@ -318,7 +350,7 @@ export default function GapReportPage() {
                   onChange={setShowFilled}
                   label="Show filled slots"
                 />
-                {report.gaps.length > 0 && (
+                {(report.gaps.length > 0 || hasAnyAction) && (
                   <button
                     onClick={handleSubmit}
                     disabled={!hasAnyAction || submitting}
@@ -375,48 +407,23 @@ export default function GapReportPage() {
                           </div>
                         </td>
                         <td className="p-2 border border-gray-300 max-w-[220px]">
-                          {field.value && (
-                            <div className="max-h-24 overflow-y-auto mb-1 flex items-start gap-1 justify-between">
-                              <span className={
-                                !isGap
-                                  ? 'text-gray-800'
-                                  : field.confidence >= 0.5
-                                    ? 'text-amber-700'
-                                    : 'text-gray-400'
-                              }>
-                                {field.value}
+                          <div className="flex items-start gap-1">
+                            <EditableValueCell
+                              value={fillValues[field.fieldName] ?? field.value ?? ''}
+                              placeholder="Enter value…"
+                              textClass={isGap && field.value && field.confidence < 0.5 ? 'text-gray-500' : 'text-gray-900'}
+                              onCommit={(next) => {
+                                // Empty is treated as "no value" by hasAnyAction/handleSubmit,
+                                // so storing '' is equivalent to clearing without a dynamic delete.
+                                setFillValues((prev) => ({ ...prev, [field.fieldName]: next }));
+                              }}
+                            />
+                            {field.source === 'user-provided' && (
+                              <span title="user provided" className="mt-1 shrink-0">
+                                <UserRound className="h-3.5 w-3.5 text-blue-500" />
                               </span>
-                              {field.source === 'user-provided' && (
-                                <span title="user provided" className="shrink-0 mt-0.5">
-                                  <UserRound className="h-3.5 w-3.5 text-blue-500" />
-                                </span>
-                              )}
-                            </div>
-                          )}
-                          {isGap ? (
-                            DATE_FIELD_REGEX.test(field.fieldName) ? (
-                              <input
-                                type="date"
-                                value={fillValues[field.fieldName] ?? ''}
-                                onChange={(e) => { setFillValues(prev => ({ ...prev, [field.fieldName]: e.target.value })); }}
-                                className="w-full px-1 py-0.5 border rounded"
-                              />
-                            ) : (
-                              <textarea
-                                rows={1}
-                                value={fillValues[field.fieldName] ?? ''}
-                                onChange={(e) => {
-                                  setFillValues(prev => ({ ...prev, [field.fieldName]: e.target.value }));
-                                  e.target.style.height = 'auto';
-                                  e.target.style.height = `${Math.min(e.target.scrollHeight, 96)}px`;
-                                }}
-                                placeholder="Enter value…"
-                                className="w-full px-1 py-0.5 border rounded resize-none overflow-y-auto"
-                              />
-                            )
-                          ) : !field.value ? (
-                            <span className="text-gray-300">—</span>
-                          ) : null}
+                            )}
+                          </div>
                         </td>
                         <td className="p-2 border border-gray-300 text-gray-500 max-w-[180px]">
                           <div className="max-h-24 overflow-y-auto">
@@ -532,6 +539,33 @@ export default function GapReportPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-md shadow-lg w-full max-w-md mx-4 p-6">
             <h2 className="text-lg font-semibold mb-2">Proceed to Generate?</h2>
+            <div className="mb-4 rounded-md border-2 border-amber-400 bg-amber-50 p-4">
+              <div className="flex items-start gap-3">
+                <svg
+                  className="h-7 w-7 flex-shrink-0 text-amber-600"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003ZM12 8.25a.75.75 0 0 1 .75.75v3.75a.75.75 0 0 1-1.5 0V9a.75.75 0 0 1 .75-.75Zm0 8.25a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <div>
+                  <p className="text-base font-bold text-amber-900">
+                    The AI does not generate any facts or data.
+                  </p>
+                  <p className="mt-1 text-sm text-amber-800">
+                    It only supplies standard legal wording (legalese and boilerplate) for these
+                    slots. It will <span className="font-semibold">never invent</span> names, dates,
+                    dollar amounts, claim numbers, or any other case facts. If a blank slot needs a
+                    real value, go back and enter it yourself.
+                  </p>
+                </div>
+              </div>
+            </div>
             <p className="text-sm text-gray-600 mb-4">
               The following slots have no value and will be filled by AI:
             </p>

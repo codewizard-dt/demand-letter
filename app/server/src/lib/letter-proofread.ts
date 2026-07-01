@@ -30,23 +30,23 @@ export interface ParagraphEntry {
 export const PROOFREAD_TOOL = {
   name: 'revise_letter',
   description:
-    'List the paragraphs to delete (detached fragments) and the minimal grammar fixes for a demand letter.',
+    'List the paragraphs to delete (meaningless leftover fragments) and the paragraphs to rewrite into complete, grammatical sentences for a demand letter.',
   input_schema: {
     type: 'object',
     properties: {
       delete: {
         type: 'array',
         items: { type: 'integer' },
-        description: 'Indices of paragraphs that are detached/orphaned sentence fragments and should be removed.',
+        description: 'Indices of paragraphs that are meaningless leftover fragments (carry no real case content) and should be removed.',
       },
       fix: {
         type: 'array',
-        description: 'Only paragraphs with a clear grammatical error. Keep this list very small.',
+        description: 'Paragraphs to rewrite: those with a clear grammatical error, OR those written as fragments / telegraphic notes that must be turned into full sentences. Preserve every fact verbatim.',
         items: {
           type: 'object',
           properties: {
             index: { type: 'integer' },
-            text: { type: 'string', description: 'The corrected full text of that paragraph.' },
+            text: { type: 'string', description: 'The corrected full text of that paragraph, as complete grammatical sentence(s).' },
           },
           required: ['index', 'text'],
         },
@@ -59,19 +59,21 @@ export const PROOFREAD_TOOL = {
 export const PROOFREAD_SYSTEM = `You are a meticulous legal proofreader reviewing a finished demand letter, one paragraph per line (each prefixed by its [index]).
 
 Your job is to find:
-1. DETACHED / ORPHANED FRAGMENTS — a paragraph that is not a complete sentence and does not attach to anything, because a template variable replaced part of the original sentence. Examples: a line that begins mid-clause ("executors, and administrators, and not third-parties or other persons, entities, or"), or ends with a dangling connector ("...entities, or"). List these indices in "delete".
-2. Clear GRAMMAR errors (a genuinely broken/merged word, wrong agreement). Put these in "fix" with the corrected paragraph text. Use "fix" sparingly.
+1. DETACHED / ORPHANED FRAGMENTS — a paragraph that is a meaningless leftover of a template variable replacement: it carries no standalone case content, because a variable replaced part of the original sentence. Examples: a line that begins mid-clause ("executors, and administrators, and not third-parties or other persons, entities, or"), or ends with a dangling connector ("...entities, or"). List these indices in "delete". Only delete when the text carries NO real case content — if it does, rewrite it instead (see 3).
+2. Clear GRAMMAR errors (a genuinely broken/merged word, wrong agreement). Put the corrected paragraph in "fix".
+3. INCOMPLETE / TELEGRAPHIC SENTENCES — a paragraph that carries real content but is written as fragments or chart/note shorthand rather than full sentences (missing a subject or verb, stacked clauses with no connectives). Example: "44-year-old RV technician. Unable to return to full RV technician duties. Pain 7/10 at rest 9/10 with bending or lifting." Rewrite it in "fix" as complete, grammatically correct sentence(s). Every paragraph in the final letter must read as full prose sentences.
 
 STRICT rules:
-- NEVER change names, dates, dollar amounts, claim numbers, statutes, defined short-names (e.g. leave "Mr. Donahue" as-is — do NOT expand it), or any legal substance.
-- Do NOT reword, restyle, or "improve" correct sentences. If a paragraph is a complete, readable sentence, leave it out entirely.
-- Headings, ALL-CAPS lines, labels, and list markers like "A)", "(1)", "3." are intentional — never treat them as fragments.
-- Keep output tiny: usually just a few "delete" indices and zero or a couple of "fix" entries. Return empty arrays if the letter is clean.
+- NEVER change, add, or remove any fact: names, dates, ages, dollar amounts, claim numbers, statutes, medical measurements or ratings (e.g. "7/10", "C4-C5"), diagnoses, or defined short-names (leave "Mr. Donahue" as-is — do NOT expand it). Preserve every such token verbatim; only add ordinary connective words ("is", "and", "who", "with", "reports") needed to form a sentence.
+- Do NOT invent details that are not present — no pronoun implying a gender that is not stated, no new subject or fact. When a subject is missing, use a neutral one already implied by context (e.g. "The claimant") rather than guessing.
+- Do NOT reword, restyle, or "improve" a paragraph that is ALREADY a complete, grammatical sentence — leave it out entirely.
+- Headings, ALL-CAPS lines, labels, and list markers like "A)", "(1)", "3." are intentional — never treat them as fragments or rewrite them.
+- Keep output surgical: only the indices that genuinely need deletion or rewriting. Return empty arrays if the letter is clean.
 Return via the revise_letter tool.`;
 
 export function buildProofreadUserMessage(paragraphs: ParagraphEntry[]): string {
   const numbered = paragraphs.map((p) => `[${p.index}] ${p.text}`).join('\n');
-  return `Demand letter paragraphs:\n\n${numbered}\n\nReturn the detached-fragment indices to delete and any essential grammar fixes.`;
+  return `Demand letter paragraphs:\n\n${numbered}\n\nReturn the leftover-fragment indices to delete, plus rewrites for any paragraphs with grammar errors or incomplete/telegraphic sentences.`;
 }
 
 function coerceArray(value: unknown): unknown[] {

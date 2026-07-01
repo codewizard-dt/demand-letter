@@ -20,12 +20,22 @@ import {
   fetchTemplateOriginalPreview,
   fetchLatestTemplate,
   fetchJob,
+  fetchOutputImages,
 } from '../lib/api';
 
 export function useLlmCosts(days = 30) {
   return useQuery({
     queryKey: queryKeys.llmCosts(days),
     queryFn: () => fetchLlmCosts(days),
+  });
+}
+
+export function useOutputImages(jobId: string | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.outputImages(jobId!),
+    queryFn: () => fetchOutputImages(jobId!),
+    enabled: !!jobId && enabled,
+    staleTime: 0,
   });
 }
 

@@ -547,6 +547,41 @@ export async function replaceTemplateImage(
   }
 }
 
+export interface OutputBodyImage {
+  target: string;
+  dataUrl: string;
+}
+
+export async function fetchOutputImages(jobId: string): Promise<OutputBodyImage[]> {
+  const res = await fetch(`${API_BASE}/jobs/${jobId}/output/images`);
+  if (!res.ok) throw new Error(`GET /jobs/${jobId}/output/images failed: ${res.status}`);
+  const data = await res.json() as { images: OutputBodyImage[] };
+  return data.images;
+}
+
+export async function replaceOutputImage(jobId: string, target: string, file: File): Promise<void> {
+  const form = new FormData();
+  form.append('image', file);
+  const res = await fetch(
+    `${API_BASE}/jobs/${jobId}/output/images/replace?target=${encodeURIComponent(target)}`,
+    { method: 'POST', body: form },
+  );
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as { message?: string; error?: string };
+    throw new Error(body.message ?? body.error ?? `Image replace failed: ${res.status}`);
+  }
+}
+
+export async function addOutputImage(jobId: string, file: File): Promise<void> {
+  const form = new FormData();
+  form.append('image', file);
+  const res = await fetch(`${API_BASE}/jobs/${jobId}/output/images/add`, { method: 'POST', body: form });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as { message?: string; error?: string };
+    throw new Error(body.message ?? body.error ?? `Image add failed: ${res.status}`);
+  }
+}
+
 export interface LatestTemplate {
   templateId: string;
   slotCount: number | null;

@@ -12,6 +12,7 @@ export const queryKeys = {
   latestTemplate:  (jobId: string)                           => ['latestTemplate', jobId]              as const,
   docxHtml:        (jobId: string, url: string | undefined)  => ['docxHtml', jobId, url]              as const,
   docxPreview:     (jobId: string)                           => ['docxPreview', jobId]                 as const,
+  outputImages:    (jobId: string)                           => ['outputImages', jobId]                as const,
   jobs:            ()                                        => ['jobs']                              as const,
   jobFiles:        (jobId: string)                           => ['jobs', jobId, 'files']              as const,
   jobLogs:         (jobId: string)                           => ['jobs', jobId, 'logs']               as const,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import PizZip from 'pizzip';
-import { extractBodyParagraphs, applyProofreadEdits, parseProofreadEdits } from './letter-proofread';
+import { extractBodyParagraphs, applyProofreadEdits, parseProofreadEdits, PROOFREAD_SYSTEM } from './letter-proofread';
 
 function docx(paragraphs: string[]): Buffer {
   const body = paragraphs.map((t) => `<w:p><w:r><w:t xml:space="preserve">${t}</w:t></w:r></w:p>`).join('');
@@ -63,6 +63,31 @@ describe('letter-proofread', () => {
     const buf = docx(['A.', 'B.']);
     const out = applyProofreadEdits(buf, []);
     expect(extractBodyParagraphs(out)).toHaveLength(2);
+  });
+
+  it('rewrites a telegraphic/fragment paragraph into a full sentence while keeping every fact', () => {
+    const buf = docx([
+      '44-year-old RV technician. Unable to return to full RV technician duties. Pain 7/10 at rest 9/10 with bending or lifting.',
+    ]);
+
+    const rewritten =
+      'The claimant is a 44-year-old RV technician who is unable to return to full RV technician duties, and reports pain of 7/10 at rest and 9/10 with bending or lifting.';
+    const out = applyProofreadEdits(buf, [{ index: 0, action: 'rewrite', text: rewritten }]);
+
+    const remaining = extractBodyParagraphs(out);
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0]?.text).toBe(rewritten);
+    // Every fact token survives verbatim.
+    for (const fact of ['44-year-old', 'RV technician', '7/10', '9/10', 'bending or lifting']) {
+      expect(remaining[0]?.text).toContain(fact);
+    }
+  });
+
+  it('instructs the model to rewrite incomplete/telegraphic sentences and preserve facts', () => {
+    // Guards the behavior change: the proofread pass must turn fragment/note-style
+    // lines into full sentences, not leave them or delete their content.
+    expect(PROOFREAD_SYSTEM).toMatch(/TELEGRAPHIC|complete, grammatically correct sentence/i);
+    expect(PROOFREAD_SYSTEM).toMatch(/Preserve every such token verbatim/i);
   });
 
   it('preserves paragraph formatting (rPr) on rewrite', () => {

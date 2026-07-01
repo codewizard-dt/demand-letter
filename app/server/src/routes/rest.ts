@@ -6,13 +6,14 @@ import Busboy from 'busboy';
 import PizZip from 'pizzip';
 import { createHash, randomUUID } from 'node:crypto';
 import { Router } from 'express';
-import type { Request, Router as ExpressRouter } from 'express';
+import type { Request, Response, Router as ExpressRouter } from 'express';
 import { Packer } from 'docx';
 import mammoth from 'mammoth';
 import { asyncHandler, errorJson, internalError, json, sendDocx, writeSseData } from '../http';
 import { renderTemplate, TemplateRenderError, buildDataObject, prosemirrorToDocx, type ProseMirrorDoc } from '../lib';
 import { splitAddressLines } from '../lib/generation-data-builder';
 import { applyLiteralReplacements, buildLiteralReplacements } from '../lib/docx-literal-replace';
+import { listBodyImages, replaceBodyImage, addBodyImage } from '../lib/docx-body-images';
 import { computeGapReport } from '../lib/sufficiency-gate';
 import { generateMedicalNarrative } from '../lib/medical-narrative';
 import { getBasicModelId, getLogicModelId, invokeModel, invokeModelStream, invokeModelWithTools } from '../lib/ai-provider';
@@ -1254,6 +1255,79 @@ restRouter.get('/jobs/:id/output/docx', asyncHandler(async (req, res) => {
   const bytes = await s3Obj.Body?.transformToByteArray();
   if (!bytes) return errorJson(res, 500, 'output_empty', 'The generated DOCX has no content.');
   sendDocx(res, Buffer.from(bytes));
+}));
+
+// Fetch the generated output DOCX from S3 and return its buffer, or 404 JSON.
+async function loadOutputDocx(
+  jobId: string,
+  res: Response,
+): Promise<{ key: string; buffer: Buffer } | null> {
+  const job = await requireJob(jobId);
+  if (!job) { errorJson(res, 404, 'job_not_found', 'The requested job does not exist.'); return null; }
+  if (!job.outputS3Key) { errorJson(res, 404, 'output_not_ready', 'Document generation has not completed yet.'); return null; }
+  const s3Obj = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: job.outputS3Key }));
+  const bytes = await s3Obj.Body?.transformToByteArray();
+  if (!bytes) { errorJson(res, 500, 'output_empty', 'The generated DOCX has no content.'); return null; }
+  return { key: job.outputS3Key, buffer: Buffer.from(bytes) };
+}
+
+// List the images embedded in the body of the generated letter (excludes
+// header/footer images like the firm logo — those are edited on the template).
+restRouter.get('/jobs/:id/output/images', asyncHandler(async (req, res) => {
+  const jobId = req.params.id;
+  if (!jobId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
+  const loaded = await loadOutputDocx(jobId, res);
+  if (!loaded) return;
+  json(res, 200, { images: listBodyImages(loaded.buffer) });
+}));
+
+// Swap an existing body image for an uploaded one.
+restRouter.post('/jobs/:id/output/images/replace', asyncHandler(async (req, res) => {
+  const jobId = req.params.id;
+  if (!jobId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
+  const target = firstQuery(req.query.target);
+  if (!target || !target.startsWith('word/media/') || target.includes('..')) {
+    return errorJson(res, 400, 'invalid_target', 'A valid image target is required.');
+  }
+  try {
+    const loaded = await loadOutputDocx(jobId, res);
+    if (!loaded) return;
+    const files = await parseMultipart(req);
+    const file = files[0];
+    if (!file || file.content.length === 0) return errorJson(res, 400, 'no_image', 'No image was uploaded.');
+    if (!file.contentType?.startsWith('image/')) return errorJson(res, 400, 'not_an_image', 'The uploaded file is not an image.');
+    let updated: Buffer;
+    try {
+      updated = replaceBodyImage(loaded.buffer, target, file.content);
+    } catch {
+      return errorJson(res, 404, 'image_not_found', 'The target image does not exist in the document.');
+    }
+    await s3.send(new PutObjectCommand({ Bucket: BUCKET, Key: loaded.key, Body: updated, ContentType: DOCX_MIME }));
+    json(res, 200, { target });
+  } catch (err) {
+    await logJobError(jobId, 'post-jobs-output-images-replace', err);
+    internalError(res, err);
+  }
+}));
+
+// Add an uploaded image as a new centered paragraph at the end of the body.
+restRouter.post('/jobs/:id/output/images/add', asyncHandler(async (req, res) => {
+  const jobId = req.params.id;
+  if (!jobId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
+  try {
+    const loaded = await loadOutputDocx(jobId, res);
+    if (!loaded) return;
+    const files = await parseMultipart(req);
+    const file = files[0];
+    if (!file || file.content.length === 0) return errorJson(res, 400, 'no_image', 'No image was uploaded.');
+    if (!file.contentType?.startsWith('image/')) return errorJson(res, 400, 'not_an_image', 'The uploaded file is not an image.');
+    const updated = addBodyImage(loaded.buffer, file.content, file.contentType);
+    await s3.send(new PutObjectCommand({ Bucket: BUCKET, Key: loaded.key, Body: updated, ContentType: DOCX_MIME }));
+    json(res, 200, { ok: true });
+  } catch (err) {
+    await logJobError(jobId, 'post-jobs-output-images-add', err);
+    internalError(res, err);
+  }
 }));
 
 restRouter.get('/jobs/:id/output/docx/preview', asyncHandler(async (req, res) => {
