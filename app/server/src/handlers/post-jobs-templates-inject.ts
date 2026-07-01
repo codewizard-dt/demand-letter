@@ -2,7 +2,7 @@ import type { APIGatewayProxyHandler } from 'aws-lambda';
 import { prisma, ZoneType } from '@demand-letter/db';
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { injectDelimiters } from '../lib/docx-injector';
-import { enumerateSlots } from '../lib/docx-inspect';
+import { enumerateSlotsWithContext } from '../lib/docx-inspect';
 import { getCorsHeaders } from '../lib/cors';
 import { logJobError, logJobEvent } from '../lib/job-logger';
 import { errorResponse } from '../lib/error-response';
@@ -32,11 +32,12 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
     // Only inject into confirmed variable_populated zones that have a field name
     const confirmedZones = template.zones
-      .filter(z => z.confirmed && z.type === ZoneType.variable_populated && z.suggestedFieldName)
+      .filter(z => z.confirmed && z.type === ZoneType.variable_populated && (z.templateText || z.suggestedFieldName))
       .map(z => ({
         zoneIndex: z.zoneIndex,
         suggestedFieldName: z.suggestedFieldName as string,
         templateText: z.templateText,
+        paragraphSpan: (z.runPath as { paragraphSpan?: number } | null)?.paragraphSpan,
       }));
 
     // Download original DOCX from S3
@@ -66,8 +67,9 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       ContentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     }));
 
-    // Enumerate slots from the tagged document
-    const slots = enumerateSlots(taggedBuffer);
+    // Enumerate slots (with surrounding template text) from the tagged document
+    const slotsWithCtx = enumerateSlotsWithContext(taggedBuffer);
+    const slots = slotsWithCtx.map(s => s.slotName);
 
     // Update template record with tagged key and slot count
     await prisma.template.update({
@@ -75,16 +77,20 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       data: { s3KeyTagged, slotCount: slots.length },
     });
 
-    // Upsert slot rows
+    // Rebuild the slot set to mirror the tagged document: refresh defaultValue on
+    // existing slots, create newly added variables, and drop removed ones.
     await Promise.all(
-      slots.map(slotName =>
+      slotsWithCtx.map(({ slotName, paragraphText }) =>
         prisma.templateSlot.upsert({
           where: { templateId_slotName: { templateId, slotName } },
-          update: {},
-          create: { templateId, slotName, required: true },
+          update: { defaultValue: paragraphText },
+          create: { templateId, slotName, required: true, defaultValue: paragraphText },
         }),
       ),
     );
+    await prisma.templateSlot.deleteMany({
+      where: { templateId, slotName: { notIn: slots } },
+    });
     const body = event.body ? JSON.parse(event.body) as { confirmed?: boolean } : {};
     if (body.confirmed === true) {
       await logJobEvent(jobId, 'post-jobs-templates-inject', 'info',

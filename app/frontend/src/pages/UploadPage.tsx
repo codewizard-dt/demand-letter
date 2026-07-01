@@ -20,7 +20,7 @@ export default function UploadPage() {
     setUploadStatus('Starting template upload…');
     uploadMutation.mutate(
       { templateFile, onStatus: setUploadStatus },
-      { onSuccess: ({ jobId, templateId }) => navigate(`/jobs/${jobId}/templates/${templateId}/annotate`) },
+      { onSuccess: ({ jobId, templateId }) => { navigate(`/jobs/${jobId}/templates/${templateId}/annotate`); } },
     );
   }
 
@@ -59,11 +59,11 @@ export default function UploadPage() {
               <div
                 className={`border-2 border-dashed rounded-lg px-4 py-6 text-center cursor-pointer transition-colors ${templateDrag ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/60'}`}
                 onDragOver={(e) => { e.preventDefault(); setTemplateDrag(true); }}
-                onDragLeave={() => setTemplateDrag(false)}
+                onDragLeave={() => { setTemplateDrag(false); }}
                 onDrop={(e) => { e.preventDefault(); setTemplateDrag(false); const f = e.dataTransfer.files[0]; if (f) setTemplateFile(f); }}
                 onClick={() => document.getElementById('template')?.click()}
               >
-                <input id="template" type="file" accept=".docx" aria-hidden="true" className="hidden" onChange={(e) => setTemplateFile(e.target.files?.[0] ?? null)} />
+                <input id="template" type="file" accept=".docx" aria-hidden="true" className="hidden" onChange={(e) => { setTemplateFile(e.target.files?.[0] ?? null); }} />
                 {templateFile ? (
                   <p className="text-sm text-primary font-medium">{templateFile.name}</p>
                 ) : (

@@ -1,34 +1,16 @@
-import { type CSSProperties, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
-import { connectGenerateStream, fetchJob, getTemplateZones, type OutputDocxPreview } from '../lib/api';
+import { connectGenerateStream, fetchJob, fetchOutputDocx, getTemplateZones } from '../lib/api';
 import { useTriggerGenerateJob, useDownloadOutput } from '../hooks/useJobMutations';
-import { useLatestTemplate, useDocxPreview } from '../hooks/useJobQueries';
+import { useLatestTemplate } from '../hooks/useJobQueries';
 import { queryKeys } from '../hooks/queryKeys';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { RefinementPanel } from '../components/RefinementPanel';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import WorkflowStepper from '../components/WorkflowStepper';
 import ErrorCard from '../components/ErrorCard';
-import { ZoneOutputCard } from '../components/ZoneOutputCard';
-
-function getPreferredStationary(
-  stationaries: OutputDocxPreview['stationaries'] | undefined,
-  slot: 'header' | 'footer',
-) {
-  if (!stationaries) return undefined;
-  return stationaries.find((stationary) => stationary.slot === slot && stationary.variant === 'first')
-    ?? stationaries.find((stationary) => stationary.slot === slot && stationary.variant === 'default')
-    ?? stationaries.find((stationary) => stationary.slot === slot && stationary.variant === 'even');
-}
-
-function getStationaryStyle(
-  imageWidthPx?: number,
-  imageHeightPx?: number,
-): CSSProperties | undefined {
-  if (!imageWidthPx || !imageHeightPx) return undefined;
-  return { width: `${imageWidthPx}px`, height: `${imageHeightPx}px` };
-}
+import { DocxRender } from '../components/DocxRender';
 
 export default function GeneratePage() {
   useDocumentTitle('Generate & Review — Steno');
@@ -39,7 +21,6 @@ export default function GeneratePage() {
   const [zoneContents, setZoneContents] = useState<Map<number, string>>(new Map());
   const [isDone, setIsDone] = useState(false);
   const [streamError, setStreamError] = useState<string | null>(null);
-  const [previewMode, setPreviewMode] = useState<'parsed' | 'docx'>('parsed');
   const abortRef = useRef<AbortController | null>(null);
 
   const triggerGenerateMutation = useTriggerGenerateJob();
@@ -53,12 +34,12 @@ export default function GeneratePage() {
     enabled: !!id && !!templateId,
     staleTime: Infinity,
   });
-  const zones = (zonesQuery.data ?? []).slice().sort((a, b) => a.zoneIndex - b.zoneIndex);
-
-  const docxPreviewQuery = useDocxPreview(id, isDone);
-  const docxPreview = docxPreviewQuery.data;
-  const preferredHeader = getPreferredStationary(docxPreview?.stationaries, 'header');
-  const preferredFooter = getPreferredStationary(docxPreview?.stationaries, 'footer');
+  const docxBytesQuery = useQuery({
+    queryKey: [...queryKeys.docxPreview(id!), 'bytes'],
+    queryFn: () => fetchOutputDocx(id!),
+    enabled: !!id && isDone,
+    staleTime: Infinity,
+  });
 
   function startStream(jobId: string, ac: AbortController) {
     setStatusMessage('Connecting…');
@@ -124,7 +105,6 @@ export default function GeneratePage() {
         setStreamError(null);
         setZoneContents(new Map());
         setIsDone(false);
-        setPreviewMode('parsed');
         abortRef.current?.abort();
         const ac = new AbortController();
         abortRef.current = ac;
@@ -181,24 +161,6 @@ export default function GeneratePage() {
             <h2 className="text-base font-semibold text-gray-800">Generated Document</h2>
             <div className="flex items-center gap-2 flex-wrap">
               {isDone && (
-                <div className="flex rounded-full border border-gray-300 bg-white p-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setPreviewMode('parsed')}
-                    className={`px-3 py-1 text-xs rounded-full ${previewMode === 'parsed' ? 'bg-primary text-white' : 'text-gray-700'}`}
-                  >
-                    Parsed
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPreviewMode('docx')}
-                    className={`px-3 py-1 text-xs rounded-full ${previewMode === 'docx' ? 'bg-primary text-white' : 'text-gray-700'}`}
-                  >
-                    DOCX
-                  </button>
-                </div>
-              )}
-              {isDone && (
                 <>
                   <button
                     onClick={handleDownload}
@@ -218,75 +180,25 @@ export default function GeneratePage() {
             </div>
           </div>
 
-          <div className="max-h-[72vh] overflow-y-auto rounded border border-gray-200 bg-white p-6 shadow-sm">
-            {previewMode === 'docx' && isDone ? (
-              <>
-                {docxPreviewQuery.isLoading && (
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <LoadingSpinner className="h-4 w-4 text-primary" />
-                    <span>Loading DOCX preview…</span>
-                  </div>
-                )}
-                {docxPreviewQuery.isError && (
-                  <p className="text-sm text-red-600">Failed to load DOCX preview.</p>
-                )}
-                {docxPreview && (
-                  <div className="st-docx-preview-wrap">
-                    {preferredHeader && (
-                      <div className="st-docx-stationary st-docx-stationary-header">
-                        {preferredHeader.imageDataUrl && (
-                          <img
-                            src={preferredHeader.imageDataUrl}
-                            alt="Header"
-                            style={getStationaryStyle(preferredHeader.imageWidthPx, preferredHeader.imageHeightPx)}
-                            className="st-docx-stationary-image"
-                          />
-                        )}
-                        {preferredHeader.text && (
-                          <div className="st-docx-stationary-text">{preferredHeader.text}</div>
-                        )}
-                      </div>
-                    )}
-                    <article
-                      className="st-template-document st-docx-preview st-original-docx-preview"
-                      dangerouslySetInnerHTML={{ __html: docxPreview.html }}
-                    />
-                    {preferredFooter && (
-                      <div className="st-docx-stationary st-docx-stationary-footer">
-                        {preferredFooter.imageDataUrl && (
-                          <img
-                            src={preferredFooter.imageDataUrl}
-                            alt="Footer"
-                            style={getStationaryStyle(preferredFooter.imageWidthPx, preferredFooter.imageHeightPx)}
-                            className="st-docx-stationary-image"
-                          />
-                        )}
-                        {preferredFooter.text && (
-                          <div className="st-docx-stationary-text">{preferredFooter.text}</div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </>
-            ) : (
-              /* Parsed view — streams zone by zone */
-              zones.length === 0 && !isStreaming ? (
-                <p className="text-sm text-gray-400">Trigger generation to see a preview.</p>
+          <div className="max-h-[72vh] overflow-y-auto rounded border border-gray-200 bg-gray-100 p-4 shadow-sm">
+            {isDone ? (
+              docxBytesQuery.isLoading ? (
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <LoadingSpinner className="h-4 w-4 text-primary" />
+                  <span>Loading document preview…</span>
+                </div>
+              ) : docxBytesQuery.isError ? (
+                <p className="text-sm text-red-600">Failed to load document preview.</p>
               ) : (
-                <article className="space-y-2 text-sm leading-6 text-gray-900">
-                  {zones.map((zone) => {
-                    const zoneContent = zoneContents.get(zone.zoneIndex);
-                    return (
-                      <ZoneOutputCard
-                        key={zone.id}
-                        zone={zone}
-                        {...(zoneContent !== undefined ? { content: zoneContent } : {})}
-                      />
-                    );
-                  })}
-                </article>
+                <DocxRender data={docxBytesQuery.data} />
               )
+            ) : isStreaming ? (
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <LoadingSpinner className="h-4 w-4 text-primary" />
+                <span>Generating your demand letter…</span>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400">Trigger generation to see a preview.</p>
             )}
           </div>
         </section>

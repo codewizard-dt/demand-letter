@@ -23,7 +23,7 @@ export default function AuthLayout() {
       }
     }
     document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    return () => { document.removeEventListener('mousedown', handleClick); };
   }, []);
 
   return (
@@ -59,7 +59,7 @@ export default function AuthLayout() {
 
         <div className="relative" ref={dropdownRef}>
           <button
-            onClick={() => setOpen((o) => !o)}
+            onClick={() => { setOpen((o) => !o); }}
             className="w-9 h-9 rounded-full bg-primary-gold text-white text-sm font-medium flex items-center justify-center select-none hover:opacity-90 transition-opacity"
             aria-label="Open user menu"
           >
@@ -73,7 +73,7 @@ export default function AuthLayout() {
               </div>
               <Link
                 to="/account"
-                onClick={() => setOpen(false)}
+                onClick={() => { setOpen(false); }}
                 className={`block px-4 py-2.5 text-sm transition-colors ${
                   location.pathname === '/account'
                     ? 'text-primary font-medium bg-bg'

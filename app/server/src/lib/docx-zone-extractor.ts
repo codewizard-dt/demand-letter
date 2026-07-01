@@ -7,6 +7,9 @@ const PARSER = new XMLParser({
   attributeNamePrefix: '@_',
   isArray: (name) => ['w:p', 'w:r', 'w:t', 'w:body', 'w:document'].includes(name),
   preserveOrder: true,
+  // Keep run text verbatim; trimming drops the spaces at run boundaries and
+  // merges adjacent words ("settlement of his" → "settlementofhis").
+  trimValues: false,
 });
 
 export interface ParagraphZone {
@@ -22,6 +25,9 @@ export interface ParagraphZone {
       style?: string;
       alignment?: 'left' | 'center' | 'right' | 'both';
     };
+    // Number of source paragraphs this zone covers. >1 when a sentence was
+    // authored across multiple paragraphs and merged into one zone.
+    paragraphSpan?: number;
     runs: Array<{
       runIndex: number;
       text: string;
@@ -299,6 +305,70 @@ function extractPartZones(
   });
 }
 
+const TERMINAL_PUNCT = /[.!?:;)\]"'”’]$/;
+const LIST_MARKER = /^\s*([A-Za-z]\)|\(?\d+[.)]|\([A-Za-z0-9]+\)|[•▪◦*–—-])/;
+
+function wordCount(text: string): number {
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
+function zoneHasImage(zone: ParagraphZone): boolean {
+  return (zone.runPath.images?.length ?? 0) > 0 || zone.runPath.runs.some((run) => run.hasImage);
+}
+
+/**
+ * True when paragraph `b` continues the sentence started in `a` — i.e. the author
+ * hard-broke one sentence across two body paragraphs. Conservative on purpose:
+ * only prose body paragraphs where `a` ends mid-clause (no terminal punctuation,
+ * ends on a word/comma) and `b` reads as a continuation, never headings, labels,
+ * list items, addresses, or image paragraphs.
+ */
+function isMidSentenceContinuation(a: ParagraphZone, b: ParagraphZone): boolean {
+  if (a.runPath.source?.part !== 'body' || b.runPath.source?.part !== 'body') return false;
+  if (zoneHasImage(a) || zoneHasImage(b)) return false;
+  const at = a.textContent.trim();
+  const bt = b.textContent.trim();
+  // Require a real clause fragment in `a`; short lines are names/labels/addresses.
+  if (wordCount(at) < 8 || wordCount(bt) < 3) return false;
+  // Money or colon → line items ("Provider: $X") and labels ("Attn:"), not prose.
+  if (at.includes('$') || bt.includes('$')) return false;
+  if (at.includes(':') || bt.includes(':')) return false;
+  if (TERMINAL_PUNCT.test(at)) return false;      // a already ends a sentence
+  if (!/[A-Za-z,]$/.test(at)) return false;       // a must end mid-clause (word or comma)
+  if (at === at.toUpperCase()) return false;      // a is an all-caps heading
+  if (LIST_MARKER.test(at) || LIST_MARKER.test(bt)) return false;
+  if (!/^[A-Za-z"'“(]/.test(bt)) return false;    // b starts a word, not a marker
+  return true;
+}
+
+function mergeContinuation(target: ParagraphZone, next: ParagraphZone): void {
+  target.textContent = `${target.textContent.replace(/\s+$/, '')} ${next.textContent.replace(/^\s+/, '')}`.trim();
+  const offset = target.runPath.runs.length;
+  for (const run of next.runPath.runs) {
+    target.runPath.runs.push({ ...run, runIndex: offset + run.runIndex });
+  }
+  target.runPath.paragraphSpan = (target.runPath.paragraphSpan ?? 1) + (next.runPath.paragraphSpan ?? 1);
+}
+
+// Merge runs of body paragraphs that together form a single sentence so a variable
+// split across the break (e.g. "…Stalwart Law" + "Group…") stays in one zone.
+function mergeMidSentenceZones(zones: ParagraphZone[]): ParagraphZone[] {
+  const merged: ParagraphZone[] = [];
+  for (const zone of zones) {
+    const prev = merged[merged.length - 1];
+    if (
+      prev &&
+      zone.zoneIndex === prev.zoneIndex + (prev.runPath.paragraphSpan ?? 1) &&
+      isMidSentenceContinuation(prev, zone)
+    ) {
+      mergeContinuation(prev, zone);
+    } else {
+      merged.push(zone);
+    }
+  }
+  return merged;
+}
+
 export function extractParagraphZones(buffer: Buffer): ParagraphZone[] {
   const zip = new PizZip(buffer);
   const docXml = zip.file('word/document.xml')?.asText();
@@ -316,5 +386,5 @@ export function extractParagraphZones(buffer: Buffer): ParagraphZone[] {
   for (const { path, variant } of referencedPartPaths(docXml, documentRels, 'footer')) {
     extractPartZones(zip, path, 'footer', paraIndex, zones, variant);
   }
-  return zones;
+  return mergeMidSentenceZones(zones);
 }

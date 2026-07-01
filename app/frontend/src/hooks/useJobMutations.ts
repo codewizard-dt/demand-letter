@@ -11,6 +11,7 @@ import {
   downloadExportDocx,
   downloadOutput,
   patchTemplateZones,
+  replaceTemplateImage,
   acceptRefinement,
   rejectRefinement,
   deleteJobChange,
@@ -46,7 +47,7 @@ const sleep = (ms: number): Promise<void> =>
 const GAP_REPORT_RECHECK_ATTEMPTS = 60;
 const GAP_REPORT_RECHECK_INTERVAL_MS = 3000;
 
-const hasGapReportChanged = (a: { covered: number; total: number; gaps: Array<{ fieldName: string }> }, b: { covered: number; total: number; gaps: Array<{ fieldName: string }> }) => {
+const hasGapReportChanged = (a: { covered: number; total: number; gaps: { fieldName: string }[] }, b: { covered: number; total: number; gaps: { fieldName: string }[] }) => {
   return (
     a.covered !== b.covered ||
     a.total !== b.total ||
@@ -195,7 +196,7 @@ export function useProcessCaseDocuments(jobId: string) {
     ]);
 
   return useMutation({
-    mutationFn: async ({ onStatus, force = false }: { onStatus?: (status: string) => void; force?: boolean } = {}) => {
+    mutationFn: async ({ onStatus, force = false }: { onStatus?: (status: string) => void; force?: boolean }) => {
       onStatus?.('Ingesting uploaded case documents…');
       let { pending } = await ingestDocuments(jobId, { force });
 
@@ -305,6 +306,19 @@ export function usePatchTemplateZones(jobId: string, templateId: string) {
   });
 }
 
+export function useReplaceTemplateImage(jobId: string, templateId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ target, file }: { target: string; file: File }) =>
+      replaceTemplateImage(jobId, templateId, target, file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.templateZones(jobId, templateId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.templateOriginalPreview(jobId, templateId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.templateSlots(jobId, templateId) });
+    },
+  });
+}
+
 export function useDeleteJobChange(jobId: string) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -325,7 +339,7 @@ export function useSaveValues(jobId: string) {
       fields,
       acceptMissing,
     }: {
-      fields: Array<{ fieldName: string; value: string }>;
+      fields: { fieldName: string; value: string }[];
       acceptMissing: string[];
     }) => saveValues(jobId, fields, acceptMissing),
     onSuccess: () => {

@@ -112,7 +112,7 @@ export default function EditorPage() {
     if (!id || !editor) return;
     saveMutation.mutate(
       { jobId: id, doc: editor.getJSON() },
-      { onSuccess: () => navigate(`/jobs/${id}/generate`) },
+      { onSuccess: () => { navigate(`/jobs/${id}/generate`); } },
     );
   }
 
@@ -167,7 +167,7 @@ export default function EditorPage() {
         <div className="mb-4 rounded-md bg-amber-50 border border-amber-300 px-4 py-3 text-amber-800 text-sm flex justify-between items-center">
           <span>Collaborative editing requires a deployed WebSocket server. Export to Word is still available.</span>
           <button
-            onClick={() => setWsBannerDismissed(true)}
+            onClick={() => { setWsBannerDismissed(true); }}
             aria-label="Dismiss"
             className="ml-4 text-amber-600 hover:text-amber-900 font-bold leading-none"
           >
@@ -180,7 +180,7 @@ export default function EditorPage() {
           editor={editor}
           jobId={id!}
           enabled={trackChangesEnabled}
-          onToggle={() => setTrackChangesEnabled(v => !v)}
+          onToggle={() => { setTrackChangesEnabled(v => !v); }}
         />
       )}
       <div className="tiptap-editor prose max-w-none border border-gray-200 rounded-lg p-6 min-h-[60vh] focus-within:ring-2 focus-within:ring-blue-500">

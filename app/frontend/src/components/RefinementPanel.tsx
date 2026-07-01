@@ -34,7 +34,7 @@ export function RefinementPanel({ jobId, isEnabled, currentText, onAccepted }: R
       {
         instruction,
         scope: scope === 'all' ? undefined : scope,
-        onChunk: (chunk) => setRefinedText((prev) => prev + chunk),
+        onChunk: (chunk) => { setRefinedText((prev) => prev + chunk); },
       },
       {
         onSuccess: (result) => {
@@ -77,7 +77,7 @@ export function RefinementPanel({ jobId, isEnabled, currentText, onAccepted }: R
   const diffParts = isComplete && showDiff ? diffLines(currentText, refinedText) : [];
 
   return (
-    <div className="flex flex-col border border-gray-200 rounded-lg bg-white overflow-hidden" style={{ minHeight: '500px', maxHeight: '72vh' }}>
+    <div className="flex flex-col border border-gray-200 rounded bg-white overflow-hidden" style={{ minHeight: '500px', maxHeight: '72vh' }}>
       {/* Header */}
       <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-200 shrink-0">
         <h3 className="text-sm font-semibold text-gray-800">Refine Letter</h3>
@@ -86,7 +86,7 @@ export function RefinementPanel({ jobId, isEnabled, currentText, onAccepted }: R
           <select
             className="border border-gray-300 rounded-md px-2 py-1 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             value={scope}
-            onChange={(e) => setScope(e.target.value)}
+            onChange={(e) => { setScope(e.target.value); }}
             disabled={isRefining || !isEnabled}
           >
             {SCOPE_OPTIONS.map((opt) => (
@@ -114,11 +114,10 @@ export function RefinementPanel({ jobId, isEnabled, currentText, onAccepted }: R
 
         {/* History rows */}
         {historyRows.map((row) => (
-          <div key={row.id} className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 space-y-1">
+          <div key={row.id} className="rounded border border-gray-100 bg-gray-50 px-3 py-2 space-y-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className={`inline-block px-1.5 py-0.5 text-[10px] font-medium rounded ${
-                row.accepted ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-              }`}>
+              <span className={`inline-block px-1.5 py-0.5 text-[10px] font-medium rounded ${row.accepted ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                }`}>
                 {row.accepted ? 'Accepted' : 'Rejected'}
               </span>
               <span className="inline-block px-1.5 py-0.5 text-[10px] font-medium rounded bg-blue-50 text-blue-600 border border-blue-200">
@@ -141,14 +140,14 @@ export function RefinementPanel({ jobId, isEnabled, currentText, onAccepted }: R
         )}
 
         {hasResult && (
-          <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 space-y-2">
+          <div className="rounded border border-blue-200 bg-blue-50 px-3 py-2 space-y-2">
             <div className="flex items-center gap-1.5 text-xs font-medium text-blue-700">
               <span>Suggested revision</span>
               {isComplete && (
                 <>
                   <button
                     className="ml-auto px-2 py-0.5 text-[10px] font-medium border border-gray-300 rounded bg-white hover:bg-gray-50"
-                    onClick={() => setShowDiff((v) => !v)}
+                    onClick={() => { setShowDiff((v) => !v); }}
                   >
                     {showDiff ? 'Text' : 'Diff'}
                   </button>
@@ -212,7 +211,7 @@ export function RefinementPanel({ jobId, isEnabled, currentText, onAccepted }: R
           rows={3}
           placeholder={isEnabled ? 'e.g. Make the demand amount stronger' : 'Generate the letter first…'}
           value={instruction}
-          onChange={(e) => setInstruction(e.target.value)}
+          onChange={(e) => { setInstruction(e.target.value); }}
           disabled={isRefining || !isEnabled}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && isEnabled && !isRefining && instruction.trim()) {

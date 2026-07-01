@@ -35,15 +35,16 @@ export function enumerateSlotsWithContext(buffer: Buffer): { slotName: string; p
       const textNodes = [...para.matchAll(/<w:t[^>]*>([^<]*)<\/w:t>/gi)].map(m => m[1] ?? '');
       const fullText = textNodes.join('');
       const tagMatches = [...fullText.matchAll(TAG_RE)];
+      // Keep the full paragraph text with the {tag} placeholders inline so the
+      // template value stays legible (e.g. "Attn.: {adjuster_name}").
+      const context = fullText.trim();
       for (const match of tagMatches) {
         const slotName = match[1];
         if (!slotName) continue;
         if (isSystemTemplateSlot(slotName)) continue;
         if (seen.has(slotName)) continue;
         seen.add(slotName);
-        // Strip all {tag} markers; if meaningful text remains, that's the context
-        const stripped = fullText.replace(TAG_RE, '').trim();
-        results.push({ slotName, paragraphText: stripped.length > 0 ? stripped : null });
+        results.push({ slotName, paragraphText: context.length > 0 ? context : null });
       }
     }
   }

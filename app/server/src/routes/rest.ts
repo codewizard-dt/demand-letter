@@ -3,6 +3,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Prisma } from '@prisma/client';
 import { prisma, ZoneType, LlmFeature } from '@demand-letter/db';
 import Busboy from 'busboy';
+import PizZip from 'pizzip';
 import { createHash, randomUUID } from 'node:crypto';
 import { Router } from 'express';
 import type { Request, Router as ExpressRouter } from 'express';
@@ -10,10 +11,20 @@ import { Packer } from 'docx';
 import mammoth from 'mammoth';
 import { asyncHandler, errorJson, internalError, json, sendDocx, writeSseData } from '../http';
 import { renderTemplate, TemplateRenderError, buildDataObject, prosemirrorToDocx, type ProseMirrorDoc } from '../lib';
+import { splitAddressLines } from '../lib/generation-data-builder';
+import { applyLiteralReplacements, buildLiteralReplacements } from '../lib/docx-literal-replace';
 import { computeGapReport } from '../lib/sufficiency-gate';
 import { generateMedicalNarrative } from '../lib/medical-narrative';
-import { getBasicModelId, getLogicModelId, invokeModel, invokeModelStream } from '../lib/ai-provider';
-import { dbNameToTagName } from '../lib/field-schema';
+import { getBasicModelId, getLogicModelId, invokeModel, invokeModelStream, invokeModelWithTools } from '../lib/ai-provider';
+import {
+  extractBodyParagraphs,
+  applyProofreadEdits,
+  parseProofreadEdits,
+  buildProofreadUserMessage,
+  PROOFREAD_TOOL,
+  PROOFREAD_SYSTEM,
+} from '../lib/letter-proofread';
+import { dbNameToTagName, tagNameToDbName } from '../lib/field-schema';
 import { redactText, type RedactableEntity } from '../lib/redact-text';
 import { extractDocxStationaries } from '../lib/docx-stationary';
 import { runExtractionJob } from '../lib/extraction-job';
@@ -56,6 +67,22 @@ type UploadedFile = {
   contentType: string;
   content: Buffer;
 };
+
+function renderZoneContent(
+  templateText: string | null,
+  suggestedFieldName: string | null,
+  data: Record<string, unknown>,
+): string {
+  const tmpl = templateText ?? (suggestedFieldName ? `{${suggestedFieldName}}` : '');
+  if (!tmpl) return '';
+  return tmpl.replace(/\{([a-zA-Z_][a-zA-Z0-9_.]*)\}/g, (_, field: string) => {
+    const val =
+      (data as Record<string, unknown>)[field] ??
+      (data as Record<string, unknown>)[dbNameToTagName(field) ?? ''] ??
+      '';
+    return typeof val === 'string' ? val : String(val);
+  });
+}
 
 function emitJobEvent(jobId: string, event: object): void {
   const events = jobEventBuffers.get(jobId) ?? [];
@@ -363,8 +390,8 @@ restRouter.get('/jobs/:id/templates/:templateId/original/preview', asyncHandler(
 }));
 
 restRouter.patch('/jobs/:id/templates/:templateId/zones', asyncHandler(async (req, res) => {
-  const { templateId } = req.params;
-  if (!templateId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
+  const { id: jobId, templateId } = req.params;
+  if (!jobId || !templateId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
   const zones = req.body?.zones;
   const removeZoneIds = req.body?.removeZoneIds;
   if (!Array.isArray(zones)) return errorJson(res, 400, 'invalid_request_body', 'The request body is malformed or missing required fields.');
@@ -375,7 +402,13 @@ restRouter.patch('/jobs/:id/templates/:templateId/zones', asyncHandler(async (re
       data: {
         type: z.type as 'boilerplate_verbatim' | 'variable_populated' | null,
         ...(typeof z.textContent === 'string' ? { textContent: z.textContent } : {}),
-        ...(typeof z.templateText === 'string' || z.templateText === null ? { templateText: z.templateText } : {}),
+        templateText: z.templateText !== undefined
+          ? (z.templateText ?? (
+              z.type === 'variable_populated' && z.suggestedFieldName
+                ? `{${z.suggestedFieldName}}`
+                : null
+            ))
+          : undefined,
         suggestedFieldName: z.suggestedFieldName,
         confirmed: z.confirmed,
         confirmedBy: 'attorney',
@@ -390,6 +423,17 @@ restRouter.patch('/jobs/:id/templates/:templateId/zones', asyncHandler(async (re
         id: { in: removeZoneIds },
       },
     });
+  }
+  // Re-tag the document and resync slots so the gap report reflects the saved
+  // zones automatically. Injection is an internal side-effect of saving — a
+  // failure here should not fail the save, so log and continue.
+  try {
+    const rebuild = await rebuildTaggedTemplate(jobId, templateId);
+    if (!rebuild.ok) {
+      await logJobError(jobId, 'patch-jobs-template-zones', new Error(`slot resync failed: ${rebuild.code}`));
+    }
+  } catch (err) {
+    await logJobError(jobId, 'patch-jobs-template-zones', err);
   }
   json(res, 200, updated);
 }));
@@ -450,46 +494,117 @@ restRouter.get('/jobs/:id/templates/:templateId/classify/stream', asyncHandler(a
   });
 }));
 
+/**
+ * Re-tag the original DOCX from the current confirmed zones and rebuild the
+ * template's slot set so it exactly mirrors the tagged document. This is the
+ * single source of the tagged template + `TemplateSlot` rows; call it whenever
+ * zones change so downstream views (gap report, slots) stay in sync without a
+ * separate, user-visible inject step.
+ */
+async function rebuildTaggedTemplate(
+  jobId: string,
+  templateId: string,
+): Promise<
+  | { ok: true; s3KeyTagged: string; slots: string[] }
+  | { ok: false; status: number; code: string; message: string }
+> {
+  const template = await prisma.template.findUnique({ where: { id: templateId }, include: { zones: true } });
+  if (!template || template.jobId !== jobId) {
+    return { ok: false, status: 404, code: 'template_not_found', message: 'The requested template does not exist.' };
+  }
+
+  const confirmedZones = template.zones
+    .filter((z) => z.confirmed && z.type === ZoneType.variable_populated && (z.templateText || z.suggestedFieldName))
+    .map((z) => ({
+      zoneIndex: z.zoneIndex,
+      suggestedFieldName: z.suggestedFieldName as string,
+      templateText: z.templateText,
+      paragraphSpan: (z.runPath as { paragraphSpan?: number } | null)?.paragraphSpan,
+    }));
+
+  const s3Obj = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: template.s3KeyOriginal }));
+  const bodyBytes = await s3Obj.Body?.transformToByteArray();
+  if (!bodyBytes) {
+    return { ok: false, status: 502, code: 's3_empty_response', message: 'The S3 object returned no content.' };
+  }
+
+  const taggedBuffer = injectDelimiters(Buffer.from(bodyBytes), confirmedZones);
+  const s3KeyTagged = `templates/${templateId}/tagged.docx`;
+  await s3.send(new PutObjectCommand({ Bucket: BUCKET, Key: s3KeyTagged, Body: taggedBuffer, ContentType: DOCX_MIME }));
+
+  const slotsWithCtxTagged = enumerateSlotsWithContext(taggedBuffer);
+  const slots = slotsWithCtxTagged.map((s) => s.slotName);
+  await prisma.template.update({ where: { id: templateId }, data: { s3KeyTagged, slotCount: slots.length } });
+  // Rebuild the slot set to mirror the tagged document: refresh defaultValue on
+  // existing slots, create newly added variables, and drop removed ones.
+  await Promise.all(slotsWithCtxTagged.map(({ slotName, paragraphText }) => prisma.templateSlot.upsert({
+    where: { templateId_slotName: { templateId, slotName } },
+    update: { defaultValue: paragraphText },
+    create: { templateId, slotName, required: true, defaultValue: paragraphText },
+  })));
+  await prisma.templateSlot.deleteMany({
+    where: { templateId, slotName: { notIn: slots } },
+  });
+
+  return { ok: true, s3KeyTagged, slots };
+}
+
 restRouter.post('/jobs/:id/templates/:templateId/inject', asyncHandler(async (req, res) => {
   const { id: jobId, templateId } = req.params;
   if (!jobId || !templateId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
   try {
-    const template = await prisma.template.findUnique({ where: { id: templateId }, include: { zones: true } });
-    if (!template || template.jobId !== jobId) return errorJson(res, 404, 'template_not_found', 'The requested template does not exist.');
-
-    const confirmedZones = template.zones
-      .filter((z) => z.confirmed && z.type === ZoneType.variable_populated && z.suggestedFieldName)
-      .map((z) => ({ zoneIndex: z.zoneIndex, suggestedFieldName: z.suggestedFieldName as string, templateText: z.templateText }));
-
-    const s3Obj = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: template.s3KeyOriginal }));
-    const bodyBytes = await s3Obj.Body?.transformToByteArray();
-    if (!bodyBytes) return errorJson(res, 502, 's3_empty_response', 'The S3 object returned no content.');
-
-    const taggedBuffer = injectDelimiters(Buffer.from(bodyBytes), confirmedZones);
-    const s3KeyTagged = `templates/${templateId}/tagged.docx`;
-    await s3.send(new PutObjectCommand({ Bucket: BUCKET, Key: s3KeyTagged, Body: taggedBuffer, ContentType: DOCX_MIME }));
-
-    const slotsWithCtxTagged = enumerateSlotsWithContext(taggedBuffer);
-    const slots = slotsWithCtxTagged.map(s => s.slotName);
-    await prisma.template.update({ where: { id: templateId }, data: { s3KeyTagged, slotCount: slots.length } });
-    await Promise.all(slotsWithCtxTagged.map(({ slotName, paragraphText }) => prisma.templateSlot.upsert({
-      where: { templateId_slotName: { templateId, slotName } },
-      update: {},
-      create: { templateId, slotName, required: true, defaultValue: paragraphText },
-    })));
+    const result = await rebuildTaggedTemplate(jobId, templateId);
+    if (!result.ok) return errorJson(res, result.status, result.code, result.message);
     if (req.body?.confirmed === true) {
       await logJobEvent(jobId, 'post-jobs-templates-inject', 'info',
-        `Template confirmed: ${slots.length} variable slots`, {
+        `Template confirmed: ${result.slots.length} variable slots`, {
           context: {
             templateId,
-            slotCount: slots.length,
-            slots,
+            slotCount: result.slots.length,
+            slots: result.slots,
           },
         });
     }
-    json(res, 200, { s3KeyTagged, slotCount: slots.length, slots });
+    json(res, 200, { s3KeyTagged: result.s3KeyTagged, slotCount: result.slots.length, slots: result.slots });
   } catch (err) {
     await logJobError(jobId, 'post-jobs-templates-inject', err);
+    internalError(res, err);
+  }
+}));
+
+// Replace an embedded image (e.g. the letterhead) in the template. The `target`
+// query param is the media path reported on a zone image (word/media/imageN.png).
+restRouter.post('/jobs/:id/templates/:templateId/images/replace', asyncHandler(async (req, res) => {
+  const { id: jobId, templateId } = req.params;
+  if (!jobId || !templateId) return errorJson(res, 400, 'missing_params', 'Required route parameters are missing.');
+  const target = firstQuery(req.query.target);
+  if (!target || !target.startsWith('word/media/') || target.includes('..')) {
+    return errorJson(res, 400, 'invalid_target', 'A valid image target is required.');
+  }
+  try {
+    const template = await prisma.template.findUnique({ where: { id: templateId }, select: { jobId: true, s3KeyOriginal: true } });
+    if (!template || template.jobId !== jobId) return errorJson(res, 404, 'template_not_found', 'The requested template does not exist.');
+
+    const files = await parseMultipart(req);
+    const file = files[0];
+    if (!file || file.content.length === 0) return errorJson(res, 400, 'no_image', 'No image was uploaded.');
+    if (!file.contentType?.startsWith('image/')) return errorJson(res, 400, 'not_an_image', 'The uploaded file is not an image.');
+
+    const s3Obj = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: template.s3KeyOriginal }));
+    const bytes = await s3Obj.Body?.transformToByteArray();
+    if (!bytes) return errorJson(res, 502, 's3_empty_response', 'The S3 object returned no content.');
+
+    const zip = new PizZip(Buffer.from(bytes));
+    if (!zip.file(target)) return errorJson(res, 404, 'image_not_found', 'The target image does not exist in the template.');
+    zip.file(target, file.content);
+    const updated = Buffer.from(zip.generate({ type: 'nodebuffer', compression: 'DEFLATE' }));
+    await s3.send(new PutObjectCommand({ Bucket: BUCKET, Key: template.s3KeyOriginal, Body: updated, ContentType: DOCX_MIME }));
+
+    // Re-tag so the tagged template and previews pick up the new image.
+    await rebuildTaggedTemplate(jobId, templateId);
+    json(res, 200, { target });
+  } catch (err) {
+    await logJobError(jobId, 'post-jobs-templates-images-replace', err);
     internalError(res, err);
   }
 }));
@@ -694,7 +809,21 @@ restRouter.get('/jobs/:id/fields', asyncHandler(async (req, res) => {
     },
     orderBy: { fieldName: 'asc' },
   });
-  json(res, 200, { fields });
+  // Surface per-line entries for multi-line addresses (e.g. insurer_address_1/_2)
+  // so the gap report shows and can edit each line, unless the attorney has already
+  // saved an explicit value for that line.
+  const existing = new Set(fields.map((f) => f.fieldName));
+  const derived = fields.flatMap((f) => {
+    if (!f.value || f.isNull || !f.fieldName.endsWith('_address')) return [];
+    const lines = splitAddressLines(f.value);
+    if (lines.length <= 1) return [];
+    return lines.flatMap((line, index) => {
+      const name = `${f.fieldName}_${index + 1}`;
+      if (existing.has(name)) return [];
+      return [{ ...f, fieldName: name, value: line }];
+    });
+  });
+  json(res, 200, { fields: [...fields, ...derived] });
 }));
 
 restRouter.post('/jobs/:id/save-values', asyncHandler(async (req, res) => {
@@ -824,22 +953,23 @@ async function runGenerationJob(jobId: string): Promise<void> {
     for (const z of zones) {
       if (
         z.type === 'variable_populated' &&
-        z.suggestedFieldName &&
         z.suggestedFieldName !== 'medicalNarrative' &&
-        typeof (data as Record<string, unknown>)[z.suggestedFieldName] === 'string'
+        !z.templateText?.includes('{medicalNarrative}') &&
+        (z.templateText || z.suggestedFieldName)
       ) {
-        const value = (data as Record<string, unknown>)[z.suggestedFieldName] as string;
-        const content = z.templateText
-          ? z.templateText.replace(`{${z.suggestedFieldName}}`, value)
-          : value;
-        emit({ type: 'zone', zoneIndex: z.zoneIndex, content });
+        const content = renderZoneContent(z.templateText, z.suggestedFieldName, data);
+        if (content) emit({ type: 'zone', zoneIndex: z.zoneIndex, content });
       }
     }
 
     // Step 3: generate narrative with token streaming
     emit({ type: 'progress', message: 'Analyzing medical records…' });
     const logicModelId = getLogicModelId();
-    const narrativeZone = zones.find((z) => z.suggestedFieldName === 'medicalNarrative');
+    const narrativeZone = zones.find(
+      (z) =>
+        z.suggestedFieldName === 'medicalNarrative' ||
+        z.templateText?.includes('{medicalNarrative}'),
+    );
     const { text: narrativeText, groundingReport } = await generateMedicalNarrative(
       jobId,
       logicModelId,
@@ -852,13 +982,11 @@ async function runGenerationJob(jobId: string): Promise<void> {
     console.log('Grounding report:', JSON.stringify(groundingReport));
 
     // Emit canonical narrative zone (replaces accumulated zone-chunk events)
-    if (narrativeZone) {
-      const content = narrativeZone.templateText
-        ? narrativeZone.templateText.replace(`{${narrativeZone.suggestedFieldName}}`, narrativeText)
-        : narrativeText;
-      emit({ type: 'zone', zoneIndex: narrativeZone.zoneIndex, content });
-    }
     (data as Record<string, unknown>).medicalNarrative = narrativeText;
+    if (narrativeZone) {
+      const content = renderZoneContent(narrativeZone.templateText, narrativeZone.suggestedFieldName, data);
+      emit({ type: 'zone', zoneIndex: narrativeZone.zoneIndex, content: content || narrativeText });
+    }
 
     // Step 4: fill any missing template slots via LLM, emit their zones too
     const allSlotNames = (template?.slots ?? []).map((s) => s.slotName);
@@ -896,23 +1024,70 @@ async function runGenerationJob(jobId: string): Promise<void> {
         data[slotName] = value;
         const tagName = dbNameToTagName(slotName);
         if (tagName && tagName !== slotName) data[tagName] = value;
-        const matchingZone = zones.find((z) => z.suggestedFieldName === slotName);
+        // Persist the AI-filled value so a re-generation reuses it instead of
+        // calling the LLM again. Real extraction re-runs will overwrite it.
+        if (value) {
+          const fieldName = tagNameToDbName(slotName) ?? slotName;
+          try {
+            await prisma.extractedField.upsert({
+              where: { jobId_fieldName: { jobId, fieldName } },
+              create: { jobId, fieldName, value, blockIds: [], confidence: 1.0, isNull: false, nullReason: null, source: 'ai-generated' },
+              update: { value, isNull: false, source: 'ai-generated', updatedAt: new Date() },
+            });
+          } catch (err) {
+            await logJobError(jobId, 'post-jobs-generate', err);
+          }
+        }
+        const matchingZone = zones.find(
+          (z) => z.suggestedFieldName === slotName || z.templateText?.includes(`{${slotName}}`),
+        );
         if (matchingZone) {
-          const content = matchingZone.templateText
-            ? matchingZone.templateText.replace(`{${slotName}}`, value)
-            : value;
-          emit({ type: 'zone', zoneIndex: matchingZone.zoneIndex, content });
+          const content = renderZoneContent(matchingZone.templateText, matchingZone.suggestedFieldName, data);
+          emit({ type: 'zone', zoneIndex: matchingZone.zoneIndex, content: content || value });
         }
       }
     }
 
     // Step 5: render DOCX + upload
     emit({ type: 'progress', message: 'Rendering document…' });
-    const docxBuffer = await renderTemplate(jobId, data);
+    const rendered = await renderTemplate(jobId, data);
+    // Propagate each field's value to untagged literal occurrences (e.g. a claimant
+    // name the template author typed directly into a boilerplate paragraph).
+    const docxBuffer = applyLiteralReplacements(rendered, buildLiteralReplacements(zones, data));
+
+    // Step 6: proofread the finished letter — fix grammar and reconnect/remove the
+    // detached fragments variable injection can leave behind, without changing
+    // names, numbers, or legal substance. Best-effort: fall back on any failure.
+    let finalBuffer = docxBuffer;
+    try {
+      const paragraphs = extractBodyParagraphs(docxBuffer).filter((p) => p.text.length > 0);
+      if (paragraphs.length > 0) {
+        emit({ type: 'progress', message: 'Proofreading letter…' });
+        const result = (await invokeModelWithTools({
+          modelId: logicModelId,
+          feature: LlmFeature.refinement,
+          userId: 'system',
+          jobId,
+          traceId: trace.traceId,
+          temperature: 0,
+          system: PROOFREAD_SYSTEM,
+          messages: [{ role: 'user', content: buildProofreadUserMessage(paragraphs) }],
+          tools: [PROOFREAD_TOOL],
+          tool_choice: { type: 'tool', name: PROOFREAD_TOOL.name },
+        }));
+        const edits = parseProofreadEdits(result);
+        await logJobEvent(jobId, 'post-jobs-generate', 'info', `Proofread applied ${edits.length} edit(s)`, {
+          context: { edits: edits.map((e) => ({ index: e.index, action: e.action })) },
+        });
+        if (edits.length > 0) finalBuffer = applyProofreadEdits(docxBuffer, edits);
+      }
+    } catch (err) {
+      await logJobError(jobId, 'post-jobs-generate', err);
+    }
 
     emit({ type: 'progress', message: 'Uploading document…' });
     const outputS3Key = `${jobId}/output/demand-letter.docx`;
-    await s3.send(new PutObjectCommand({ Bucket: BUCKET, Key: outputS3Key, Body: docxBuffer, ContentType: DOCX_MIME }));
+    await s3.send(new PutObjectCommand({ Bucket: BUCKET, Key: outputS3Key, Body: finalBuffer, ContentType: DOCX_MIME }));
     await prisma.job.update({
       where: { id: jobId },
       data: { status: 'complete', output: narrativeText, outputS3Key },
@@ -966,11 +1141,8 @@ restRouter.get('/jobs/:id/generate/stream', asyncHandler(async (req, res) => {
       let content: string;
       if (zone.type === 'boilerplate_verbatim') {
         content = zone.textContent;
-      } else if (zone.suggestedFieldName) {
-        const value = ((data as Record<string, unknown>)[zone.suggestedFieldName] as string | undefined) ?? '';
-        content = zone.templateText
-          ? zone.templateText.replace(`{${zone.suggestedFieldName}}`, value)
-          : value;
+      } else if (zone.templateText || zone.suggestedFieldName) {
+        content = renderZoneContent(zone.templateText, zone.suggestedFieldName, data);
       } else {
         content = '';
       }

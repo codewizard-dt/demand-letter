@@ -1,6 +1,7 @@
 # the name by which the project can be referenced within Serena
 project_name: 'demand-letter'
 
+
 # list of languages for which language servers are started; choose from:
 #   al                  angular             ansible             bash                clojure
 #   cpp                 cpp_ccls            crystal             csharp              csharp_omnisharp
@@ -31,10 +32,10 @@ project_name: 'demand-letter'
 # The first language is the default language and the respective language server will be used as a fallback.
 # Note that when using the JetBrains backend, language servers are not used and this list is correspondingly ignored.
 languages:
-  - markdown
-  - python
-  - typescript
-  - yaml
+- markdown
+- python
+- typescript
+- yaml
 
 # the encoding used by text files in the project
 # For a list of possible encodings, see https://docs.python.org/3.11/library/codecs.html#standard-encodings
@@ -57,8 +58,8 @@ ignore_all_files_in_gitignore: true
 
 # advanced configuration option allowing to configure language server-specific options.
 # Maps the language key to the options.
-# Have a look at the docstring of the constructors of the LS implementations within solidlsp (e.g., for C# or PHP) to see which options are available.
-# No documentation on options means no options are available.
+# The settings are considered only if the project is trusted (see global configuration to define trusted projects).
+# See https://oraios.github.io/serena/02-usage/050_configuration.html#language-server-specific-settings
 ls_specific_settings: {}
 
 # list of additional workspace folder paths for cross-package reference support (e.g. in monorepos).
@@ -91,17 +92,17 @@ excluded_tools: []
 # This extends the existing inclusions (e.g. from the global configuration).
 # Find the list of tools here: https://oraios.github.io/serena/01-about/035_tools.html
 included_optional_tools:
-  - list_dir
-  - find_file
-  - find_symbol
-  - find_referencing_symbols
-  - search_for_pattern
-  - replace_content
-  - replace_lines
-  - insert_at_line
-  - insert_after_symbol
-  - insert_before_symbol
-  - delete_lines
+- list_dir
+- find_file
+- find_symbol
+- find_referencing_symbols
+- search_for_pattern
+- replace_content
+- replace_lines
+- insert_at_line
+- insert_after_symbol
+- insert_before_symbol
+- delete_lines
 
 # fixed set of tools to use as the base tool set (if non-empty), replacing Serena's default set of tools.
 # This cannot be combined with non-empty excluded_tools or included_optional_tools.
@@ -144,3 +145,16 @@ read_only_memory_patterns: []
 # Extends the list from the global configuration, merging the two lists.
 # Example: ["_archive/.*", "_episodes/.*"]
 ignored_memory_patterns: []
+
+# optional shell command to run before the language backend (LSP or JetBrains) is initialised.
+# the command runs in the project root directory and is only executed if the project is trusted
+# (see trusted_project_path_patterns in the global configuration).
+# serena waits for the command to exit: a non-zero exit code is logged as an error but does not
+# abort activation. a per-project timeout (activation_command_timeout, default 180s) is the safety
+# backstop for non-terminating commands; on expiry the process is killed and activation continues.
+# example: activation_command: "npx nx run-many -t build"
+activation_command:
+
+# maximum time in seconds to wait for activation_command to complete before killing it (default 180s).
+# must be a positive number.
+activation_command_timeout: 180.0

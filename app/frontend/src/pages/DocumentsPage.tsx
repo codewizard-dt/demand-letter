@@ -74,7 +74,7 @@ function LogEntry({ entry }: { entry: JobLogRow }) {
       {entry.stack && (
         <div className="mt-2">
           <button
-            onClick={() => setExpanded((v) => !v)}
+            onClick={() => { setExpanded((v) => !v); }}
             className="text-xs text-blue-600 underline cursor-pointer"
           >
             {expanded ? 'Hide stack trace' : 'Show stack trace'}
@@ -121,8 +121,8 @@ export default function DocumentsPage() {
     addCaseDocumentsMutation.mutate(
       { caseFiles, onStatus: setCaseUploadStatus },
       {
-        onSuccess: () => setCaseFiles([]),
-        onSettled: () => setCaseUploadStatus(null),
+        onSuccess: () => { setCaseFiles([]); },
+        onSettled: () => { setCaseUploadStatus(null); },
       },
     );
   }
@@ -174,7 +174,7 @@ export default function DocumentsPage() {
         <div
           className={`border-2 border-dashed rounded-lg px-4 py-6 text-center cursor-pointer transition-colors ${caseDrag ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/60'} ${loading ? 'opacity-70 cursor-wait' : ''}`}
           onDragOver={(e) => { e.preventDefault(); if (!loading) setCaseDrag(true); }}
-          onDragLeave={() => setCaseDrag(false)}
+          onDragLeave={() => { setCaseDrag(false); }}
           onDrop={(e) => {
             e.preventDefault();
             setCaseDrag(false);

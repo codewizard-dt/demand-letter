@@ -14,11 +14,20 @@ export function ZoneOutputCard({ zone, content }: ZoneOutputCardProps) {
     : zone.type === 'boilerplate_verbatim' ? 'boilerplate'
     : null;
 
+  const templateVars = zone.templateText
+    ? [...zone.templateText.matchAll(/\{([a-zA-Z_][a-zA-Z0-9_.]*)\}/g)].map((m) => m[1]).filter((v): v is string => v !== undefined)
+    : [];
+
   return (
     <ZoneCard
       zoneIndex={zone.zoneIndex}
       zoneType={zoneType}
-      {...(zone.suggestedFieldName != null ? { variableName: zone.suggestedFieldName } : {})}
+      {...(templateVars.length > 0
+        ? { variableNames: templateVars }
+        : zone.suggestedFieldName != null
+          ? { variableName: zone.suggestedFieldName }
+          : {}
+      )}
       {...(zone.part != null ? { part: zone.part } : {})}
       {...(zone.stationaryVariant != null ? { stationaryVariant: zone.stationaryVariant } : {})}
       style={{ textAlign: (align === 'both' ? 'justify' : align) as CSSProperties['textAlign'] }}

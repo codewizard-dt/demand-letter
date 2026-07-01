@@ -23,9 +23,7 @@ export function templateSlotFieldCandidates(slotName: string): string[] {
   return [...new Set(candidates)];
 }
 
-export function isSuffixedTemplateSlotName(slotName: string): boolean {
-  return baseTemplateSlotName(slotName) !== slotName;
-}
+
 
 export function suffixedTemplateSlotName(slotName: string, index: number): string {
   return `${slotName}_${index}`;

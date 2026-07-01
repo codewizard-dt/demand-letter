@@ -54,6 +54,27 @@ describe('buildDataObject', () => {
     expect(result.insurerAddress_2).toBe('Santa Ana, CA 92799')
   })
 
+  it('splits a single-line address before the city/state/zip into line aliases', async () => {
+    prismaMock.extractedField.findMany.mockResolvedValue([
+      { fieldName: 'insurer_address', value: 'AAA Claims Center, 3333 Fairview Road, Costa Mesa, CA 92626', isNull: false, source: 'llm', acceptMissing: false },
+    ] as any)
+
+    const result = await buildDataObject(JOB_ID)
+
+    expect(result.insurer_address_1).toBe('AAA Claims Center, 3333 Fairview Road')
+    expect(result.insurer_address_2).toBe('Costa Mesa, CA 92626')
+  })
+
+  it('does not split a non-address single-line value into line aliases', async () => {
+    prismaMock.extractedField.findMany.mockResolvedValue([
+      { fieldName: 'claimant_name', value: 'Doe, John, Jr., CA 90210', isNull: false, source: 'llm', acceptMissing: false },
+    ] as any)
+
+    const result = await buildDataObject(JOB_ID)
+
+    expect(result).not.toHaveProperty('claimant_name_1')
+  })
+
   it('omits the field entirely when isNull is true and acceptMissing is false', async () => {
     prismaMock.extractedField.findMany.mockResolvedValue([
       { fieldName: 'letter_date', value: null, isNull: true, source: 'llm', acceptMissing: false },
@@ -110,14 +131,15 @@ describe('buildDataObject', () => {
     expect(result.specials).toEqual([])
   })
 
-  it('sets specials to an empty array when loop field value is invalid JSON', async () => {
+  it('exposes a loop field as a scalar string when its value is not JSON', async () => {
     prismaMock.extractedField.findMany.mockResolvedValue([
-      { fieldName: 'per_provider_line_items', value: 'not-valid-json{{', isNull: false, source: 'llm', acceptMissing: false },
+      { fieldName: 'per_provider_line_items', value: 'Provider A: $100. Provider B: $200.', isNull: false, source: 'llm', acceptMissing: false },
     ] as any)
 
     const result = await buildDataObject(JOB_ID)
 
-    expect(result.specials).toEqual([])
+    expect(result.specials).toBe('Provider A: $100. Provider B: $200.')
+    expect(result.per_provider_line_items).toBe('Provider A: $100. Provider B: $200.')
   })
 
   it('produces a correct combined result for multiple rows with mixed types', async () => {

@@ -56,7 +56,10 @@ function parseXmlReferences(xml: string, slot: 'header' | 'footer'): SectionRefe
   const lastSectPr = sectPrs[sectPrs.length - 1];
   const sectionXml = lastSectPr?.[0] ?? xml;
 
-  const pattern = new RegExp(`<w:${slot}Reference\\b([^>]*)/>`, 'g');
+  // Match both the self-closing form (`<w:headerReference .../>`, as Word authors it)
+  // and the expanded open/close form (`<w:headerReference ...></w:headerReference>`),
+  // which is what docxtemplater emits after re-serializing the rendered document.
+  const pattern = new RegExp(`<w:${slot}Reference\\b([^>]*?)\\s*/?>`, 'g');
   for (const match of sectionXml.matchAll(pattern)) {
     const attrs = match[1] ?? '';
     const slotType = getAttrValue(attrs, 'w:type');

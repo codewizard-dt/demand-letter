@@ -18,3 +18,4 @@ Entry format: `- [UAT-NNN — Title](UAT-NNN-slug.md) — verifies TASK-NNN · s
 - [UAT-081 — UAT: Verify track-changes view shows each edit with correct author and timestamp](UAT-081-track-changes-author-timestamp-verify.md) — verifies TASK-081 · pending
 - [UAT-086 — UAT: Create packages/api/vitest.config.ts with node environment](UAT-086-api-vitest-config.md) — verifies TASK-086 · pending
 - [UAT-087 — UAT: Create Prisma Deep Mock Helper](UAT-087-api-prisma-mock-helper.md) — verifies TASK-087 · pending
+- [UAT-112 — UAT: Refactor Zone model — multi-variable templateText](UAT-112-multi-variable-zone-refactor.md) — verifies TASK-112 · pending

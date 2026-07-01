@@ -89,6 +89,21 @@ export const FIELD_SCHEMA: readonly FieldDef[] = [
   { dbName: 'law_firm_address', tagName: 'lawFirmAddress', required: false, isLoop: false },
 ];
 
+// Fields whose values are standard legal-clause prose. When one of these is
+// embedded mid-sentence in a "mixed" zone (literal frame + {field}, e.g.
+// "…and not {release_scope}"), the injected value rarely fits the frame
+// grammatically, so the injector keeps the template's own clause text instead.
+const CLAUSE_PROSE_FIELDS = new Set<string>([
+  'release_scope',
+  'payee_instructions',
+  'lien_handling_terms',
+  'expiry_acceptance_mechanics',
+]);
+
+export function isClauseProseField(fieldName: string | null | undefined): boolean {
+  return !!fieldName && CLAUSE_PROSE_FIELDS.has(fieldName);
+}
+
 export function dbNameToTagName(dbName: string): string | undefined {
   return FIELD_SCHEMA.find(f => f.dbName === dbName)?.tagName;
 }

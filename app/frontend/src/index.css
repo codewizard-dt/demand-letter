@@ -221,6 +221,21 @@
     text-align: left;
   }
 
+  /* First-page letterhead is centered in the source document. */
+  .st-docx-stationary-header {
+    text-align: center;
+  }
+
+  .st-docx-stationary-header .st-docx-stationary-text {
+    text-align: center;
+  }
+
+  /* A block image inside a centered section must be auto-margined to center. */
+  .st-docx-stationary-header .st-docx-stationary-image {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
   .st-template-document p {
     margin: 0 0 0.9rem;
     text-indent: 0.12in;

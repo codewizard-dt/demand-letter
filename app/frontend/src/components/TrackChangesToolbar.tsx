@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Editor } from '@tiptap/react';
-import { Node as ProseMirrorNode } from '@tiptap/pm/model';
+import { type Editor } from '@tiptap/react';
+import { type Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { ChangeRow } from '../lib/api';
 import { useJobChanges } from '../hooks/useJobQueries';
 import { useDeleteJobChange } from '../hooks/useJobMutations';
@@ -53,8 +53,8 @@ export function TrackChangesToolbar({ editor, jobId, enabled, onToggle }: TrackC
     doc: ProseMirrorNode,
     markName: string,
     changeId: string,
-  ): Array<{ from: number; to: number }> {
-    const ranges: Array<{ from: number; to: number }> = [];
+  ): { from: number; to: number }[] {
+    const ranges: { from: number; to: number }[] = [];
     doc.descendants((node, pos) => {
       if (node.isText) {
         const mark = node.marks.find(
@@ -186,13 +186,13 @@ export function TrackChangesToolbar({ editor, jobId, enabled, onToggle }: TrackC
               {/* Accept / Reject buttons */}
               <button
                 className="px-2 py-0.5 text-xs font-medium bg-green-600 text-white rounded hover:bg-green-700"
-                onClick={() => handleAccept(change)}
+                onClick={() => { handleAccept(change); }}
               >
                 Accept
               </button>
               <button
                 className="px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700 border border-red-300 rounded hover:bg-red-200"
-                onClick={() => handleReject(change)}
+                onClick={() => { handleReject(change); }}
               >
                 Reject
               </button>

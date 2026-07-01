@@ -34,7 +34,7 @@ export default function LoginPage() {
               type="email"
               required
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => { setEmail(e.target.value); }}
               className="w-full border border-border rounded-sm px-3 py-2.5 text-sm text-primary bg-bg focus:outline-none focus:ring-2 focus:ring-primary-gold/40"
               placeholder="you@example.com"
             />
@@ -50,13 +50,13 @@ export default function LoginPage() {
                 type={showPassword ? 'text' : 'password'}
                 required
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => { setPassword(e.target.value); }}
                 className="w-full border border-border rounded-sm px-3 py-2.5 text-sm text-primary bg-bg focus:outline-none focus:ring-2 focus:ring-primary-gold/40"
                 placeholder="••••••••"
               />
               <button
                 type="button"
-                onClick={() => setShowPassword(v => !v)}
+                onClick={() => { setShowPassword(v => !v); }}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-text-muted hover:text-primary"
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >

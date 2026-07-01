@@ -238,7 +238,7 @@ export interface JobSummary {
   files: JobFile[];
 }
 
-export async function fetchFiles(): Promise<Array<JobFile & { jobId: string; createdAt: string }>> {
+export async function fetchFiles(): Promise<(JobFile & { jobId: string; createdAt: string })[]> {
   const jobs = await fetchJobs();
   return jobs.flatMap((job) =>
     job.files.map((file) => ({ ...file, jobId: job.id, createdAt: job.createdAt })),
@@ -287,7 +287,7 @@ export async function downloadExportDocx(id: string): Promise<void> {
   URL.revokeObjectURL(url);
 }
 
-export type Zone = {
+export interface Zone {
   id: string;
   zoneIndex: number;
   textContent: string;
@@ -301,12 +301,12 @@ export type Zone = {
       path: string;
       variant?: 'default' | 'first' | 'even';
     };
-    images?: Array<{
+    images?: {
       relId: string;
       target: string;
       dataUrl: string;
-    }>;
-    runs?: Array<{
+    }[];
+    runs?: {
       runIndex: number;
       text: string;
       bold: boolean;
@@ -315,12 +315,12 @@ export type Zone = {
       font?: string;
       fontSize?: number;
       hasImage?: boolean;
-      images?: Array<{
+      images?: {
         relId: string;
         target: string;
         dataUrl: string;
-      }>;
-    }>;
+      }[];
+    }[];
   };
   type: 'boilerplate_verbatim' | 'variable_populated' | null;
   suggestedFieldName: string | null;
@@ -328,7 +328,7 @@ export type Zone = {
   confirmed: boolean;
   part?: 'header' | 'body' | 'footer';
   stationaryVariant?: string;
-};
+}
 
 export async function getTemplateZones(jobId: string, templateId: string): Promise<Zone[]> {
   const res = await fetch(`${API_BASE}/jobs/${jobId}/templates/${templateId}/zones`);
@@ -355,7 +355,7 @@ export async function fetchTemplateOriginalPreview(jobId: string, templateId: st
 export async function patchTemplateZones(
   jobId: string,
   templateId: string,
-  zones: Array<{ id: string; type: string | null; textContent?: string; suggestedFieldName: string | null; templateText?: string | null; confirmed: boolean }>,
+  zones: { id: string; type: string | null; textContent?: string; suggestedFieldName: string | null; templateText?: string | null; confirmed: boolean }[],
   removeZoneIds: string[] = [],
 ) {
   const res = await fetch(`${API_BASE}/jobs/${jobId}/templates/${templateId}/zones`, {
@@ -472,7 +472,7 @@ export async function deleteJobChange(jobId: string, changeId: string): Promise<
 
 export async function saveValues(
   jobId: string,
-  fields: Array<{ fieldName: string; value: string }>,
+  fields: { fieldName: string; value: string }[],
   acceptMissing: string[],
 ): Promise<void> {
   const res = await fetch(`${API_BASE}/jobs/${jobId}/save-values`, {
@@ -527,6 +527,24 @@ export async function injectTemplate(
   });
   if (!res.ok) throw new Error(`POST /jobs/${jobId}/templates/${templateId}/inject failed: ${res.status}`);
   return res.json() as Promise<{ slotCount: number }>;
+}
+
+export async function replaceTemplateImage(
+  jobId: string,
+  templateId: string,
+  target: string,
+  file: File,
+): Promise<void> {
+  const form = new FormData();
+  form.append('image', file);
+  const res = await fetch(
+    `${API_BASE}/jobs/${jobId}/templates/${templateId}/images/replace?target=${encodeURIComponent(target)}`,
+    { method: 'POST', body: form },
+  );
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as { message?: string; error?: string };
+    throw new Error(body.message ?? body.error ?? `Image replace failed: ${res.status}`);
+  }
 }
 
 export interface LatestTemplate {

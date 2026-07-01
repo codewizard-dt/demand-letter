@@ -102,7 +102,7 @@ export default function GapReportPage() {
       .map(([fieldName, value]) => ({ fieldName, value }));
     submitJudgmentMutation.mutate(
       { fields, acceptMissing: [] },
-      { onSuccess: () => setFillValues({}) },
+      { onSuccess: () => { setFillValues({}); } },
     );
   };
 
@@ -113,7 +113,7 @@ export default function GapReportPage() {
     addCaseDocumentsMutation.mutate(
       { caseFiles, onStatus: setCaseUploadStatus },
       {
-        onSettled: () => setCaseUploadStatus(null),
+        onSettled: () => { setCaseUploadStatus(null); },
       },
     );
   };
@@ -125,7 +125,7 @@ export default function GapReportPage() {
       setShowGenerateModal(true);
     } else {
       triggerGenerateMutation.mutate(jobId, {
-        onSuccess: () => navigate(`/jobs/${jobId}/generate`),
+        onSuccess: () => { navigate(`/jobs/${jobId}/generate`); },
       });
     }
   };
@@ -136,9 +136,9 @@ export default function GapReportPage() {
     const filledFields = Object.entries(fillValues)
       .filter(([, v]) => v.trim() !== '')
       .map(([fieldName, value]) => ({ fieldName, value }));
-    const doGenerate = () => triggerGenerateMutation.mutate(jobId, {
-      onSuccess: () => navigate(`/jobs/${jobId}/generate`),
-    });
+    const doGenerate = () => { triggerGenerateMutation.mutate(jobId, {
+      onSuccess: () => { navigate(`/jobs/${jobId}/generate`); },
+    }); };
     if (filledFields.length > 0) {
       submitJudgmentMutation.mutate(
         { fields: filledFields, acceptMissing: [] },
@@ -153,7 +153,7 @@ export default function GapReportPage() {
     if (!jobId || processingExistingDocuments || addingCaseDocuments) return;
     processCaseDocumentsMutation.mutate(
       { force: true, onStatus: setCaseUploadStatus },
-      { onSettled: () => setCaseUploadStatus(null) },
+      { onSettled: () => { setCaseUploadStatus(null); } },
     );
   };
 
@@ -182,7 +182,7 @@ export default function GapReportPage() {
       }
       void gapReportQuery.refetch();
     }, 3000);
-    return () => clearInterval(interval);
+    return () => { clearInterval(interval); };
   }, [errorCode, gapReportQuery]);
 
   useEffect(() => {
@@ -193,7 +193,7 @@ export default function GapReportPage() {
     autoProcessJobRef.current = jobId;
     processCaseDocumentsMutation.mutate(
       { onStatus: setCaseUploadStatus },
-      { onSettled: () => setCaseUploadStatus(null) },
+      { onSettled: () => { setCaseUploadStatus(null); } },
     );
   }, [
     addingCaseDocuments,
@@ -269,7 +269,7 @@ export default function GapReportPage() {
               className={`border-2 border-dashed rounded-lg px-4 py-5 text-center cursor-pointer transition-colors ${caseDrag ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/60'
                 } ${addingCaseDocuments || processingExistingDocuments ? 'opacity-70 cursor-wait' : ''}`}
               onDragOver={(e) => { e.preventDefault(); if (!addingCaseDocuments && !processingExistingDocuments) setCaseDrag(true); }}
-              onDragLeave={() => setCaseDrag(false)}
+              onDragLeave={() => { setCaseDrag(false); }}
               onDrop={(e) => {
                 e.preventDefault();
                 setCaseDrag(false);
@@ -370,7 +370,9 @@ export default function GapReportPage() {
                           {field.fieldName}
                         </td>
                         <td className="p-2 border border-gray-300 text-gray-700 max-w-[160px] text-xs break-words">
-                          {templateSlotMap.get(field.fieldName)?.defaultValue ?? <span className="text-gray-300">—</span>}
+                          <div className="max-h-24 overflow-y-auto">
+                            {templateSlotMap.get(field.fieldName)?.defaultValue ?? <span className="text-gray-300">—</span>}
+                          </div>
                         </td>
                         <td className="p-2 border border-gray-300 max-w-[220px]">
                           {field.value && (
@@ -396,7 +398,7 @@ export default function GapReportPage() {
                               <input
                                 type="date"
                                 value={fillValues[field.fieldName] ?? ''}
-                                onChange={(e) => setFillValues(prev => ({ ...prev, [field.fieldName]: e.target.value }))}
+                                onChange={(e) => { setFillValues(prev => ({ ...prev, [field.fieldName]: e.target.value })); }}
                                 className="w-full px-1 py-0.5 border rounded"
                               />
                             ) : (
@@ -443,7 +445,7 @@ export default function GapReportPage() {
                     <span className="text-sm text-gray-700 truncate">{file.fileName}</span>
                     <button
                       type="button"
-                      onClick={() => processSingleDocMutation.mutate({ fileId: file.id, onStatus: setCaseUploadStatus })}
+                      onClick={() => { processSingleDocMutation.mutate({ fileId: file.id, onStatus: setCaseUploadStatus }); }}
                       disabled={processSingleDocMutation.isPending || processingExistingDocuments || addingCaseDocuments}
                       className="shrink-0 rounded border border-primary px-2 py-0.5 text-xs font-medium text-primary hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
                     >
@@ -475,7 +477,7 @@ export default function GapReportPage() {
                   {field.blockIds.map((bid) => (
                     <button
                       key={bid}
-                      onClick={() => handleBlockClick(bid)}
+                      onClick={() => { handleBlockClick(bid); }}
                       className={`px-2 py-0.5 text-xs border rounded cursor-pointer ${activeBlockId === bid
                         ? 'bg-blue-600 text-white border-blue-300'
                         : 'bg-blue-50 text-blue-600 border-blue-200'
@@ -547,7 +549,7 @@ export default function GapReportPage() {
             </p>
             <div className="flex justify-end gap-3">
               <button
-                onClick={() => setShowGenerateModal(false)}
+                onClick={() => { setShowGenerateModal(false); }}
                 className="px-4 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50"
               >
                 Go Back

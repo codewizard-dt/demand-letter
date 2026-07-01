@@ -1,9 +1,9 @@
 import { type CSSProperties, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
-import { injectTemplate, type OutputDocxPreview, type Zone } from '../lib/api';
+import { type OutputDocxPreview, type Zone } from '../lib/api';
 import { useTemplateOriginalPreview, useTemplateZones } from '../hooks/useJobQueries';
-import { usePatchTemplateZones } from '../hooks/useJobMutations';
+import { usePatchTemplateZones, useReplaceTemplateImage } from '../hooks/useJobMutations';
 import { queryKeys } from '../hooks/queryKeys';
 import WorkflowStepper from '../components/WorkflowStepper';
 
@@ -71,6 +71,7 @@ export default function AnnotatePage() {
   const zonesQuery = useTemplateZones(jobId, templateId);
   const originalPreviewQuery = useTemplateOriginalPreview(jobId, templateId, previewMode === 'original');
   const patchMutation = usePatchTemplateZones(jobId!, templateId!);
+  const replaceImageMutation = useReplaceTemplateImage(jobId!, templateId!);
   const preferredHeader = getPreferredStationary(originalPreviewQuery.data?.stationaries, 'header');
   const preferredFooter = getPreferredStationary(originalPreviewQuery.data?.stationaries, 'footer');
   const originalPreviewBodyStyle: CSSProperties = {};
@@ -105,6 +106,14 @@ export default function AnnotatePage() {
   const previewZones = zones;
   const isNewLineZone = (zone: ZoneRow) => zone.textContent.trim().length === 0;
 
+  const allVariables = [...new Set(
+    zones.flatMap((zone) =>
+      zone.templateText
+        ? [...zone.templateText.matchAll(/\{([a-zA-Z_][a-zA-Z0-9_.]*)\}/g)].map((m) => m[1]).filter((v): v is string => v !== undefined)
+        : []
+    ),
+  )];
+
   const normalizeZonesForSave = () =>
     zones.map((zone) => (
       isNewLineZone(zone)
@@ -116,6 +125,7 @@ export default function AnnotatePage() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: queryKeys.templateSlots(jobId, templateId) }),
       queryClient.invalidateQueries({ queryKey: queryKeys.latestTemplate(jobId) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.gapReport(jobId) }),
     ]);
   };
 
@@ -140,11 +150,12 @@ export default function AnnotatePage() {
     setSavingTemplate(true);
     setSaveError(null);
     try {
+      // Saving zones re-tags the template and resyncs slots server-side, so no
+      // separate inject call is needed here.
       await patchMutation.mutateAsync({
         zones: normalizeZonesForSave().filter((zone) => !removedZones[zone.id]),
         removeZoneIds,
       });
-      await injectTemplate(jobId, templateId, { confirmed: true });
       await refreshInjectedTemplateQueries();
       navigate(`/jobs/${jobId}/documents`);
     } catch (err) {
@@ -183,8 +194,8 @@ export default function AnnotatePage() {
     if (!targetEl) return;
     syncingScrollRef.current = true;
     const targetTop = targetEl.offsetTop - target.offsetTop;
-    target.scrollTo({ top: Math.max(targetTop - 8, 0), behavior: 'auto' });
-    scheduleScrollUnlock(80);
+    target.scrollTo({ top: Math.max(targetTop - 8, 0), behavior: 'smooth' });
+    scheduleScrollUnlock(400);
   }
 
   function scheduleScrollUnlock(delayMs = 140) {
@@ -310,14 +321,14 @@ export default function AnnotatePage() {
             <div className="flex rounded-full border border-gray-300 bg-white p-0.5">
               <button
                 type="button"
-                onClick={() => setPreviewMode('parsed')}
+                onClick={() => { setPreviewMode('parsed'); }}
                 className={`px-3 py-1 text-sm rounded-full ${previewMode === 'parsed' ? 'bg-primary text-white' : 'text-gray-700'}`}
               >
                 Parsed
               </button>
               <button
                 type="button"
-                onClick={() => setPreviewMode('original')}
+                onClick={() => { setPreviewMode('original'); }}
                 className={`px-3 py-1 text-sm rounded-full ${previewMode === 'original' ? 'bg-primary text-white' : 'text-gray-700'}`}
               >
                 Original
@@ -327,12 +338,12 @@ export default function AnnotatePage() {
           <div
             ref={previewScrollRef}
             onScroll={previewMode === 'parsed'
-              ? () => handleSyncedScroll(
+              ? () => { handleSyncedScroll(
                 previewScrollRef.current,
                 previewZoneRefs.current,
                 sectionsScrollRef.current,
                 sectionZoneRefs.current,
-              )
+              ); }
               : undefined}
             className="max-h-[72vh] overflow-y-auto rounded border border-gray-200 bg-white p-6 shadow-sm"
           >
@@ -390,7 +401,7 @@ export default function AnnotatePage() {
                     ref={(el) => { previewZoneRefs.current[zone.id] = el; }}
                     zone={zone}
                     isRemoved={!!removedZones[zone.id]}
-                    onClick={() => centerZonePair(zone.id)}
+                    onClick={() => { centerZonePair(zone.id); }}
                     isSubsequentHeader={hasFirstPageHeader && zone.part === 'header' && zone.stationaryVariant === 'default'}
                   />
                 ))}
@@ -413,12 +424,12 @@ export default function AnnotatePage() {
           </div>
           <div
             ref={sectionsScrollRef}
-            onScroll={() => handleSyncedScroll(
+            onScroll={() => { handleSyncedScroll(
               sectionsScrollRef.current,
               sectionZoneRefs.current,
               previewScrollRef.current,
               previewZoneRefs.current,
-            )}
+            ); }}
             className="max-h-[72vh] space-y-3 overflow-y-auto py-0.5 pl-1 pr-1"
           >
             {zones.map((zone) => (
@@ -430,11 +441,13 @@ export default function AnnotatePage() {
                 isFlashing={flashedZoneId === zone.id}
                 templateError={templateTextErrors[zone.id] ?? null}
                 editFocusRef={editFocusTextRef}
-                onUpdateZone={(patch) => updateZone(zone.id, patch)}
-                onRemove={() => setRemovedZones(prev => ({ ...prev, [zone.id]: true }))}
-                onRestore={() => setRemovedZones(prev => ({ ...prev, [zone.id]: false }))}
-                onSetTemplateError={(error) => setTemplateTextErrors(prev => ({ ...prev, [zone.id]: error }))}
+                onUpdateZone={(patch) => { updateZone(zone.id, patch); }}
+                onRemove={() => { setRemovedZones(prev => ({ ...prev, [zone.id]: true })); }}
+                onRestore={() => { setRemovedZones(prev => ({ ...prev, [zone.id]: false })); }}
+                onSetTemplateError={(error) => { setTemplateTextErrors(prev => ({ ...prev, [zone.id]: error })); }}
                 isSubsequentHeader={hasFirstPageHeader && zone.part === 'header' && zone.stationaryVariant === 'default'}
+                allVariables={allVariables}
+                onReplaceImage={(target, file) => { replaceImageMutation.mutate({ target, file }); }}
               />
             ))}
           </div>

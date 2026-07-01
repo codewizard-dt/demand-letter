@@ -116,7 +116,7 @@ describe('classifyZones', () => {
     ]);
   });
 
-  it('suffixes repeated field names when template values differ', async () => {
+  it('does not suffix repeated field names even when values differ between zones', async () => {
     mockInvokeModel.mockResolvedValue(JSON.stringify([
       { zoneIndex: 16, type: 'variable_populated', suggestedFieldName: 'insurer_address', templateText: null },
       { zoneIndex: 17, type: 'variable_populated', suggestedFieldName: 'insurer_address', templateText: null },
@@ -128,12 +128,12 @@ describe('classifyZones', () => {
     ], 'system');
 
     expect(result).toEqual([
-      { zoneIndex: 16, type: ZoneType.variable_populated, suggestedFieldName: 'insurer_address_1', templateText: null },
-      { zoneIndex: 17, type: ZoneType.variable_populated, suggestedFieldName: 'insurer_address_2', templateText: null },
+      { zoneIndex: 16, type: ZoneType.variable_populated, suggestedFieldName: 'insurer_address', templateText: null },
+      { zoneIndex: 17, type: ZoneType.variable_populated, suggestedFieldName: 'insurer_address', templateText: null },
     ]);
   });
 
-  it('does not suffix repeated field names when mixed zones contain the same variable value', async () => {
+  it('preserves the same field name for multiple zones sharing a field', async () => {
     mockInvokeModel.mockResolvedValue(JSON.stringify([
       { zoneIndex: 19, type: 'variable_populated', suggestedFieldName: 'claimant_name', templateText: 'Re:Our Client:{claimant_name}' },
       { zoneIndex: 20, type: 'variable_populated', suggestedFieldName: 'claimant_name', templateText: null },
@@ -152,6 +152,30 @@ describe('classifyZones', () => {
         templateText: 'Re:Our Client:{claimant_name}',
       },
       { zoneIndex: 20, type: ZoneType.variable_populated, suggestedFieldName: 'claimant_name', templateText: null },
+    ]);
+  });
+
+  it('preserves templateText with multiple {field} placeholders across normalizeClassification', async () => {
+    mockInvokeModel.mockResolvedValue(JSON.stringify([
+      {
+        zoneIndex: 1,
+        type: 'variable_populated',
+        suggestedFieldName: 'incident_date',
+        templateText: 'On {incident_date} at {incident_location}, {claimant_name} was injured.',
+      },
+    ]));
+
+    const result = await classifyZones([
+      { zoneIndex: 1, textContent: 'On 2024-01-15 at Main Street, John Smith was injured.' },
+    ], 'system');
+
+    expect(result).toEqual([
+      {
+        zoneIndex: 1,
+        type: ZoneType.variable_populated,
+        suggestedFieldName: 'incident_date',
+        templateText: 'On {incident_date} at {incident_location}, {claimant_name} was injured.',
+      },
     ]);
   });
 

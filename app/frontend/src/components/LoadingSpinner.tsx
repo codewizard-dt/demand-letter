@@ -1,9 +1,9 @@
 import { Loader2 } from 'lucide-react';
 
-type LoadingSpinnerProps = {
+interface LoadingSpinnerProps {
   className?: string;
   "aria-hidden"?: boolean;
-};
+}
 
 export default function LoadingSpinner({ className = 'h-4 w-4', "aria-hidden": ariaHidden = true }: LoadingSpinnerProps) {
   return (

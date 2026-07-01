@@ -1,4 +1,5 @@
 import { forwardRef, type MutableRefObject } from 'react';
+import { VariableComboBox } from './VariableComboBox';
 import { ZoneCard } from './ZoneCard';
 import type { Zone } from '../lib/api';
 
@@ -15,6 +16,8 @@ interface ZoneConfigCardProps {
   onRestore: () => void;
   onSetTemplateError: (error: string | null) => void;
   isSubsequentHeader?: boolean;
+  allVariables: string[];
+  onReplaceImage?: (target: string, file: File) => void;
 }
 
 function getDisplayType(zone: Zone): 'boilerplate' | 'variable' | 'mixed' {
@@ -27,17 +30,47 @@ function isNewLineZone(zone: Zone): boolean {
   return zone.textContent.trim().length === 0;
 }
 
-function renderZoneImages(images: ZoneImage[] | undefined) {
+function renderZoneImages(
+  images: ZoneImage[] | undefined,
+  onReplaceImage?: (target: string, file: File) => void,
+) {
   if (!images || images.length === 0) return null;
   return (
     <span className="mt-2 flex flex-col gap-2">
       {images.map((image) => (
-        <img
+        <span
           key={`${image.relId}-${image.target}`}
-          src={image.dataUrl}
-          alt={image.target.split('/').pop() ?? 'Embedded document image'}
-          className="max-h-24 max-w-full object-contain"
-        />
+          className="group relative inline-flex w-fit"
+          onDragOver={onReplaceImage ? (e) => { e.preventDefault(); } : undefined}
+          onDrop={onReplaceImage
+            ? (e) => {
+              e.preventDefault();
+              const file = e.dataTransfer.files?.[0];
+              if (file?.type.startsWith('image/')) onReplaceImage(image.target, file);
+            }
+            : undefined}
+        >
+          <img
+            src={image.dataUrl}
+            alt={image.target.split('/').pop() ?? 'Embedded document image'}
+            className="max-h-24 max-w-full object-contain"
+          />
+          {onReplaceImage && (
+            <label className="absolute inset-0 flex cursor-pointer items-center justify-center bg-black/0 px-2 text-center text-[11px] font-medium text-white opacity-0 transition group-hover:bg-black/50 group-hover:opacity-100">
+              Drop or click to replace
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) onReplaceImage(image.target, file);
+                  e.currentTarget.value = '';
+                }}
+              />
+            </label>
+          )}
+        </span>
       ))}
     </span>
   );
@@ -55,28 +88,6 @@ function getZoneImages(zone: Zone): ZoneImage[] {
 
 function isImagePlaceholderText(zone: Zone): boolean {
   return getZoneImages(zone).length > 0 && /^(header|document|footer) image$/i.test(zone.textContent.trim());
-}
-
-function getBoilerplateWarnings(zone: Zone): string[] {
-  if (zone.type !== 'boilerplate_verbatim' || isNewLineZone(zone)) return [];
-  const text = zone.textContent.trim();
-  const warnings: string[] = [];
-  if (/([a-z])([A-Z][a-z])/.test(text)) {
-    warnings.push('Possible missing space between words.');
-  }
-  if (/[A-Za-z]\d|\d[A-Za-z]/.test(text)) {
-    warnings.push('Possible missing space between text and number.');
-  }
-  if (/\s{2,}/.test(text)) {
-    warnings.push('Repeated spacing.');
-  }
-  if (/^[a-z]/.test(text) && text.length > 12) {
-    warnings.push('Starts with a lowercase letter.');
-  }
-  if (text.length > 40 && !/[.!?:;)"'\]]$/.test(text)) {
-    warnings.push('May be missing ending punctuation.');
-  }
-  return warnings;
 }
 
 function toSnakeCase(text: string): string {
@@ -116,12 +127,18 @@ export const ZoneConfigCard = forwardRef<HTMLDivElement, ZoneConfigCardProps>(
       onRestore,
       onSetTemplateError,
       isSubsequentHeader,
+      allVariables,
+      onReplaceImage,
     },
     ref,
   ) {
     const displayType = getDisplayType(zone);
 
     const suggestedFieldName = zone.suggestedFieldName ?? defaultFieldName(zone);
+
+    const detectedVars = zone.templateText
+      ? [...zone.templateText.matchAll(/\{([a-zA-Z_][a-zA-Z0-9_.]*)\}/g)].map((m) => m[1]).filter((v): v is string => v !== undefined)
+      : [];
 
     function updateZoneText(text: string) {
       const runs = zone.runPath?.runs;
@@ -141,16 +158,19 @@ export const ZoneConfigCard = forwardRef<HTMLDivElement, ZoneConfigCardProps>(
       ? 'border-red-300 bg-red-50'
       : isFlashing
         ? 'border-primary bg-white ring-2 ring-primary/40'
-        : zone.confirmed
-          ? 'border-teal-400/50 bg-teal-50/50'
-          : 'border-yellow-400 bg-yellow-50/50';
+        : zone.type === 'boilerplate_verbatim'
+          ? zone.confirmed
+            ? 'border-gray-300/70 bg-gray-100/60'
+            : 'border-gray-300 bg-gray-50/80'
+          : zone.confirmed
+            ? 'border-blue-400 bg-blue-50'
+            : 'border-yellow-400 bg-yellow-50/50';
 
     return (
       <ZoneCard
         ref={ref}
         zoneIndex={zone.zoneIndex}
         zoneType={displayType}
-        variableName={suggestedFieldName}
         {...(zone.part != null ? { part: zone.part } : {})}
         {...(zone.stationaryVariant != null ? { stationaryVariant: zone.stationaryVariant } : {})}
         {...(isSubsequentHeader != null ? { isSubsequentHeader } : {})}
@@ -160,7 +180,7 @@ export const ZoneConfigCard = forwardRef<HTMLDivElement, ZoneConfigCardProps>(
         <div className="mb-3">
           {getZoneImages(zone).length > 0 && (
             <div className="mb-3 rounded border border-gray-200 bg-white p-2">
-              {renderZoneImages(getZoneImages(zone))}
+              {renderZoneImages(getZoneImages(zone), onReplaceImage)}
             </div>
           )}
           {displayType === 'boilerplate' && !isNewLineZone(zone) && !isImagePlaceholderText(zone) ? (
@@ -178,42 +198,42 @@ export const ZoneConfigCard = forwardRef<HTMLDivElement, ZoneConfigCardProps>(
             >
               {zone.textContent}
             </div>
-          ) : displayType === 'mixed' ? (
+          ) : (displayType === 'mixed' || displayType === 'variable') && !isNewLineZone(zone) && !isImagePlaceholderText(zone) ? (
             <>
               <div
                 contentEditable
                 suppressContentEditableWarning
                 onFocus={(e) => { editFocusRef.current = e.currentTarget.innerText; }}
                 onBlur={(e) => {
-                  let text = e.currentTarget.innerText;
-                  if (text.includes(`{}`) && !text.includes(`{${suggestedFieldName}}`)) {
-                    text = text.replace(`{}`, `{${suggestedFieldName}}`);
-                  }
+                  const text = e.currentTarget.innerText;
                   const changed = text !== editFocusRef.current;
                   editFocusRef.current = null;
-                  if (changed) onUpdateZone({ templateText: text || null, confirmed: zone.confirmed });
-                  const fieldName = suggestedFieldName;
-                  const error = fieldName && !text.includes(`{${fieldName}}`)
-                    ? `Must contain {${fieldName}} as a placeholder`
-                    : null;
-                  onSetTemplateError(error);
+                  if (changed) {
+                    const matches = [...text.matchAll(/\{([a-zA-Z_][a-zA-Z0-9_.]*)\}/g)].map((m) => m[1]);
+                    const firstMatch = matches[0] ?? null;
+                    onUpdateZone({ templateText: text || null, suggestedFieldName: firstMatch, confirmed: zone.confirmed });
+                  }
+                  onSetTemplateError(null);
                 }}
-                aria-label={`Zone ${zone.zoneIndex} mixed template text`}
-                className={`w-full rounded border px-2 py-1.5 font-mono text-sm leading-5 text-gray-900 outline-none whitespace-pre-wrap break-words cursor-text hover:bg-gray-50/60 focus:bg-white focus:ring-1 ${templateError ? 'border-red-300 hover:border-red-400 focus:border-red-400 focus:ring-red-400' : 'border-gray-200 hover:border-gray-300 focus:border-gray-400 focus:ring-primary'}`}
+                aria-label={`Zone ${zone.zoneIndex} template text`}
+                className="w-full rounded border border-gray-200 px-2 py-1.5 font-mono text-sm leading-5 text-gray-900 outline-none whitespace-pre-wrap break-words cursor-text hover:border-gray-300 hover:bg-gray-50/60 focus:border-gray-400 focus:bg-white focus:ring-1 focus:ring-primary"
               >
-                {zone.templateText ?? ''}
+                {zone.templateText ?? (zone.suggestedFieldName ? `{${zone.suggestedFieldName}}` : '')}
               </div>
+              {detectedVars.length > 0 && (
+                <div className="mt-1.5 flex flex-wrap items-center gap-1 text-xs text-gray-500">
+                  <span>Variables detected:</span>
+                  {detectedVars.map((v, i) => (
+                    <span key={v + `-${i}`} className="rounded bg-blue-50 border border-blue-200 px-1.5 py-0.5 font-mono text-blue-700">
+                      {`{${v}}`}
+                    </span>
+                  ))}
+                </div>
+              )}
               {templateError && (
                 <p className="mt-1 text-xs text-red-600">{templateError}</p>
               )}
             </>
-          ) : !isNewLineZone(zone) && !isImagePlaceholderText(zone) ? (
-            <p className="rounded border border-transparent px-2 py-1.5 font-mono text-sm leading-5">
-              {suggestedFieldName
-                ? `{${suggestedFieldName}}`
-                : <span className="italic text-gray-400 opacity-60">Define field name</span>
-              }
-            </p>
           ) : null}
 
         </div>
@@ -265,19 +285,23 @@ export const ZoneConfigCard = forwardRef<HTMLDivElement, ZoneConfigCardProps>(
                   </button>
                 ))}
               </div>
-              {/* Row 2: field name (fills) + confirm + remove (right-aligned) */}
+              {/* Row 2: insert variable (for non-boilerplate) + confirm + remove */}
               <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={suggestedFieldName}
-                  onChange={(e) => onUpdateZone({ suggestedFieldName: e.target.value })}
-                  disabled={displayType === 'boilerplate'}
-                  placeholder={suggestedFieldName}
-                  className="st-zone-field-input border rounded px-2 py-1 text-sm flex-1 min-w-0"
-                />
+                {displayType !== 'boilerplate' && (
+                  <div className="flex-1 min-w-0">
+                    <VariableComboBox
+                      variables={allVariables}
+                      onAdd={(varName) => {
+                        const newText = (zone.templateText ?? '') + `{${varName}}`;
+                        const firstMatch = [...newText.matchAll(/\{([a-zA-Z_][a-zA-Z0-9_.]*)\}/g)].map(m => m[1]).filter((v): v is string => v !== undefined)[0] ?? null;
+                        onUpdateZone({ templateText: newText, suggestedFieldName: firstMatch });
+                      }}
+                    />
+                  </div>
+                )}
                 <div className="flex items-center gap-2 ml-auto shrink-0">
                   <button
-                    onClick={() => onUpdateZone({ confirmed: !zone.confirmed })}
+                    onClick={() => { onUpdateZone({ confirmed: !zone.confirmed }); }}
                     className={`px-3 py-1 text-sm rounded border ${zone.confirmed ? 'bg-teal-100 border-teal-400' : 'border-gray-300'}`}
                   >
                     {zone.confirmed ? 'Confirmed ✓' : 'Confirm'}
@@ -294,16 +318,7 @@ export const ZoneConfigCard = forwardRef<HTMLDivElement, ZoneConfigCardProps>(
             </div>
           )}
         </div>
-        {getBoilerplateWarnings(zone).length > 0 && (
-          <div className="mt-2 rounded border border-yellow-300 bg-yellow-50 px-3 py-2 text-xs text-yellow-800">
-            <p className="font-semibold">Boilerplate needs review</p>
-            <ul className="mt-1 list-disc pl-4">
-              {getBoilerplateWarnings(zone).map((warning) => (
-                <li key={warning}>{warning}</li>
-              ))}
-            </ul>
-          </div>
-        )}
+
       </ZoneCard>
     );
   },

@@ -2,7 +2,6 @@ import { LlmFeature, ZoneType } from '@demand-letter/db';
 import { getBasicModelId, invokeModel } from './ai-provider';
 import { CANONICAL_FIELDS } from './zone-field-schema';
 import { isSystemTemplateFieldName, SYSTEM_TEMPLATE_FIELDS } from './docx-system-fields';
-import { suffixedTemplateSlotName } from './template-slot-names';
 
 export interface ZoneClassification {
   zoneIndex: number;
@@ -37,16 +36,49 @@ function normalizeClassification(
     return { zoneIndex: zone.zoneIndex, type: ZoneType.boilerplate_verbatim, suggestedFieldName: null, templateText: null };
   }
 
-  const fieldName = classification.suggestedFieldName?.trim() ?? '';
-  if (!CANONICAL_FIELD_SET.has(fieldName) && !isSystemTemplateFieldName(fieldName)) {
+  // Build the normalised templateText (single-variable or multi-variable)
+  const rawTemplateText = normalizeTemplateText(
+    zone.textContent,
+    classification.suggestedFieldName?.trim() ?? '',
+    classification.templateText,
+  );
+
+  // Strip any {field} tags that are not in the canonical schema
+  let cleanedTemplateText = rawTemplateText;
+  if (cleanedTemplateText) {
+    cleanedTemplateText = cleanedTemplateText.replace(
+      /\{([a-zA-Z_][a-zA-Z0-9_.]*)\}/g,
+      (match, field: string) => {
+        if (CANONICAL_FIELD_SET.has(field) || isSystemTemplateFieldName(field)) return match;
+        // Strip non-canonical field by reverting to the literal token name
+        return field;
+      },
+    );
+  }
+
+  // Derive suggestedFieldName as the first canonical {field} in cleanedTemplateText
+  const firstFieldMatch = cleanedTemplateText
+    ? /\{([a-zA-Z_][a-zA-Z0-9_.]*)\}/.exec(cleanedTemplateText)
+    : null;
+  const derivedFieldName = firstFieldMatch?.[1] ?? null;
+
+  // Also accept the LLM's suggestedFieldName if it is canonical and present in the template
+  const llmFieldName = classification.suggestedFieldName?.trim() ?? '';
+  const finalFieldName =
+    (CANONICAL_FIELD_SET.has(llmFieldName) || isSystemTemplateFieldName(llmFieldName))
+      ? llmFieldName
+      : derivedFieldName;
+
+  if (!finalFieldName) {
+    // No valid field names remain — treat as boilerplate
     return { zoneIndex: zone.zoneIndex, type: ZoneType.boilerplate_verbatim, suggestedFieldName: null, templateText: null };
   }
 
   return {
     zoneIndex: zone.zoneIndex,
     type: ZoneType.variable_populated,
-    suggestedFieldName: fieldName,
-    templateText: normalizeTemplateText(zone.textContent, fieldName, classification.templateText),
+    suggestedFieldName: finalFieldName,
+    templateText: cleanedTemplateText,
   };
 }
 
@@ -79,66 +111,13 @@ function isProperNameField(fieldName: string): boolean {
   ].includes(fieldName);
 }
 
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
 
-function variableValueForDuplicateCheck(
-  zone: { textContent: string },
-  classification: ZoneClassification,
-): string {
-  const fieldName = classification.suggestedFieldName;
-  const templateText = classification.templateText;
-  if (!fieldName || !templateText?.includes(`{${fieldName}}`)) {
-    return normalizeDuplicateValue(zone.textContent);
-  }
-  const [prefix, suffix] = templateText.split(`{${fieldName}}`);
-  const pattern = new RegExp(`^${escapeRegExp(prefix ?? '')}(.*)${escapeRegExp(suffix ?? '')}$`);
-  const match = pattern.exec(zone.textContent.trim());
-  return normalizeDuplicateValue(match?.[1] ?? zone.textContent);
-}
 
-function normalizeDuplicateValue(value: string): string {
-  return value.trim().replace(/\s+/g, ' ').toLowerCase();
-}
 
-function applyDistinctDuplicateSuffixes(
-  zones: Array<{ zoneIndex: number; textContent: string }>,
-  classifications: ZoneClassification[],
-): ZoneClassification[] {
-  const zoneByIndex = new Map(zones.map((zone) => [zone.zoneIndex, zone]));
-  const groups = new Map<string, Map<string, number>>();
 
-  for (const classification of classifications) {
-    const fieldName = classification.suggestedFieldName;
-    if (classification.type !== ZoneType.variable_populated || !fieldName || isSystemTemplateFieldName(fieldName)) {
-      continue;
-    }
-    const zone = zoneByIndex.get(classification.zoneIndex);
-    if (!zone) continue;
-    const values = groups.get(fieldName) ?? new Map<string, number>();
-    const value = variableValueForDuplicateCheck(zone, classification);
-    if (!values.has(value)) values.set(value, values.size + 1);
-    groups.set(fieldName, values);
-  }
 
-  return classifications.map((classification) => {
-    const fieldName = classification.suggestedFieldName;
-    if (classification.type !== ZoneType.variable_populated || !fieldName) return classification;
-    const zone = zoneByIndex.get(classification.zoneIndex);
-    const values = groups.get(fieldName);
-    if (!zone || !values || values.size <= 1) return classification;
 
-    const suffix = values.get(variableValueForDuplicateCheck(zone, classification));
-    if (!suffix) return classification;
-    const nextFieldName = suffixedTemplateSlotName(fieldName, suffix);
-    return {
-      ...classification,
-      suggestedFieldName: nextFieldName,
-      templateText: classification.templateText?.replace(`{${fieldName}}`, `{${nextFieldName}}`) ?? null,
-    };
-  });
-}
+
 
 export async function classifyZones(
   zones: Array<{ zoneIndex: number; textContent: string }>,
@@ -154,8 +133,8 @@ export async function classifyZones(
   const systemPrompt =
     `You are a legal document classifier. Classify each zone of a demand letter template as either "boilerplate_verbatim" (fixed legal language that must never be paraphrased) or "variable_populated" (a fill-in slot). For variable zones, suggest a field name from this canonical schema:\n${CANONICAL_FIELDS}\n\nSystem fields for document pagination:\npageNumber\npageCount\n\n` +
     `A zone is variable_populated only when the exact zone text is case-specific data that should be replaced during generation. Headings, legal prose, labels, law firm branding, spacer/new-line zones, and embedded-image placeholders are boilerplate_verbatim.\n` +
-    `If a zone combines fixed label text with a variable value, set templateText to the exact zone text with only the variable value replaced by {field_name}; for a pure variable zone, set templateText to null.\n` +
-    `Respond ONLY with a JSON array with exactly one object for each supplied zone: [{"zoneIndex": N, "type": "boilerplate_verbatim"|"variable_populated", "suggestedFieldName": "field_name"|null, "templateText": "literal {field_name} text"|null}]`;
+    `If a zone contains variable values (case-specific data), set templateText to the FULL zone text with EVERY variable value replaced by the appropriate {field_name} placeholder from the canonical schema. A single zone may contain multiple {field_name} placeholders. Set suggestedFieldName to the first (primary) canonical field name used. For a zone that is a SINGLE pure variable with no surrounding static text, set templateText to null and suggestedFieldName to the field name.\n` +
+    `Respond ONLY with a JSON array with exactly one object for each supplied zone: [{"zoneIndex": N, "type": "boilerplate_verbatim"|"variable_populated", "suggestedFieldName": "field_name"|null, "templateText": "full template with {field1} and {field2} etc"|null}]`;
 
   const userContent = modelZones.map(z => `Zone ${z.zoneIndex}: "${z.textContent}"`).join('\n');
 
@@ -175,10 +154,7 @@ export async function classifyZones(
     classification.zoneIndex,
     classification,
   ]));
-  return applyDistinctDuplicateSuffixes(
-    zones,
-    zones.map((zone) => normalizeClassification(zone, classificationMap.get(zone.zoneIndex))),
-  );
+  return zones.map((zone) => normalizeClassification(zone, classificationMap.get(zone.zoneIndex)));
 }
 
 export function parseZoneClassifications(text: string): ZoneClassification[] {
