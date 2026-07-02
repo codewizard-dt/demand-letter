@@ -8,7 +8,7 @@ frontend:
         - pnpm install --frozen-lockfile
     build:
       commands:
-        - pnpm --filter @demand-letter/web build
+        - pnpm --filter @demand-letter/web exec vite build
   artifacts:
     baseDirectory: app/frontend/dist
     files:
