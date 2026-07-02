@@ -10,7 +10,9 @@
     - estimateCostUsd
   must_contain:
     - "30"
+  # NOTE: "0" was removed as a must_not_contain — it is unsatisfiable, since the
+  # correct result "30" necessarily contains the character "0". The meaningful
+  # negatives are "3." (wrong magnitude, e.g. 3.0) and "NaN" (arithmetic error).
   must_not_contain:
-    - "0"
     - "3."
     - "NaN"

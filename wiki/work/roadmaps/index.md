@@ -1,6 +1,6 @@
 ---
 title: Roadmaps Index
-updated: 2026-06-26
+updated: 2026-07-01
 ---
 
 # Roadmaps — Active Items
@@ -12,3 +12,4 @@ Entry format: `- [ROADMAP-NNN — Title](ROADMAP-NNN-slug.md) — one-line summa
 | File | Title | Status | Progress | Owner | Linked PRD |
 |------|-------|--------|----------|-------|------------|
 | [ROADMAP-008](ROADMAP-008-api-test-suite.md) | Add API test suite (unit + integration) | active | 0/22 | David Taylor | — |
+| [ROADMAP-010](ROADMAP-010-live-aws-deployment.md) | Live AWS deployment | active | 0/6 | David Taylor | — |

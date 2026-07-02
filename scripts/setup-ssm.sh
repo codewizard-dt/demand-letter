@@ -27,9 +27,9 @@ aws ssm put-parameter \
   --region "$REGION"
 
 aws ssm put-parameter \
-  --name "/${STAGE}/demand-letter/db/url" \
-  --value "${DATABASE_URL:?DATABASE_URL not set}" \
-  --type "SecureString" \
+  --name "/${STAGE}/demand-letter/bedrock-model-id" \
+  --value "${BEDROCK_MODEL_ID:?BEDROCK_MODEL_ID not set}" \
+  --type "String" \
   --overwrite \
   --region "$REGION"
 

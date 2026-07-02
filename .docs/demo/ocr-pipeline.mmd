@@ -1,0 +1,7 @@
+flowchart LR
+    A[Case PDF] --> B[Textract OCR]
+    B --> C[Comprehend Medical - PHI]
+    B --> D[Amazon Comprehend - PII]
+    C --> E[Merge offsets]
+    D --> E
+    E --> F[Store blocks + citations]

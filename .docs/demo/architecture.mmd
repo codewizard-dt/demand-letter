@@ -1,0 +1,7 @@
+flowchart TB
+    A[DOCX Template] --> B[Annotate Zones]
+    B --> C[Case PDFs]
+    C --> D[Textract + Bedrock]
+    D --> E[Gap Report]
+    E --> F[Stream Generation]
+    F --> G[Export DOCX]

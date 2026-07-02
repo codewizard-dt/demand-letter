@@ -7,6 +7,7 @@ import { generateMedicalNarrative } from '../lib/medical-narrative';
 import { getCorsHeaders } from '../lib/cors';
 import { logJobError } from '../lib/job-logger';
 import { getLogicModelId } from '../lib/ai-provider';
+import { computeGapReport } from '../lib/sufficiency-gate';
 
 const MODEL_ID = getLogicModelId();
 const s3 = new S3Client({ region: process.env.AWS_REGION ?? 'us-east-1' });
@@ -27,6 +28,12 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   if (!files.length) {
     return { statusCode: 422,
       headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'no_files_uploaded', message: 'This job has no uploaded files yet.' }) };
+  }
+
+  const gapReport = await computeGapReport(jobId);
+  if (gapReport.gaps.length > 0) {
+    return { statusCode: 400,
+      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'sufficiency_precheck_failed', gapReport }) };
   }
 
   await prisma.job.update({ where: { id: jobId }, data: { status: 'processing' } });

@@ -1,14 +1,21 @@
 - id: "gs-005"
-  description: "A sentence containing a specific dollar figure is boilerplate_verbatim, not a variable zone"
+  description: "A sentence with an embedded dollar figure is extracted as a variable zone (total_medical_specials) with templateText"
   query: |
     Zone 12: "The total medical specials incurred to date amount to $47,832.00."
   tested_files:
     - app/server/src/lib/zone-classifier.ts
   expected_tools:
     - invokeModel
+  # The classifier's system prompt explicitly instructs the model to replace any
+  # embedded case-specific value with a {field_name} placeholder and emit the full
+  # zone as templateText. The live model does exactly this: it maps the dollar
+  # figure to the canonical field total_medical_specials. This case asserts that
+  # documented behavior (the earlier "boilerplate_verbatim" expectation contradicted
+  # the prompt design).
   must_contain:
+    - '"type": "variable_populated"'
+    - '"suggestedFieldName": "total_medical_specials"'
+    - "{total_medical_specials}"
+  must_not_contain:
     - '"type": "boilerplate_verbatim"'
     - '"suggestedFieldName": null'
-  must_not_contain:
-    - '"variable_populated"'
-    - '"total_medical_specials"'

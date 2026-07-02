@@ -17,7 +17,10 @@
     - '"specials"'
     - '"provider"'
     - '"amount"'
+  # buildDataObject aliases the parsed array under BOTH the loop tagName (specials)
+  # and the dbName (per_provider_line_items) via setValueWithAlias, so the dbName key
+  # is expected to be present. We still forbid the wrong camelCase key and the raw
+  # unparsed JSON string.
   must_not_contain:
-    - '"per_provider_line_items"'
     - '"perProviderLineItems"'
     - '"[{\\"provider\\"'

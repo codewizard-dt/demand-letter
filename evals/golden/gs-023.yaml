@@ -15,6 +15,9 @@
   must_contain:
     - '"claimantName"'
     - '"Jane Smith"'
+  # buildDataObject intentionally aliases the value under BOTH the camelCase tag
+  # (claimantName) and the snake_case dbName (claimant_name) via setValueWithAlias,
+  # so a template may reference either naming. We assert the camelCase mapping
+  # exists; we no longer forbid the deliberate dbName alias.
   must_not_contain:
-    - '"claimant_name"'
     - "undefined"

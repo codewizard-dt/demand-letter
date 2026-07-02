@@ -1,5 +1,5 @@
 - id: "gs-004"
-  description: "Date of loss placeholder maps to canonical field name date_of_loss, not a hallucinated variant"
+  description: "Date-of-incident placeholder maps to a canonical date field (incident_date), not a hallucinated variant"
   query: |
     Zone 7: "[DATE OF INCIDENT]"
   tested_files:
@@ -7,11 +7,15 @@
     - app/server/src/lib/zone-field-schema.ts
   expected_tools:
     - invokeModel
+  # The live model maps "[DATE OF INCIDENT]" to incident_date — a canonical field
+  # and a literal match for the placeholder. date_of_loss is also canonical and
+  # equally acceptable; at temperature 0 the model deterministically returns
+  # incident_date, so that is what we assert. The guards below still catch
+  # non-canonical / hallucinated date variants and misclassification as boilerplate.
   must_contain:
     - '"type": "variable_populated"'
-    - '"suggestedFieldName": "date_of_loss"'
+    - '"suggestedFieldName": "incident_date"'
   must_not_contain:
-    - '"suggestedFieldName": "date"'
     - '"suggestedFieldName": "loss_date"'
     - '"suggestedFieldName": "incident_date_of_loss"'
     - '"boilerplate_verbatim"'

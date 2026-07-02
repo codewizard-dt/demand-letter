@@ -55,7 +55,7 @@ export function VariableComboBox({
               No variables yet — type to add one
             </div>
           )}
-          {filtered.map((varName, i) => (
+          {filtered.map((varName) => (
             <div
               key={varName}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm hover:bg-blue-100 cursor-pointer"

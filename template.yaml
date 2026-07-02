@@ -18,7 +18,7 @@ Globals:
     Environment:
       Variables:
         NODE_ENV: !Ref Stage
-        DATABASE_URL: !Sub '{{resolve:ssm:/${Stage}/demand-letter/db/url}}'
+        DATABASE_URL: !Sub '{{resolve:ssm:/${Stage}/demand-letter/db/url:${DbUrlSsmVersion}}}'
         CORS_ORIGINS: !Sub '${WebAppOrigin},${WebAppOrigin2}'
   Api:
     BinaryMediaTypes:
@@ -60,8 +60,15 @@ Parameters:
 
   TextractCompletionTopicArn:
     Type: String
-    Description: ARN of the SNS topic for Textract job completion notifications
-    Default: ''
+    Description: ARN of the SNS topic for Textract job completion notifications; required for deployment
+
+  DbUrlSsmVersion:
+    Type: Number
+    Default: 1
+    Description: Version of the stage-specific demand-letter/db/url SSM parameter to resolve into Lambda DATABASE_URL
+
+Conditions:
+  HasDistinctWebAppOrigin2: !Not [!Equals [!Ref WebAppOrigin, !Ref WebAppOrigin2]]
 
 Resources:
   # Placeholder — Phase 1 resources (S3, RDS) added by TASK-003, TASK-004
@@ -86,6 +93,15 @@ Resources:
             Action:
               - kms:Decrypt
               - kms:GenerateDataKey
+            Resource: '*'
+          - Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action:
+              - kms:DescribeKey
+              - kms:Decrypt
+              - kms:GenerateDataKey
+              - kms:GenerateDataKey*
             Resource: '*'
 
   DemandLetterKmsKeyAlias:
@@ -127,13 +143,14 @@ Resources:
       DBInstanceIdentifier: !Sub '${Stage}-demand-letter-db'
       DBInstanceClass: db.t4g.micro
       Engine: postgres
-      EngineVersion: '16.3'
+      EngineVersion: '16.14'
       AllocatedStorage: '20'
       StorageType: gp3
       StorageEncrypted: true
       KmsKeyId: !Ref DemandLetterKmsKey
       MasterUsername: !Sub '{{resolve:ssm:/${Stage}/demand-letter/db/username}}'
       MasterUserPassword: !Sub '{{resolve:ssm-secure:/${Stage}/demand-letter/db/password:1}}'
+      DBName: !Sub 'demandletter${Stage}'
       DBSubnetGroupName: !Ref RdsSubnetGroup
       VPCSecurityGroups:
         - !Ref RdsSecurityGroup
@@ -165,7 +182,7 @@ Resources:
             AllowedMethods: [GET, PUT, POST, DELETE, HEAD]
             AllowedOrigins:
               - !Ref WebAppOrigin
-              - !Ref WebAppOrigin2
+              - !If [HasDistinctWebAppOrigin2, !Ref WebAppOrigin2, !Ref AWS::NoValue]
             MaxAge: 3600
       LifecycleConfiguration:
         Rules:
@@ -973,6 +990,7 @@ Resources:
       S3BucketName: !Ref CloudTrailLogsBucket
       IsLogging: true
       IsMultiRegionTrail: true
+      IncludeGlobalServiceEvents: true
       EnableLogFileValidation: true
       KMSKeyId: !Ref DemandLetterKmsKey
 

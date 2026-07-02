@@ -18,3 +18,11 @@ capabilities = "CAPABILITY_IAM"
 confirm_changeset = true
 resolve_s3 = true
 region = "us-east-1"
+# Production deploy inputs for TASK-116:
+# Stage=prod
+# VpcId=vpc-05d675a56f47ef466
+# PrivateSubnet1=subnet-05925fc8ff290a62c
+# PrivateSubnet2=subnet-027279b7af8e18cf9
+# WebAppOrigin=https://main.d2qz3c6ux2u72z.amplifyapp.com
+# WebAppOrigin2=https://main.d2qz3c6ux2u72z.amplifyapp.com
+# TextractCompletionTopicArn=arn:aws:sns:us-east-1:429842292480:demand-letter-prod-textract-completion

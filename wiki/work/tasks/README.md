@@ -17,3 +17,4 @@ Lists **only active** tasks (`todo`, `in-progress`). When a task leaves the acti
 | 080 | two-browser-realtime-sync-verify | 3/4 | — | [DEFERRED-TO-UAT] | Two windows same job, edits appear in real-time |
 | 082 | accept-reject-document-update-verify | 2/3 | — | [DEFERRED-TO-UAT] | Accept/reject correctly updates document state |
 | 088 | api-ci-test-step | 7/7 | — | — | Wire pnpm --filter @demand-letter/api test into CI |
+| 118 | host-frontend-wire-live-urls | 6/9 | — | [DEFERRED-TO-UAT] | Deploy the Vite frontend to AWS hosting and configure it with the live REST API and WebSocket URLs emitted by the SAM stack |

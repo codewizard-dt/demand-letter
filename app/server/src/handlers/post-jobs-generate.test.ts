@@ -3,6 +3,7 @@ import { vi } from 'vitest'
 vi.mock('@demand-letter/db')
 vi.mock('../lib/sufficiency-gate')
 vi.mock('../lib/medical-narrative')
+vi.mock('../lib/job-logger')
 vi.mock('@aws-sdk/client-s3', () => ({
   S3Client: vi.fn().mockImplementation(() => ({ send: vi.fn().mockResolvedValue({}) })),
   PutObjectCommand: vi.fn(),
@@ -17,7 +18,7 @@ vi.mock('../lib', async (importActual) => {
   }
 })
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import type { DeepMockProxy } from 'vitest-mock-extended'
 import type { PrismaClient } from '@demand-letter/db'
 import { prisma } from '@demand-letter/db'
@@ -37,6 +38,16 @@ const stall = (ms: number) =>
 
 const event = (id = 'job-123') =>
   ({ pathParameters: { id }, headers: {} }) as any
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  prismaMock.file.findMany.mockReset()
+  prismaMock.job.update.mockReset()
+  mockComputeGapReport.mockReset()
+  mockGenerateMedicalNarrative.mockReset()
+  mockBuildDataObject.mockReset()
+  mockRenderTemplate.mockReset()
+})
 
 function setupHappyPath() {
   prismaMock.file.findMany.mockResolvedValue([{ id: 'f1' }] as any)
@@ -96,10 +107,15 @@ describe('post-jobs-generate handler — lifecycle', () => {
 
   it('STALL: resolves "stall" if handler does not complete within timeout', async () => {
     setupHappyPath()
-    mockGenerateMedicalNarrative.mockReturnValue(new Promise(() => {})) // never resolves
+    let rejectNarrative!: (reason?: unknown) => void
+    const stalledNarrative = new Promise<never>((_resolve, reject) => {
+      rejectNarrative = reject
+    })
+    mockGenerateMedicalNarrative.mockReturnValue(stalledNarrative)
 
+    const handlerPromise = handler(event(), {} as any, () => {})
     const outcome = await Promise.race([
-      handler(event(), {} as any, () => {}).then(() => 'done' as const),
+      handlerPromise.then(() => 'done' as const),
       stall(200),
     ])
 
@@ -111,6 +127,9 @@ describe('post-jobs-generate handler — lifecycle', () => {
     expect(prismaMock.job.update).not.toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ status: 'complete' }) }),
     )
+
+    rejectNarrative(new Error('release stalled narrative'))
+    await expect(handlerPromise).rejects.toThrow('release stalled narrative')
   })
 
   it('returns 422 if no files uploaded — status never changes', async () => {

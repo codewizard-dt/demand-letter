@@ -1057,3 +1057,87 @@ Implemented all 7 steps of TASK-112: (1) Added `renderZoneContent` helper in rou
 
 ## [2026-06-30] uat | UAT-112 UAT: Refactor Zone model — multi-variable templateText
 Generated UAT-112 for TASK-112 with 8 test cases: 3 API tests (lazy migration null→{field} promotion, multi-variable templateText saved as-is, omitted key leaves DB unchanged), 2 integration tests (generation stream renders all placeholders, consecutive shared-field zones both emit output), 3 UI tests (Variables detected chips, Insert variable quick-add, templateText primary position). Repeatable unit test created: `app/server/src/lib/zone-classifier.test.ts` (multi-variable normalizeClassification case).
+
+## [2026-07-01] roadmap | ROADMAP-010 Live AWS deployment
+Created ROADMAP-010: sequence the quickest live AWS deployment path across stabilization, AWS provisioning, SAM API deployment, RDS migration, and frontend hosting. Added active roadmap index row with 0/6 items.
+
+## [2026-07-01] task | TASK-113 Fix local deployment gates and SAM lint blockers
+Created task TASK-113 from ROADMAP-010: clear frontend typecheck, server test, and SAM lint blockers before live AWS deployment.
+
+## [2026-07-01] task | TASK-114 Create or pass a Textract completion SNS topic ARN
+Created task TASK-114 from ROADMAP-010: provide a valid repeatable Textract completion SNS ARN path for SAM deployment.
+
+## [2026-07-01] task | TASK-115 Seed production AWS parameters and confirm deployment inputs
+Created task TASK-115 from ROADMAP-010: prepare SSM parameters, deploy parameters, and AWS service access for the live stack.
+
+## [2026-07-01] task | TASK-116 Deploy the SAM stack to AWS
+Created task TASK-116 from ROADMAP-010: build and deploy the SAM API infrastructure in the target AWS account.
+
+## [2026-07-01] task | TASK-117 Run Prisma migrations against RDS
+Created task TASK-117 from ROADMAP-010: apply Prisma migrations to the live RDS PostgreSQL database.
+
+## [2026-07-01] task | TASK-118 Host the frontend on AWS and wire live API/WebSocket URLs
+Created task TASK-118 from ROADMAP-010: deploy the Vite frontend and configure live REST and WebSocket endpoints.
+
+## [2026-07-01] task | TASK-113 in progress
+Started TASK-113 via tackle. Completed local quality-gate fixes: frontend typecheck issue, server generate-handler timeout, `pnpm typecheck`, and `pnpm --filter @demand-letter/server test`.
+
+## [2026-07-01] task | TASK-113 SAM lint blockers fixed
+Updated `template.yaml` RDS PostgreSQL engine version to a creatable PostgreSQL 16 release and made `TextractCompletionTopicArn` an explicit deployment parameter. `sam validate --lint` passed.
+
+## [2026-07-01] task | TASK-114 in progress
+Started TASK-114 via tackle. Chose an externally owned SNS topic ARN supplied through required deploy parameter `TextractCompletionTopicArn`; the SAM `SNS` event on `SnsTextractCompletionFunction` remains responsible for the Lambda subscription/invoke wiring.
+
+## [2026-07-01] task | TASK-114 external SNS ARN path validated
+Documented the required `TextractCompletionTopicArn` deployment parameter in `samconfig.toml` and TASK-114 notes. Confirmed `sam validate --lint` passes with no SNS ARN warnings.
+
+## [2026-07-01] task | TASK-115 deployment target confirmed
+User confirmed the deployment target as AWS account `429842292480` in region `us-east-1`, using the current default credential chain unless a named profile is supplied later. TASK-115 remains blocked on concrete VPC/subnet/origin/SNS ARN values and Bedrock model ID confirmation.
+
+## [2026-07-01] task | TASK-115 AWS inputs discovered
+Ran live AWS discovery in `us-east-1`. Confirmed default VPC `vpc-05d675a56f47ef466`, found no true private subnets in that VPC, created/confirmed SNS topic `arn:aws:sns:us-east-1:429842292480:demand-letter-prod-textract-completion`, confirmed Claude Sonnet/Haiku 4.5 Bedrock inference profiles are active, and confirmed there are no Amplify apps yet for frontend origins.
+
+## [2026-07-01] task | TASK-115 private networking and Amplify app created
+Created private subnets `subnet-05925fc8ff290a62c` (`us-east-1a`) and `subnet-027279b7af8e18cf9` (`us-east-1b`) in VPC `vpc-05d675a56f47ef466`, private route table `rtb-0d7c2aacb0c28a3e3`, EIP `eipalloc-053ab1d9a725df64f`, NAT Gateway `nat-0288ae4aa928225ea`, and route-table associations. Created Amplify app `demand-letter-prod` (`d2qz3c6ux2u72z`) with production branch `main`; frontend origin is `https://main.d2qz3c6ux2u72z.amplifyapp.com`. Ran service-readiness checks for Bedrock, Textract, Comprehend, Comprehend Medical, RDS, S3 Control, KMS, CloudTrail, DynamoDB, API Gateway, Lambda, and SNS.
+
+## [2026-07-01] task | TASK-113 readiness evidence recorded
+Recorded passing readiness commands for TASK-113: `pnpm typecheck`; `pnpm --filter @demand-letter/server test` with 20 files and 137 tests; `sam validate --lint` with `template.yaml is a valid SAM Template`. No deployment was performed; deployment remains assigned to TASK-116.
+
+## [2026-07-01] task | TASK-114 deployable ARN path documented
+Completed TASK-114 section 2 for the externally owned SNS topic path. Confirmed `template.yaml` already requires `TextractCompletionTopicArn` with no empty default and wires `SnsTextractCompletionFunction` through a SAM `SNS` event; added `samconfig.toml` deploy-parameter guidance for supplying the ARN.
+
+## [2026-07-01] task | TASK-114 section 2 static validation
+Ran `sam validate --lint` after documenting the external SNS ARN deploy path; validation passed with `template.yaml is a valid SAM Template`. No deployment, AWS resource creation, or runtime verification was performed.
+
+## [2026-07-01] task | TASK-115 section 1 SSM inventory
+Inventoried `template.yaml` SSM dynamic references for TASK-115 section 1 and updated `scripts/setup-ssm.sh` to seed the required `/${Stage}/demand-letter/bedrock-model-id` parameter from `BEDROCK_MODEL_ID`. No task checkboxes were changed.
+
+## [2026-07-01] task | TASK-115 section 2 deploy inputs
+Recorded the TASK-115 deploy input set with explicit `TBD` placeholders for live VPC, private subnet, frontend origin, and external Textract SNS topic ARN values. Confirmed the TASK-114 Textract path remains an externally supplied `TextractCompletionTopicArn`; no deployment, AWS resource creation, `.env` access, or runtime verification was performed.
+
+## [2026-07-01] task | TASK-115 section 3 service access
+Recorded TASK-115 section 3 service-access status. Safe local checks passed for AWS CLI availability, default region `us-east-1`, and current default STS identity resolution; no named AWS profile is configured. Bedrock model access and Textract, Comprehend, Comprehend Medical, RDS, S3, KMS, CloudTrail, DynamoDB, API Gateway, Lambda, and SNS permission/regional checks remain blocked until an approved target AWS profile, region, and live external `TextractCompletionTopicArn` are supplied. No deployment, AWS resource creation, SSM seeding, `.env` access, or runtime/E2E verification was performed.
+
+## [2026-07-01] task | TASK-116 section 1 build artifacts
+Completed TASK-116 section 1 build artifact preparation without reading `.env` and without running `sam deploy`. Built the DB package, generated Prisma client with an explicit build-only `DATABASE_URL`, built `app/db/nodejs/`, built the server, prepared `.build/handlers/`, and ran `sam build` successfully. Verified source `template.yaml` and `.aws-sam/build/template.yaml` each resolve 37 function/layer artifact paths with zero missing.
+
+## [2026-07-01] task | TASK-116 section 2 deploy blocked
+Checked production SSM parameter metadata in `us-east-1` before live SAM deployment. Created the known non-secret `/prod/demand-letter/bedrock-model-id` String parameter. Blocked before `sam deploy` because `/prod/demand-letter/db/url`, `/prod/demand-letter/db/username`, and `/prod/demand-letter/db/password` are missing and database connection credentials were not invented. Confirmed CloudFormation stack `demand-letter` does not currently exist in `us-east-1`.
+
+## [2026-07-01] task-done | TASK-116 Deploy the SAM stack to AWS
+Resolved the missing production DB SSM parameter blocker by creating `/prod/demand-letter/db/username`, `/prod/demand-letter/db/password` as SecureString, and `/prod/demand-letter/db/url`; performed an initial `sam deploy`, captured the live RDS endpoint, updated `/prod/demand-letter/db/url` to version 2 with the real endpoint, then re-ran `sam deploy` with `DbUrlSsmVersion=2`. Final CloudFormation stack `demand-letter` is `UPDATE_COMPLETE` in `us-east-1`. Captured REST API URL `https://96bdim6hv2.execute-api.us-east-1.amazonaws.com/prod`, WebSocket API URL `wss://3z0htd4e45.execute-api.us-east-1.amazonaws.com/prod`, RDS endpoint `prod-demand-letter-db.csviwg6kmv4c.us-east-1.rds.amazonaws.com`, documents bucket `prod-demand-letter-docs-429842292480`, and KMS key ARN `arn:aws:kms:us-east-1:429842292480:key/e94ded9d-ef84-461b-bc85-0558674b1e67`. Smoke checks confirmed Lambda stack resources are `UPDATE_COMPLETE`, a representative Lambda is `Active`/`Successful`, REST `/jobs` routes exist, and WebSocket routes `$connect`, `$disconnect`, and `message` exist. TASK-116 status set to done and ROADMAP-010 Phase 3 API deployment checkbox marked complete.
+
+## [2026-07-01] task | TASK-117 migration preparation blocked on private RDS reachability
+Started TASK-117 via tackle. Fetched `/prod/demand-letter/db/url` from SSM into process memory without reading `.env` or printing secrets. Confirmed RDS `prod-demand-letter-db` is `available` but private-only; local `psql` reachability probe timed out against private IP `172.31.113.67`, and no SSM-managed EC2 instance or ECS cluster currently exists as an in-VPC migration runner. Reviewed `20260624192824_add_jobs_output_column/migration.sql`: nullable `jobs.output` is low risk, but the `files` column rename-style migration drops `name`/`type` and adds required `fileName`/`mimeType`/`role` without defaults, so it is only safe if the target DB has no existing `files` rows. TASK-117 marked in-progress with the reachability checkbox blocked.
+
+## [2026-07-01] task | TASK-117 private migration runner created
+Resolved TASK-117's private RDS reachability blocker by creating temporary SSM-managed EC2 runner `i-025c4b122de7c3d66` in private subnet `subnet-05925fc8ff290a62c` with no public IP, security group `sg-0973a0b44c91ea3d0`, and instance profile `TASK-117-TemporaryMigrationRunnerProfile`. Added temporary RDS SG ingress rule `sgr-09d332deccf51a9af` allowing TCP 5432 from the runner SG to RDS SG `sg-099827798bf28a284`. SSM command `833128a6-e242-4186-8b6e-adb6b252090d` confirmed sanitized reachability to `prod-demand-letter-db.csviwg6kmv4c.us-east-1.rds.amazonaws.com:5432` without printing secrets and without applying migrations. The runner remains running for the migration step and must be cleaned up after TASK-117.
+
+## [2026-07-01] task | TASK-117 migration runner replaced
+The first TASK-117 runner `i-025c4b122de7c3d66` stopped accepting SSM commands after setup attempts left new commands stuck `Pending`; it was terminated. Launched replacement private SSM runner `i-073e8cd7b50fc473a` using the same temporary security group `sg-0973a0b44c91ea3d0` and instance profile. Verified SSM command execution with `7d581f11-c282-4ec8-a42e-ade4a081181e` (`SSM_OK`) and verified sanitized RDS TCP reachability with `652338d9-7812-4c74-8685-2fb6fa4bc3af` to `prod-demand-letter-db.csviwg6kmv4c.us-east-1.rds.amazonaws.com:5432` without printing secrets. Use `i-073e8cd7b50fc473a` for the next migration attempt and cleanup it after TASK-117.
+
+## [2026-07-01] task-done | TASK-117 Run Prisma migrations against RDS
+Applied live Prisma migrations to RDS `prod-demand-letter-db` from temporary private SSM runner `i-073e8cd7b50fc473a` without reading `.env` or printing secrets. Uploaded a minimal DB workspace bundle to the SAM CLI S3 bucket and granted the runner one-object read access. Preflight confirmed `FILES_TABLE=absent`, so the known `files` migration had no existing rows to drop. SSM command `d1f75382-f3c4-4bc3-abb6-29c52dd579ef` ran `pnpm --filter @demand-letter/db db:generate` and `pnpm --filter @demand-letter/db db:migrate` successfully. Prisma status command `728eea16-0e8c-41a6-97ec-43f81e0cf1a6` reported 16 migrations found, schema up to date, 16 `_prisma_migrations` rows, and 13 public base tables. Core table check confirmed jobs, files, templates, zones, template_slots, extracted_fields, SourceFile, Block, refinements, CollaborativeChange, job_logs, and LlmAuditLog. Cleaned up the temporary runner, RDS ingress rule, runner security group, S3 bundle, temporary IAM policies, instance profile, and role. TASK-117 status set to done and ROADMAP-010 Phase 3 migration checkbox marked complete.
+
+## [2026-07-01] task | TASK-118 frontend hosting config
+Started TASK-118 and completed the repo-side Amplify Hosting build configuration for `app/frontend` by adding root `amplify.yml`. The build spec enables corepack, runs `pnpm install --frozen-lockfile`, runs the frontend package `pnpm build`, and publishes `dist`. Static gates `pnpm --filter @demand-letter/web typecheck` and `pnpm --filter @demand-letter/web build` passed. External AWS Amplify app creation/configuration was not verified in this static-only pass.

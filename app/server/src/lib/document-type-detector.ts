@@ -10,8 +10,14 @@ export async function detectDocumentType(buffer: Buffer, filename: string): Prom
     try {
       const parser = new PDFParse({ data: new Uint8Array(buffer) });
       const result = await parser.getText();
-      // Check if PDF has text layer: if text content is non-empty, it's native
-      if (result.text && result.text.trim().length > 0) {
+      // pdf-parse v2 injects a "-- N of M --" page-divider line into result.text
+      // for every page, even when the page carries no real glyphs. Strip those
+      // markers before deciding, otherwise a genuinely scanned (image-only) PDF
+      // would be misclassified as pdf-native and skip OCR.
+      const textLayer = (result.text ?? '')
+        .replace(/--\s*\d+\s+of\s+\d+\s*--/g, '')
+        .trim();
+      if (textLayer.length > 0) {
         return 'pdf-native';
       } else {
         return 'pdf-scanned';

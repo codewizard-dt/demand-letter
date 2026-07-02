@@ -1,0 +1,21 @@
+{
+  "theme": "base",
+  "themeVariables": {
+    "background": "transparent",
+    "primaryColor": "#161b22",
+    "primaryTextColor": "#e6edf3",
+    "primaryBorderColor": "#58a6ff",
+    "lineColor": "#79c0ff",
+    "secondaryColor": "#21262d",
+    "tertiaryColor": "#0d1117",
+    "fontFamily": "Arial, sans-serif",
+    "fontSize": "22px",
+    "edgeLabelBackground": "#161b22"
+  },
+  "flowchart": {
+    "nodeSpacing": 60,
+    "rankSpacing": 70,
+    "padding": 16,
+    "useMaxWidth": false
+  }
+}
