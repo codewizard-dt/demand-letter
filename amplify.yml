@@ -1,20 +1,19 @@
 version: 1
-applications:
-  - appRoot: app/frontend
-    frontend:
-      phases:
-        preBuild:
-          commands:
-            - corepack enable
-            - pnpm install --frozen-lockfile
-        build:
-          commands:
-            - pnpm build
-      artifacts:
-        baseDirectory: dist
-        files:
-          - '**/*'
-      cache:
-        paths:
-          - ../../node_modules/.pnpm/**/*
-          - node_modules/**/*
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - corepack enable
+        - corepack prepare pnpm@9.0.0 --activate
+        - pnpm install --frozen-lockfile
+    build:
+      commands:
+        - pnpm --filter @demand-letter/web build
+  artifacts:
+    baseDirectory: app/frontend/dist
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/.pnpm/**/*
+      - app/frontend/node_modules/**/*

@@ -1,7 +1,6 @@
 # AI Usage Log — Demand Letter Generator
 
 **Author:** David Taylor (dt@davidtaylor.codes)
-**Project window:** 2026-06-22 → 2026-07-01
 **Primary tool:** Claude Code (Anthropic CLI agent) with Claude Opus / Sonnet-class models
 
 This document explains how AI was used to build this project: the workflow system, how research and architecture decisions were made (and where a human stayed in the loop), how code was generated and verified, and how every AI operation was kept traceable.
@@ -10,7 +9,7 @@ This document explains how AI was used to build this project: the workflow syste
 
 ## 1. Summary
 
-AI was used as an **agentic pair-engineer operating inside a structured, auditable workflow** — not as a free-form code generator. Every phase of the project (research → decisions → roadmaps → tasks → implementation → verification) ran through a custom skill library on top of Claude Code, and every operation was appended to an immutable log (`wiki/log.md`, 1,100+ lines). I (the human) owned all architecture decisions, acceptance gates, and anything touching live AWS resources; the AI owned research synthesis, planning artifacts, code generation, and test authoring.
+AI ran inside a structured, auditable workflow as a pair-engineer with a defined scope of work. Every phase of the project (research → decisions → roadmaps → tasks → implementation → verification) ran through a custom skill library on top of Claude Code, and every operation was appended to an immutable log (`wiki/log.md`, 1,100+ lines). I (the human) owned all architecture decisions, acceptance gates, and anything touching live AWS resources; the AI owned research synthesis, planning artifacts, code generation, and test authoring.
 
 Key numbers:
 
@@ -35,7 +34,7 @@ Key numbers:
   - **Serena** (LSP-backed semantic code navigation) — enforced via hooks so the agent navigates by symbols/references rather than raw grep, keeping edits precise in a strict-TypeScript monorepo.
   - **Playwright** — browser automation for UI verification and for the Steno.com brand audit (extracting real design tokens for the frontend style guide).
   - **Brave Search + Context7** — web research and current library documentation (docxtemplater, Prisma, AWS SDK v3, TipTap/Y.js).
-- **The product itself** uses Claude on **Amazon Bedrock** (Sonnet 4.x / Haiku 4.5) — chosen deliberately in DEC-0003#D2 so PHI never leaves the AWS account boundary. That is AI *in* the product; the rest of this document is about AI used to *build* the product.
+- **The product itself** uses Claude on **Amazon Bedrock** (Sonnet 4.x / Haiku 4.5), a choice from DEC-0003#D2 to keep PHI within the AWS account boundary. That is AI *in* the product; the rest of this document is about AI used to *build* the product.
 
 ---
 
@@ -61,13 +60,13 @@ This structure is why the AI's work is reviewable: any artifact can be traced fr
 
 ## 4. Phase-by-phase usage
 
-### 4.1 Domain research and ingestion (2026-06-22)
+### 4.1 Domain research and ingestion
 
 - `/wiki-ingest` processed the PRD and the sample demand letter (Pat Donahue v. AAA) into structured knowledge pages — a 7-section California PI demand letter model, CCP §999 time-limited demand mechanics, and entity pages for every person/organization in the sample case.
 - `/research` produced deep-dive bundles (each with a cited `sources.md`) on: demand-letter legal context, the required input contract (~40-field schema mapped to source documents), template zone-detection strategies, docx persistence substrates, Textract/HIPAA/SOC 2 compliance, and PHI detection engines.
 - **How I used it:** I directed the research questions; the AI swept sources, synthesized, and filed everything with citations into `raw/research/` so claims could be audited later. Research that later backed an architecture decision is referenced from that decision file.
 
-### 4.2 Architecture decisions — human in the loop (2026-06-22)
+### 4.2 Architecture decisions
 
 Every architecturally significant choice went through a formal decision workflow:
 
@@ -84,15 +83,15 @@ The four accepted decision groups:
 | DEC-0003 | Source-doc ingestion + PHI residency | D1: hybrid Textract→Claude (bbox-level provenance per extracted field); D2: Claude on **Bedrock** so PHI stays inside the AWS HIPAA boundary |
 | DEC-0004 | PHI/PII scrubbing engine | Comprehend Medical + Comprehend + custom redaction, inline in the Node Lambda stack |
 
-Note the pattern: the same human-in-the-loop philosophy chosen for the *product* (LLM seeds, attorney confirms, deterministic execution) is the philosophy used to *build* it.
+The same principle applied to both the product and how it was built: LLM proposes, human confirms, execution is deterministic.
 
-### 4.3 Planning — roadmaps and tasks (2026-06-22 → 2026-07-01)
+### 4.3 Planning
 
 - `/roadmap-create` produced a 7-roadmap build sequence directly linked to the accepted decisions (skeleton → template ingestion → case-record ingestion/provenance → generation engine → PHI/PII compliance → attorney refinement → collaborative editing/Word export), later followed by ROADMAP-008 (API test suite), 009 (UI/UX polish), and 010 (live AWS deployment).
 - `/task-add` decomposed roadmap phases into 118 execution-ready task files, each with concrete steps, dependencies, and acceptance criteria. `/roadmap-next` grouped tasks into parallelizable waves.
 - **How I used it:** I approved roadmap scope and sequencing before any implementation started; roadmap checkboxes were only flipped by completed, verified tasks.
 
-### 4.4 Code generation (2026-06-23 → 2026-07-01)
+### 4.4 Code generation 
 
 - `/tackle` executed one task at a time: read the task file, implement each step, run `pnpm typecheck` / lint / tests, and append a log entry describing exactly what was created or changed.
 - `/power-mode` orchestrated parallel subagent teams through a full **tackle → uat-generate → uat-auto** pipeline per roadmap item — used heavily for ROADMAP-009's 21 UI-polish items, where independent tasks ran concurrently.
@@ -100,7 +99,7 @@ Note the pattern: the same human-in-the-loop philosophy chosen for the *product*
 - Code quality gates the AI had to pass on every task: strict TypeScript (`tsc --noEmit` across all packages), type-aware ESLint (flat config), Prettier, and the existing test suite.
 - **What I did by hand / interactively:** anything the sandboxed agent could not or should not do — enabling Bedrock model entitlements, AWS console verification, confirming the deployment target account/region (logged: "User confirmed the deployment target as AWS account 429842292480 in region us-east-1"), and reviewing diffs before commits. Commits were mine; the git history's 26 commits map to reviewed milestones, not raw AI output.
 
-### 4.5 Verification — UAT, tests, and evals
+### 4.5 Verification
 
 Three independent verification layers, all AI-authored but human-gated:
 
@@ -134,6 +133,6 @@ Three independent verification layers, all AI-authored but human-gated:
 
 **What worked well:** The decision-first workflow meant the AI never architected by vibes — code generation was always downstream of a human-accepted decision backed by cited research. Fail-closed UAT prevented the classic agentic failure of self-certifying success. The append-only log made it possible to reconstruct any choice weeks later.
 
-**Where AI needed correction:** Early UAT runs marked static YAML checks as passes when they were really manual checks — the auto-judge rules were tightened to fail-closed. An env-var mismatch between a handler and the SAM template (`SOURCE_DOCS_BUCKET` vs `DOCUMENTS_BUCKET`) was caught by UAT generation, not by the original implementation pass. The eval runner initially only validated YAML schema (a TODO stub) — TASK-111 was filed to wire it to real handlers. All three corrections are visible in the log.
+**Where AI needed correction:** Early UAT runs marked static YAML checks as passes when they were really manual checks; the auto-judge rules were tightened to fail-closed. An env-var mismatch between a handler and the SAM template (`SOURCE_DOCS_BUCKET` vs `DOCUMENTS_BUCKET`) was caught by UAT generation rather than the original implementation pass. The eval runner initially only validated YAML schema (a TODO stub). TASK-111 was filed to wire it to real handlers. All three corrections are visible in the log.
 
-**Cost/energy posture:** The product's own LLM usage is fully audited (every Bedrock call writes an `LlmAuditLog` row with token counts and estimated cost, surfaced in an admin dashboard) — the same accountability standard applied to the AI that built it.
+**Cost/energy posture:** The product's own LLM usage is fully audited: every Bedrock call writes an `LlmAuditLog` row with token counts and estimated cost, surfaced in the admin dashboard.

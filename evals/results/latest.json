@@ -1,17 +1,17 @@
 {
   "summary": {
     "total": 54,
-    "passed": 36,
+    "passed": 28,
     "failed": 0,
     "errors": 0,
-    "skipped": 18,
+    "skipped": 26,
     "live_verified": 10,
     "live_passed": 10,
     "live_model": 0,
     "model_skipped": 10,
     "live_db": 0,
-    "db_skipped": 8,
-    "schema_only": 26,
+    "db_skipped": 16,
+    "schema_only": 18,
     "regressions": 0,
     "fixes": 0
   },
@@ -441,13 +441,14 @@
     {
       "case_id": "gs-038",
       "stage": "golden",
-      "status": "PASS",
-      "mode": "schema-only",
+      "status": "SKIP",
+      "mode": "live-db",
       "checks": {
         "schema_valid": "pass",
         "must_contain": "n/a",
         "must_not_contain": "n/a"
-      }
+      },
+      "failure_detail": "gated: set EVAL_LIVE_DB=1 (with local Postgres) to run against demand_letter_test"
     },
     {
       "case_id": "gs-039",
@@ -463,13 +464,14 @@
     {
       "case_id": "gs-040",
       "stage": "golden",
-      "status": "PASS",
-      "mode": "schema-only",
+      "status": "SKIP",
+      "mode": "live-db",
       "checks": {
         "schema_valid": "pass",
         "must_contain": "n/a",
         "must_not_contain": "n/a"
-      }
+      },
+      "failure_detail": "gated: set EVAL_LIVE_DB=1 (with local Postgres) to run against demand_letter_test"
     },
     {
       "case_id": "gs-041",
@@ -496,57 +498,62 @@
     {
       "case_id": "gs-043",
       "stage": "golden",
-      "status": "PASS",
-      "mode": "schema-only",
+      "status": "SKIP",
+      "mode": "live-db",
       "checks": {
         "schema_valid": "pass",
         "must_contain": "n/a",
         "must_not_contain": "n/a"
-      }
+      },
+      "failure_detail": "gated: set EVAL_LIVE_DB=1 (with local Postgres) to run against demand_letter_test"
     },
     {
       "case_id": "gs-044",
       "stage": "golden",
-      "status": "PASS",
-      "mode": "schema-only",
+      "status": "SKIP",
+      "mode": "live-db",
       "checks": {
         "schema_valid": "pass",
         "must_contain": "n/a",
         "must_not_contain": "n/a"
-      }
+      },
+      "failure_detail": "gated: set EVAL_LIVE_DB=1 (with local Postgres) to run against demand_letter_test"
     },
     {
       "case_id": "gs-045",
       "stage": "golden",
-      "status": "PASS",
-      "mode": "schema-only",
+      "status": "SKIP",
+      "mode": "live-db",
       "checks": {
         "schema_valid": "pass",
         "must_contain": "n/a",
         "must_not_contain": "n/a"
-      }
+      },
+      "failure_detail": "gated: set EVAL_LIVE_DB=1 (with local Postgres) to run against demand_letter_test"
     },
     {
       "case_id": "gs-046",
       "stage": "golden",
-      "status": "PASS",
-      "mode": "schema-only",
+      "status": "SKIP",
+      "mode": "live-db",
       "checks": {
         "schema_valid": "pass",
         "must_contain": "n/a",
         "must_not_contain": "n/a"
-      }
+      },
+      "failure_detail": "gated: set EVAL_LIVE_DB=1 (with local Postgres) to run against demand_letter_test"
     },
     {
       "case_id": "gs-047",
       "stage": "golden",
-      "status": "PASS",
-      "mode": "schema-only",
+      "status": "SKIP",
+      "mode": "live-db",
       "checks": {
         "schema_valid": "pass",
         "must_contain": "n/a",
         "must_not_contain": "n/a"
-      }
+      },
+      "failure_detail": "gated: set EVAL_LIVE_DB=1 (with local Postgres) to run against demand_letter_test"
     },
     {
       "case_id": "gs-048",
@@ -562,13 +569,14 @@
     {
       "case_id": "gs-049",
       "stage": "golden",
-      "status": "PASS",
-      "mode": "schema-only",
+      "status": "SKIP",
+      "mode": "live-db",
       "checks": {
         "schema_valid": "pass",
         "must_contain": "n/a",
         "must_not_contain": "n/a"
-      }
+      },
+      "failure_detail": "gated: set EVAL_LIVE_DB=1 (with local Postgres) to run against demand_letter_test"
     },
     {
       "case_id": "gs-050",

@@ -8,9 +8,9 @@ An AI-assisted legal document platform that extracts structured case data from m
 
 ## Description
 
-The Demand Letter Generator automates the most time-consuming parts of personal-injury demand letter drafting. Attorneys upload case documents (medical records, accident reports, bills), and the platform extracts ~40 structured fields — each with Textract block-level provenance — using a hybrid OCR + LLM pipeline. A template engine then fills a pre-approved DOCX template and delivers a fully formatted letter that the attorney can review and refine in a rich-text editor.
+The Demand Letter Generator automates the most time-consuming parts of personal-injury demand letter drafting. Attorneys upload case documents (medical records, accident reports, bills), and the platform extracts ~40 structured fields (each with Textract block-level provenance) using a hybrid OCR + LLM pipeline. A template engine then fills a pre-approved DOCX template and delivers a fully formatted letter that the attorney can review and refine in a rich-text editor.
 
-PHI and PII handling is a first-class concern: every document processed through the system is scrubbed via AWS Comprehend Medical + Comprehend before any data leaves the pipeline. The product deliberately runs Claude on Amazon Bedrock so protected health information never leaves the AWS HIPAA boundary.
+PHI and PII scrubbing runs on every document before data leaves the pipeline, using AWS Comprehend Medical + Comprehend. The product deliberately runs Claude on Amazon Bedrock so protected health information never leaves the AWS HIPAA boundary.
 
 The target users are personal-injury law firms handling high-volume cases who want to accelerate the demand-letter authoring cycle without sacrificing the accuracy or tone control that malpractice risk requires. The attorney remains in the loop at every meaningful gate: zone classification is LLM-seeded but attorney-confirmed, and generated letter sections can be refined in a tracked-changes-style editor with accept/reject semantics.
 
@@ -164,9 +164,9 @@ sequenceDiagram
 
 ### Design Decisions
 
-- Zone labels are LLM-seeded but persisted as deterministic OOXML delimiter markup after attorney confirmation — boilerplate must never be paraphrased because silent rephrasing is malpractice-grade failure. ([DEC-0001](wiki/work/decisions/DEC-0001.md))
-- Claude runs on Amazon Bedrock (not the public API) so PHI never leaves the AWS HIPAA account boundary. ([DEC-0003](wiki/work/decisions/DEC-0003.md#D2))
-- docxtemplater fills delimiter-tagged DOCX slots with a fail-closed `nullGetter` — missing fields halt generation rather than producing a letter with blank sections. ([DEC-0002](wiki/work/decisions/DEC-0002.md))
+- Zone labels are LLM-seeded but persisted as deterministic OOXML delimiter markup after attorney confirmation. Boilerplate must not be paraphrased; silent rephrasing is a malpractice-grade failure. ([DEC-0001](wiki/work/decisions/DEC-0001.md))
+- Claude runs on Amazon Bedrock so PHI stays within the AWS HIPAA account boundary. ([DEC-0003](wiki/work/decisions/DEC-0003.md#D2))
+- docxtemplater fills delimiter-tagged DOCX slots with a fail-closed `nullGetter`. Missing fields halt generation rather than producing a letter with blank sections. ([DEC-0002](wiki/work/decisions/DEC-0002.md))
 - PHI scrubbing uses Comprehend Medical + Comprehend in tandem (merged offset map) so both clinical entities and general PII (names, SSNs) are caught before text reaches the LLM. ([DEC-0004](wiki/work/decisions/DEC-0004.md))
 - Every Bedrock call writes an `LlmAuditLog` row (token counts, model, estimated cost) so AI spend is attributable per job, surfaced in the admin dashboard.
 - Field extraction cites Textract block IDs as provenance on every extracted value, enabling human verification of "where did the AI get this?"
@@ -220,23 +220,23 @@ sequenceDiagram
 
 ## Use Cases
 
-- **High-volume PI law firms** — attorneys who process dozens of demand letters per month and need to eliminate the hours-long manual data-extraction step while retaining full control over the final document.
-- **HIPAA-compliant document automation** — any legal or medical-adjacent workflow that requires LLM assistance on PHI-containing documents and cannot use a third-party API that stores data outside a BAA boundary.
-- **Template-driven legal document generation** — firms with established letter templates that need structured data injected at defined zones without altering boilerplate language.
-- **Collaborative legal document review** — multi-attorney teams who need real-time co-editing of AI-generated drafts with tracked-changes-style accept/reject refinement.
+- **High-volume PI law firms**: attorneys who process dozens of demand letters per month and need to eliminate the hours-long manual data-extraction step while retaining full control over the final document.
+- **HIPAA-compliant document automation**: any legal or medical-adjacent workflow that requires LLM assistance on PHI-containing documents and cannot use a third-party API that stores data outside a BAA boundary.
+- **Template-driven legal document generation**: firms with established letter templates that need structured data injected at defined zones without altering boilerplate language.
+- **Collaborative legal document review**: multi-attorney teams who need real-time co-editing of AI-generated drafts with tracked-changes-style accept/reject refinement.
 
 ## Skills Demonstrated
 
-- **Serverless Architecture Design (AWS SAM / Lambda / API Gateway)** — designed and deployed a fleet of ~20 Lambda functions behind REST and WebSocket API Gateway endpoints, with VPC-isolated RDS access and SNS-triggered async processing.
-- **AI/LLM Integration (Amazon Bedrock, Claude)** — integrated Claude Sonnet and Haiku via Bedrock streaming for zone classification, medical narrative generation, and proofreading; implemented token-cost audit logging per invocation.
-- **PHI/PII Compliance Engineering (HIPAA, AWS Comprehend)** — built a fail-closed PHI scrubbing pipeline using Comprehend Medical + Comprehend with offset-merged entity maps and compliance smoke tests.
-- **Document Processing Pipeline (Textract, docxtemplater, OOXML)** — implemented hybrid OCR-to-LLM extraction with Textract block-level provenance citations and DOCX template filling with fail-closed null guards.
-- **Real-Time Collaborative Editing (Yjs, CRDTs, WebSocket)** — wired Y.js CRDT document sync over API Gateway WebSocket with DynamoDB connection registry and a custom TipTap ProseMirror plugin for read-only zone enforcement.
-- **Database Schema Design (Prisma ORM + PostgreSQL)** — designed a normalized schema tracking jobs, extracted case fields with provenance, zone metadata, and LLM audit logs; managed via Prisma Migrate.
-- **Infrastructure as Code (AWS SAM / CloudFormation)** — authored a full SAM template covering RDS, S3 (KMS-encrypted), VPC networking (private subnets, security groups), Lambda layers, and SSM-resolved secrets.
-- **TypeScript Monorepo Architecture (pnpm workspaces)** — structured a strict-TypeScript monorepo with shared `@demand-letter/db` package, type-aware ESLint flat config, and cross-package typecheck/lint CI.
-- **Test-Driven API Development (Vitest, aws-sdk-client-mock)** — built a three-layer test strategy: 137 unit tests (AWS + Prisma mocked), 4 real-service integration tests, and 54-case LLM golden-set evals with regression tracking.
-- **Agentic AI-Assisted Development Workflow** — used Claude Code with a custom skill library (research → decision → roadmap → task → UAT pipeline) to build 118 tasks across 10 roadmaps with an append-only audit log; maintained human-in-the-loop gates at every architecture decision.
+- **Serverless Architecture Design (AWS SAM / Lambda / API Gateway)**: designed and deployed a fleet of ~20 Lambda functions behind REST and WebSocket API Gateway endpoints, with VPC-isolated RDS access and SNS-triggered async processing.
+- **AI/LLM Integration (Amazon Bedrock, Claude)**: integrated Claude Sonnet and Haiku via Bedrock streaming for zone classification, medical narrative generation, and proofreading; implemented token-cost audit logging per invocation.
+- **PHI/PII Compliance Engineering (HIPAA, AWS Comprehend)**: built a fail-closed PHI scrubbing pipeline using Comprehend Medical + Comprehend with offset-merged entity maps and compliance smoke tests.
+- **Document Processing Pipeline (Textract, docxtemplater, OOXML)**: implemented hybrid OCR-to-LLM extraction with Textract block-level provenance citations and DOCX template filling with fail-closed null guards.
+- **Real-Time Collaborative Editing (Yjs, CRDTs, WebSocket)**: wired Y.js CRDT document sync over API Gateway WebSocket with DynamoDB connection registry and a custom TipTap ProseMirror plugin for read-only zone enforcement.
+- **Database Schema Design (Prisma ORM + PostgreSQL)**: designed a normalized schema tracking jobs, extracted case fields with provenance, zone metadata, and LLM audit logs; managed via Prisma Migrate.
+- **Infrastructure as Code (AWS SAM / CloudFormation)**: authored a full SAM template covering RDS, S3 (KMS-encrypted), VPC networking (private subnets, security groups), Lambda layers, and SSM-resolved secrets.
+- **TypeScript Monorepo Architecture (pnpm workspaces)**: structured a strict-TypeScript monorepo with shared `@demand-letter/db` package, type-aware ESLint flat config, and cross-package typecheck/lint CI.
+- **Test-Driven API Development (Vitest, aws-sdk-client-mock)**: built a three-layer test strategy: 137 unit tests (AWS + Prisma mocked), 4 real-service integration tests, and 54-case LLM golden-set evals with regression tracking.
+- **Structured AI-Assisted Development**: used Claude Code with a custom skill library (research → decision → roadmap → task → UAT pipeline) to build 118 tasks across 10 roadmaps with an append-only audit log; maintained human-in-the-loop gates at every architecture decision.
 
 ## Deployment
 
@@ -385,8 +385,8 @@ pnpm evals
 ### Troubleshooting
 
 - **`sam local start-api` can't reach Postgres** — Lambda containers use the Docker service hostname `postgres`, not `localhost`. Check `env.json` has `DATABASE_URL=postgresql://postgres@postgres/demand_letter_dev` (not the host-mapped port URL).
-- **Bedrock `AccessDeniedException`** — the Bedrock model entitlement for `claude-sonnet-4-5` or `claude-haiku-4-5` is not enabled in this region. Go to the Bedrock console → Model access → enable both models.
-- **Textract jobs stuck in `EXTRACTING` status** — the SNS completion topic ARN in the SAM parameters doesn't match the deployed SNS topic, or the Lambda's SNS subscription was not created. Check the `TextractCompletionTopicArn` parameter and the SNS → Subscriptions console.
-- **`sam deploy` fails on `DbUrlSsmVersion` resolve** — the SSM parameter `/{Stage}/demand-letter/db/url` doesn't exist yet. Run `scripts/setup-ssm.sh` first.
-- **Prisma migration fails on deploy** — the `DATABASE_URL` used for `migrate:deploy` doesn't have `CREATE TABLE` / `ALTER TABLE` privileges. Use the RDS master user for migration runs, not the app user.
+- **Bedrock `AccessDeniedException`**: the Bedrock model entitlement for `claude-sonnet-4-5` or `claude-haiku-4-5` is not enabled in this region. Go to the Bedrock console → Model access → enable both models.
+- **Textract jobs stuck in `EXTRACTING` status**: the SNS completion topic ARN in the SAM parameters doesn't match the deployed SNS topic, or the Lambda's SNS subscription was not created. Check the `TextractCompletionTopicArn` parameter and the SNS → Subscriptions console.
+- **`sam deploy` fails on `DbUrlSsmVersion` resolve**: the SSM parameter `/{Stage}/demand-letter/db/url` doesn't exist yet. Run `scripts/setup-ssm.sh` first.
+- **Prisma migration fails on deploy**: the `DATABASE_URL` used for `migrate:deploy` doesn't have `CREATE TABLE` / `ALTER TABLE` privileges. Use the RDS master user for migration runs, not the app user.
 - **Frontend shows stale data after deploy** — TanStack Query caches API responses; hard-refresh (`Ctrl+Shift+R`) or invalidate the cache from the query devtools.

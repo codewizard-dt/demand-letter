@@ -1,130 +1,140 @@
 {
   "summary": {
     "total": 54,
-    "passed": 54,
+    "passed": 28,
     "failed": 0,
     "errors": 0,
-    "skipped": 0,
-    "live_verified": 28,
-    "live_passed": 28,
-    "live_model": 10,
-    "model_skipped": 0,
-    "live_db": 8,
-    "db_skipped": 0,
-    "schema_only": 26,
+    "skipped": 26,
+    "live_verified": 10,
+    "live_passed": 10,
+    "live_model": 0,
+    "model_skipped": 10,
+    "live_db": 0,
+    "db_skipped": 16,
+    "schema_only": 18,
     "regressions": 0,
-    "fixes": 10
+    "fixes": 0
   },
   "cases": [
     {
       "case_id": "gs-001",
       "stage": "golden",
-      "status": "PASS",
+      "status": "SKIP",
       "mode": "live-model",
       "checks": {
         "schema_valid": "pass",
-        "must_contain": "pass",
-        "must_not_contain": "pass"
-      }
+        "must_contain": "n/a",
+        "must_not_contain": "n/a"
+      },
+      "failure_detail": "gated: set EVAL_LIVE_MODEL=1 (with AWS creds) to run real Bedrock"
     },
     {
       "case_id": "gs-002",
       "stage": "golden",
-      "status": "PASS",
+      "status": "SKIP",
       "mode": "live-model",
       "checks": {
         "schema_valid": "pass",
-        "must_contain": "pass",
-        "must_not_contain": "pass"
-      }
+        "must_contain": "n/a",
+        "must_not_contain": "n/a"
+      },
+      "failure_detail": "gated: set EVAL_LIVE_MODEL=1 (with AWS creds) to run real Bedrock"
     },
     {
       "case_id": "gs-003",
       "stage": "golden",
-      "status": "PASS",
+      "status": "SKIP",
       "mode": "live-model",
       "checks": {
         "schema_valid": "pass",
-        "must_contain": "pass",
-        "must_not_contain": "pass"
-      }
+        "must_contain": "n/a",
+        "must_not_contain": "n/a"
+      },
+      "failure_detail": "gated: set EVAL_LIVE_MODEL=1 (with AWS creds) to run real Bedrock"
     },
     {
       "case_id": "gs-004",
       "stage": "golden",
-      "status": "PASS",
+      "status": "SKIP",
       "mode": "live-model",
       "checks": {
         "schema_valid": "pass",
-        "must_contain": "pass",
-        "must_not_contain": "pass"
-      }
+        "must_contain": "n/a",
+        "must_not_contain": "n/a"
+      },
+      "failure_detail": "gated: set EVAL_LIVE_MODEL=1 (with AWS creds) to run real Bedrock"
     },
     {
       "case_id": "gs-005",
       "stage": "golden",
-      "status": "PASS",
+      "status": "SKIP",
       "mode": "live-model",
       "checks": {
         "schema_valid": "pass",
-        "must_contain": "pass",
-        "must_not_contain": "pass"
-      }
+        "must_contain": "n/a",
+        "must_not_contain": "n/a"
+      },
+      "failure_detail": "gated: set EVAL_LIVE_MODEL=1 (with AWS creds) to run real Bedrock"
     },
     {
       "case_id": "gs-006",
       "stage": "golden",
-      "status": "PASS",
+      "status": "SKIP",
       "mode": "live-model",
       "checks": {
         "schema_valid": "pass",
-        "must_contain": "pass",
-        "must_not_contain": "pass"
-      }
+        "must_contain": "n/a",
+        "must_not_contain": "n/a"
+      },
+      "failure_detail": "gated: set EVAL_LIVE_MODEL=1 (with AWS creds) to run real Bedrock"
     },
     {
       "case_id": "gs-007",
       "stage": "golden",
-      "status": "PASS",
+      "status": "SKIP",
       "mode": "live-model",
       "checks": {
         "schema_valid": "pass",
-        "must_contain": "pass",
-        "must_not_contain": "pass"
-      }
+        "must_contain": "n/a",
+        "must_not_contain": "n/a"
+      },
+      "failure_detail": "gated: set EVAL_LIVE_MODEL=1 (with AWS creds) to run real Bedrock"
     },
     {
       "case_id": "gs-008",
       "stage": "golden",
-      "status": "PASS",
+      "status": "SKIP",
       "mode": "live-model",
       "checks": {
         "schema_valid": "pass",
-        "must_contain": "pass",
-        "must_not_contain": "pass"
-      }
+        "must_contain": "n/a",
+        "must_not_contain": "n/a"
+      },
+      "failure_detail": "gated: set EVAL_LIVE_MODEL=1 (with AWS creds) to run real Bedrock"
     },
     {
       "case_id": "gs-009",
       "stage": "golden",
-      "status": "PASS",
+      "status": "SKIP",
       "mode": "live-model",
       "checks": {
         "schema_valid": "pass",
-        "must_contain": "pass",
-        "must_not_contain": "pass"
-      }
+        "must_contain": "n/a",
+        "must_not_contain": "n/a"
+      },
+      "failure_detail": "gated: set EVAL_LIVE_MODEL=1 (with AWS creds) to run real Bedrock"
     },
     {
       "case_id": "gs-010",
       "stage": "golden",
-      "status": "PASS",
+      "status": "SKIP",
       "mode": "live-model",
       "checks": {
         "schema_valid": "pass",
-        "must_contain": "pass",
-        "must_not_contain": "pass"
-      }
+        "must_contain": "n/a",
+        "must_not_contain": "n/a"
+      },
+      "failure_detail": "gated: set EVAL_LIVE_MODEL=1 (with AWS creds) to run real Bedrock"
     },
     {
       "case_id": "gs-011",
@@ -206,35 +216,38 @@
     {
       "case_id": "gs-018",
       "stage": "golden",
-      "status": "PASS",
+      "status": "SKIP",
       "mode": "live-db",
       "checks": {
         "schema_valid": "pass",
-        "must_contain": "pass",
-        "must_not_contain": "pass"
-      }
+        "must_contain": "n/a",
+        "must_not_contain": "n/a"
+      },
+      "failure_detail": "gated: set EVAL_LIVE_DB=1 (with local Postgres) to run against demand_letter_test"
     },
     {
       "case_id": "gs-019",
       "stage": "golden",
-      "status": "PASS",
+      "status": "SKIP",
       "mode": "live-db",
       "checks": {
         "schema_valid": "pass",
-        "must_contain": "pass",
-        "must_not_contain": "pass"
-      }
+        "must_contain": "n/a",
+        "must_not_contain": "n/a"
+      },
+      "failure_detail": "gated: set EVAL_LIVE_DB=1 (with local Postgres) to run against demand_letter_test"
     },
     {
       "case_id": "gs-020",
       "stage": "golden",
-      "status": "PASS",
+      "status": "SKIP",
       "mode": "live-db",
       "checks": {
         "schema_valid": "pass",
-        "must_contain": "pass",
-        "must_not_contain": "pass"
-      }
+        "must_contain": "n/a",
+        "must_not_contain": "n/a"
+      },
+      "failure_detail": "gated: set EVAL_LIVE_DB=1 (with local Postgres) to run against demand_letter_test"
     },
     {
       "case_id": "gs-021",
@@ -261,13 +274,14 @@
     {
       "case_id": "gs-023",
       "stage": "golden",
-      "status": "PASS",
+      "status": "SKIP",
       "mode": "live-db",
       "checks": {
         "schema_valid": "pass",
-        "must_contain": "pass",
-        "must_not_contain": "pass"
-      }
+        "must_contain": "n/a",
+        "must_not_contain": "n/a"
+      },
+      "failure_detail": "gated: set EVAL_LIVE_DB=1 (with local Postgres) to run against demand_letter_test"
     },
     {
       "case_id": "gs-024",
@@ -283,13 +297,14 @@
     {
       "case_id": "gs-025",
       "stage": "golden",
-      "status": "PASS",
+      "status": "SKIP",
       "mode": "live-db",
       "checks": {
         "schema_valid": "pass",
-        "must_contain": "pass",
-        "must_not_contain": "pass"
-      }
+        "must_contain": "n/a",
+        "must_not_contain": "n/a"
+      },
+      "failure_detail": "gated: set EVAL_LIVE_DB=1 (with local Postgres) to run against demand_letter_test"
     },
     {
       "case_id": "gs-026",
@@ -426,13 +441,14 @@
     {
       "case_id": "gs-038",
       "stage": "golden",
-      "status": "PASS",
-      "mode": "schema-only",
+      "status": "SKIP",
+      "mode": "live-db",
       "checks": {
         "schema_valid": "pass",
         "must_contain": "n/a",
         "must_not_contain": "n/a"
-      }
+      },
+      "failure_detail": "gated: set EVAL_LIVE_DB=1 (with local Postgres) to run against demand_letter_test"
     },
     {
       "case_id": "gs-039",
@@ -448,13 +464,14 @@
     {
       "case_id": "gs-040",
       "stage": "golden",
-      "status": "PASS",
-      "mode": "schema-only",
+      "status": "SKIP",
+      "mode": "live-db",
       "checks": {
         "schema_valid": "pass",
         "must_contain": "n/a",
         "must_not_contain": "n/a"
-      }
+      },
+      "failure_detail": "gated: set EVAL_LIVE_DB=1 (with local Postgres) to run against demand_letter_test"
     },
     {
       "case_id": "gs-041",
@@ -481,57 +498,62 @@
     {
       "case_id": "gs-043",
       "stage": "golden",
-      "status": "PASS",
-      "mode": "schema-only",
+      "status": "SKIP",
+      "mode": "live-db",
       "checks": {
         "schema_valid": "pass",
         "must_contain": "n/a",
         "must_not_contain": "n/a"
-      }
+      },
+      "failure_detail": "gated: set EVAL_LIVE_DB=1 (with local Postgres) to run against demand_letter_test"
     },
     {
       "case_id": "gs-044",
       "stage": "golden",
-      "status": "PASS",
-      "mode": "schema-only",
+      "status": "SKIP",
+      "mode": "live-db",
       "checks": {
         "schema_valid": "pass",
         "must_contain": "n/a",
         "must_not_contain": "n/a"
-      }
+      },
+      "failure_detail": "gated: set EVAL_LIVE_DB=1 (with local Postgres) to run against demand_letter_test"
     },
     {
       "case_id": "gs-045",
       "stage": "golden",
-      "status": "PASS",
-      "mode": "schema-only",
+      "status": "SKIP",
+      "mode": "live-db",
       "checks": {
         "schema_valid": "pass",
         "must_contain": "n/a",
         "must_not_contain": "n/a"
-      }
+      },
+      "failure_detail": "gated: set EVAL_LIVE_DB=1 (with local Postgres) to run against demand_letter_test"
     },
     {
       "case_id": "gs-046",
       "stage": "golden",
-      "status": "PASS",
-      "mode": "schema-only",
+      "status": "SKIP",
+      "mode": "live-db",
       "checks": {
         "schema_valid": "pass",
         "must_contain": "n/a",
         "must_not_contain": "n/a"
-      }
+      },
+      "failure_detail": "gated: set EVAL_LIVE_DB=1 (with local Postgres) to run against demand_letter_test"
     },
     {
       "case_id": "gs-047",
       "stage": "golden",
-      "status": "PASS",
-      "mode": "schema-only",
+      "status": "SKIP",
+      "mode": "live-db",
       "checks": {
         "schema_valid": "pass",
         "must_contain": "n/a",
         "must_not_contain": "n/a"
-      }
+      },
+      "failure_detail": "gated: set EVAL_LIVE_DB=1 (with local Postgres) to run against demand_letter_test"
     },
     {
       "case_id": "gs-048",
@@ -547,13 +569,14 @@
     {
       "case_id": "gs-049",
       "stage": "golden",
-      "status": "PASS",
-      "mode": "schema-only",
+      "status": "SKIP",
+      "mode": "live-db",
       "checks": {
         "schema_valid": "pass",
         "must_contain": "n/a",
         "must_not_contain": "n/a"
-      }
+      },
+      "failure_detail": "gated: set EVAL_LIVE_DB=1 (with local Postgres) to run against demand_letter_test"
     },
     {
       "case_id": "gs-050",
@@ -569,35 +592,38 @@
     {
       "case_id": "gs-051",
       "stage": "golden",
-      "status": "PASS",
+      "status": "SKIP",
       "mode": "live-db",
       "checks": {
         "schema_valid": "pass",
-        "must_contain": "pass",
-        "must_not_contain": "pass"
-      }
+        "must_contain": "n/a",
+        "must_not_contain": "n/a"
+      },
+      "failure_detail": "gated: set EVAL_LIVE_DB=1 (with local Postgres) to run against demand_letter_test"
     },
     {
       "case_id": "gs-052",
       "stage": "golden",
-      "status": "PASS",
+      "status": "SKIP",
       "mode": "live-db",
       "checks": {
         "schema_valid": "pass",
-        "must_contain": "pass",
-        "must_not_contain": "pass"
-      }
+        "must_contain": "n/a",
+        "must_not_contain": "n/a"
+      },
+      "failure_detail": "gated: set EVAL_LIVE_DB=1 (with local Postgres) to run against demand_letter_test"
     },
     {
       "case_id": "gs-053",
       "stage": "golden",
-      "status": "PASS",
+      "status": "SKIP",
       "mode": "live-db",
       "checks": {
         "schema_valid": "pass",
-        "must_contain": "pass",
-        "must_not_contain": "pass"
-      }
+        "must_contain": "n/a",
+        "must_not_contain": "n/a"
+      },
+      "failure_detail": "gated: set EVAL_LIVE_DB=1 (with local Postgres) to run against demand_letter_test"
     },
     {
       "case_id": "gs-054",

@@ -37,12 +37,25 @@ When gated off (the default), these report `SKIP`; `classifyZones` and its
 `@demand-letter/db` import are loaded lazily, so the default run never touches
 Prisma or AWS.
 
-**Live-DB/handler tier — real Postgres, gated (8):** gs-018, gs-019, gs-020
-(`computeGapReport`), gs-023, gs-025 (`buildDataObject`), gs-051, gs-052
-(`post-jobs-save-values` handler), gs-053 (`get-jobs-gap-report` handler). Each
-seeds the dedicated `demand_letter_test` database, invokes the real Prisma
-function or Lambda handler, asserts on the response and/or the resulting rows,
-then cleans up (job delete cascades). **Gated behind `EVAL_LIVE_DB`.** Run with:
+**Live-DB/handler tier — real Postgres, gated (16):**
+- `computeGapReport`: gs-018, gs-019, gs-020
+- `buildDataObject`: gs-023, gs-025
+- `post-jobs-save-values`: gs-051, gs-052
+- `get-jobs-gap-report` (404): gs-053
+- `post-jobs-refine` (400 missing_instruction): gs-038
+- `patch-jobs-refine-reject`: gs-040
+- `get-jobs-export-docx` (422): gs-043
+- `post-jobs-generate` (400 sufficiency_precheck_failed): gs-044
+- `get-admin-llm-costs`: gs-045
+- `get-jobs-refinements`: gs-046
+- `delete-jobs-changes` (403): gs-047
+- `get-jobs-changes`: gs-049
+
+Each seeds the dedicated `demand_letter_test` database, invokes the real Prisma
+function or Lambda handler, asserts on the response and/or the resulting rows
+(handler cases read rows back — e.g. `confidence`/`source` live in the row, not
+the response), then cleans up (job delete cascades). **Gated behind
+`EVAL_LIVE_DB`.** Run with:
 
 ```bash
 set -a; . ./.env; set +a           # provides DATABASE_URL (dev)
@@ -52,18 +65,23 @@ EVAL_LIVE_DB=1 pnpm evals           # runner forces DATABASE_URL onto demand_let
 **SAFETY:** when `EVAL_LIVE_DB` is on, the runner rewrites `DATABASE_URL` to the
 `*_test` database (name-swapped, or `DATABASE_URL_TEST` if set) **before Prisma
 loads**, and **refuses to start if the resolved database name does not contain
-`test`** — so it can never write to dev or prod. Prerequisite: local Postgres
-running; the integration harness (`vitest.config.integration.ts`) creates and
-migrates `demand_letter_test`. Never point this tier at a production database.
+`test`** — so it can never write to dev or prod. This redirect also applies when
+the **live-model** tier runs, because `invokeModel()` writes a fire-and-forget
+`LlmAuditLog` row per call; forcing the test DB keeps that telemetry off dev/prod
+(the write is best-effort and `.catch()`ed, so the model tier still works if the
+test DB is absent). Prerequisite: local Postgres running; the integration harness
+(`vitest.config.integration.ts`) creates and migrates `demand_letter_test`. Never
+point this tier at a production database.
 
-**Still schema-only (26):** live-model-with-DB (`runGroundedExtraction`,
-gs-021/022), the remaining HTTP handler cases (refine, changes, export, admin
-costs, templates-inject, blocks), the docx-buffer functions (`injectDelimiters`,
-`enumerateSlots`, `renderTemplate`), and the docx-object builders
-(`textRunFromNode`, `headingNodeToDocx` — whose real `docx` return values don't
-serialize to the asserted plain-object shape). gs-024 also stays schema-only: its
-`must_contain` (`"key absent"`, `"omitted from result"`) is prose, not real
-`buildDataObject` output, so it needs reworking before it can run live.
+**Still schema-only (18):** live-model-with-DB (`runGroundedExtraction`,
+gs-021/022), the S3/Bedrock-dependent handlers (`patch-jobs-refine-accept` gs-039,
+`post-jobs-refine` scope gs-050, `post-jobs-templates-inject` gs-054), the
+redaction-by-role blocks cases (gs-031/032), the docx-buffer functions
+(`injectDelimiters`, `enumerateSlots`, `renderTemplate` — gs-011–015, 026), and
+the docx-object builders (`textRunFromNode`, `headingNodeToDocx` — gs-041/042/048,
+whose real `docx` return values don't serialize to the asserted plain-object
+shape). gs-024 and gs-027 also stay schema-only: their assertions are prose, not
+real output, so they need reworking before they can run live.
 
 The runner exits non-zero only on real failures/regressions. Gate: 🟢 GREEN = all
 executed and passing; 🟡 YELLOW = nothing failing but some cases skipped/schema-only;

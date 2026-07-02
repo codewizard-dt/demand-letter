@@ -186,12 +186,18 @@ function resolveTestDbUrl(): string {
   return dev.replace(/\/([^/?#]+)(\?.*)?$/, '/demand_letter_test$2');
 }
 
-if (LIVE_DB) {
+// Force Prisma onto the test DB whenever ANY live tier runs. The DB tier needs it
+// for its own queries; the MODEL tier needs it too because invokeModel() writes a
+// fire-and-forget LlmAuditLog row per call — without this it would pollute whatever
+// DATABASE_URL points at (e.g. the dev DB). Redirecting to *_test keeps every
+// incidental write off dev/prod. (LlmAuditLog writes are best-effort and .catch()ed,
+// so the model tier still works if the test DB is absent.)
+if (LIVE_DB || (LIVE_MODEL && process.env.DATABASE_URL)) {
   const testUrl = resolveTestDbUrl();
   const dbName = new URL(testUrl).pathname;
   if (!/test/i.test(dbName)) {
     throw new Error(
-      `Refusing to run DB evals against a non-test database (${dbName}). ` +
+      `Refusing to run live evals against a non-test database (${dbName}). ` +
       `Point DATABASE_URL_TEST at a *_test database.`,
     );
   }
@@ -329,6 +335,124 @@ const DB_ADAPTERS: Record<string, () => Promise<string>> = {
     // Job exists but has no Template → handler returns 404 template_not_ready
     const job = await p.job.create({ data: {} });
     try {
+      const res = (await handler({ pathParameters: { id: job.id }, headers: {} } as LambdaEvent, lambdaCtx, noop)) as LambdaResult;
+      return JSON.stringify({ statusCode: res.statusCode, body: JSON.parse(res.body ?? '{}') }, null, 2);
+    } finally {
+      await p.job.delete({ where: { id: job.id } }).catch(() => {});
+    }
+  },
+
+  // post-jobs-refine — 400 missing_instruction (validation before job lookup / model)
+  'gs-038': async () => {
+    const p = await db();
+    const { handler } = await import('../app/server/src/handlers/post-jobs-refine');
+    const job = await p.job.create({ data: {} });
+    try {
+      const res = (await handler({ pathParameters: { id: job.id }, headers: {}, requestContext: { requestId: 'eval' }, body: JSON.stringify({}) } as LambdaEvent, lambdaCtx, noop)) as LambdaResult;
+      return JSON.stringify({ statusCode: res.statusCode, body: JSON.parse(res.body ?? '{}') }, null, 2);
+    } finally {
+      await p.job.delete({ where: { id: job.id } }).catch(() => {});
+    }
+  },
+
+  // patch-jobs-refine-reject — marks accepted=false, does NOT touch job.output
+  'gs-040': async () => {
+    const p = await db();
+    const { handler } = await import('../app/server/src/handlers/patch-jobs-refine-reject');
+    const job = await p.job.create({ data: { output: 'original letter text' } });
+    try {
+      const ref = await p.refinement.create({ data: { jobId: job.id, instruction: 'tighten', scope: 'all', beforeText: 'original letter text', afterText: 'revised letter text', accepted: false } });
+      const res = (await handler({ pathParameters: { id: job.id, refinement_id: ref.id }, headers: {} } as LambdaEvent, lambdaCtx, noop)) as LambdaResult;
+      const updated = await p.job.findUnique({ where: { id: job.id }, select: { output: true } });
+      const updatedRef = await p.refinement.findUnique({ where: { id: ref.id }, select: { accepted: true } });
+      return JSON.stringify({ statusCode: res.statusCode, response: JSON.parse(res.body ?? '{}'), job: { output: updated?.output }, refinementAccepted: updatedRef?.accepted }, null, 2);
+    } finally {
+      await p.job.delete({ where: { id: job.id } }).catch(() => {});
+    }
+  },
+
+  // get-jobs-export-docx — 422 output_not_ready when job has no output
+  'gs-043': async () => {
+    const p = await db();
+    const { handler } = await import('../app/server/src/handlers/get-jobs-export-docx');
+    const job = await p.job.create({ data: {} }); // output is null
+    try {
+      const res = (await handler({ pathParameters: { id: job.id }, headers: {} } as LambdaEvent, lambdaCtx, noop)) as LambdaResult;
+      return JSON.stringify({ statusCode: res.statusCode, body: JSON.parse(res.body ?? '{}') }, null, 2);
+    } finally {
+      await p.job.delete({ where: { id: job.id } }).catch(() => {});
+    }
+  },
+
+  // post-jobs-generate — 400 sufficiency_precheck_failed (fires before S3/model)
+  'gs-044': async () => {
+    const p = await db();
+    const { handler } = await import('../app/server/src/handlers/post-jobs-generate');
+    const job = await p.job.create({ data: {} });
+    try {
+      await p.file.create({ data: { jobId: job.id, s3Key: 'seed', mimeType: DOCX_MIME, role: 'template', fileName: 'template.docx' } });
+      const tpl = await p.template.create({ data: { jobId: job.id, s3KeyOriginal: 'seed' } });
+      await p.templateSlot.create({ data: { templateId: tpl.id, slotName: 'date_of_loss' } }); // no covering field → gap
+      const res = (await handler({ pathParameters: { id: job.id }, headers: {}, requestContext: { requestId: 'eval' } } as LambdaEvent, lambdaCtx, noop)) as LambdaResult;
+      const after = await p.job.findUnique({ where: { id: job.id }, select: { status: true } });
+      return JSON.stringify({ statusCode: res.statusCode, body: JSON.parse(res.body ?? '{}'), jobStatus: after?.status }, null, 2);
+    } finally {
+      await p.job.delete({ where: { id: job.id } }).catch(() => {});
+    }
+  },
+
+  // get-admin-llm-costs — aggregates + recentRows (LlmAuditLog is not job-linked)
+  'gs-045': async () => {
+    const p = await db();
+    const { handler } = await import('../app/server/src/handlers/get-admin-llm-costs');
+    const created: string[] = [];
+    try {
+      const row = await p.llmAuditLog.create({ data: { userId: 'eval', feature: 'zone_classification', model: 'claude-haiku-4-5', provider: 'bedrock', status: 'success', inputTokens: 100, outputTokens: 50, estimatedCostUsd: 0.001, durationMs: 200 } });
+      created.push(row.id);
+      const res = (await handler({ headers: {}, queryStringParameters: { days: '30' } } as LambdaEvent, lambdaCtx, noop)) as LambdaResult;
+      return JSON.stringify({ statusCode: res.statusCode, body: JSON.parse(res.body ?? '{}') }, null, 2);
+    } finally {
+      for (const id of created) await p.llmAuditLog.delete({ where: { id } }).catch(() => {});
+    }
+  },
+
+  // get-jobs-refinements — history list WITHOUT beforeText/afterText
+  'gs-046': async () => {
+    const p = await db();
+    const { handler } = await import('../app/server/src/handlers/get-jobs-refinements');
+    const job = await p.job.create({ data: {} });
+    try {
+      await p.refinement.create({ data: { jobId: job.id, instruction: 'tighten the intro', scope: 'all', beforeText: 'before', afterText: 'after', accepted: false } });
+      const res = (await handler({ pathParameters: { id: job.id }, headers: {} } as LambdaEvent, lambdaCtx, noop)) as LambdaResult;
+      return JSON.stringify({ statusCode: res.statusCode, body: JSON.parse(res.body ?? '{}') }, null, 2);
+    } finally {
+      await p.job.delete({ where: { id: job.id } }).catch(() => {});
+    }
+  },
+
+  // delete-jobs-changes — 403 change_job_mismatch for a cross-job delete
+  'gs-047': async () => {
+    const p = await db();
+    const { handler } = await import('../app/server/src/handlers/delete-jobs-changes');
+    const jobA = await p.job.create({ data: {} });
+    const jobB = await p.job.create({ data: {} });
+    try {
+      const change = await p.collaborativeChange.create({ data: { jobId: jobA.id, userId: 'u1', userName: 'Alice', operationType: 'insert', contentDelta: { ops: [] } } });
+      const res = (await handler({ pathParameters: { id: jobB.id, changeId: change.id }, headers: {} } as LambdaEvent, lambdaCtx, noop)) as LambdaResult;
+      return JSON.stringify({ statusCode: res.statusCode, body: JSON.parse(res.body ?? '{}') }, null, 2);
+    } finally {
+      await p.job.delete({ where: { id: jobA.id } }).catch(() => {});
+      await p.job.delete({ where: { id: jobB.id } }).catch(() => {});
+    }
+  },
+
+  // get-jobs-changes — change log with operationType / contentDelta / userName
+  'gs-049': async () => {
+    const p = await db();
+    const { handler } = await import('../app/server/src/handlers/get-jobs-changes');
+    const job = await p.job.create({ data: {} });
+    try {
+      await p.collaborativeChange.create({ data: { jobId: job.id, userId: 'u1', userName: 'Alice', operationType: 'insert', contentDelta: { ops: [{ insert: 'x' }] } } });
       const res = (await handler({ pathParameters: { id: job.id }, headers: {} } as LambdaEvent, lambdaCtx, noop)) as LambdaResult;
       return JSON.stringify({ statusCode: res.statusCode, body: JSON.parse(res.body ?? '{}') }, null, 2);
     } finally {

@@ -87,7 +87,7 @@ Server unit runs emit JUnit XML to `app/server/test-results/junit.xml` (integrat
 
 **Mock boundary:** only `generateMedicalNarrative` (Bedrock streaming) is stubbed. Prisma writes, S3 upload/download, docxtemplater rendering, and DB status transitions all hit real services. Tests self-clean (delete job cascade + S3 keys in `afterEach`).
 
-> Aligns with the team's E2E preference: real full-stack tests, no API mocking, long timeouts for Textract/Bedrock.
+> This matches the team's E2E testing approach: real full-stack calls, no API mocking, long timeouts for Textract and Bedrock.
 
 ---
 
