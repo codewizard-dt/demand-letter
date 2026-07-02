@@ -7,7 +7,15 @@ export const handler: APIGatewayProxyHandler = async () => {
     const jobs = await prisma.job.findMany({
       orderBy: { createdAt: 'desc' },
       take: 50,
-      select: { id: true, status: true, createdAt: true },
+      select: {
+        id: true,
+        status: true,
+        createdAt: true,
+        files: {
+          select: { fileName: true, mimeType: true, role: true },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
     });
     return {
       statusCode: 200,

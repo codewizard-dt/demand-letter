@@ -20,6 +20,11 @@ export interface LlmAuditRow {
 export const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+function asArray<T>(value: T[] | null | undefined): T[] {
+  return Array.isArray(value) ? value : [];
+}
+
 export interface OutputDocxPreview {
   html: string;
   stationaries: {
@@ -79,7 +84,11 @@ export async function fetchLlmCosts(days = 30): Promise<{
 }> {
   const res = await fetch(`${import.meta.env.VITE_API_URL}/admin/llm-costs?days=${days}`);
   if (!res.ok) throw new Error(`llm-costs fetch failed: ${res.status}`);
-  return res.json();
+  const data = await res.json() as { aggregates?: LlmCostAggregate[]; recentRows?: LlmAuditRow[] };
+  return {
+    aggregates: asArray(data.aggregates),
+    recentRows: asArray(data.recentRows),
+  };
 }
 
 
@@ -248,8 +257,11 @@ export async function fetchFiles(): Promise<(JobFile & { jobId: string; createdA
 export async function fetchJobs(): Promise<JobSummary[]> {
   const res = await fetch(`${API_BASE}/jobs`);
   if (!res.ok) throw new Error(`GET /jobs failed: ${res.status}`);
-  const data = await res.json() as { jobs: JobSummary[] };
-  return data.jobs;
+  const data = await res.json() as { jobs?: (Omit<JobSummary, 'files'> & { files?: JobFile[] })[] };
+  return asArray(data.jobs).map((job) => ({
+    ...job,
+    files: asArray(job.files),
+  }));
 }
 
 export async function saveEditorContent(jobId: string, doc: unknown): Promise<void> {
@@ -333,7 +345,8 @@ export interface Zone {
 export async function getTemplateZones(jobId: string, templateId: string): Promise<Zone[]> {
   const res = await fetch(`${API_BASE}/jobs/${jobId}/templates/${templateId}/zones`);
   if (!res.ok) throw new Error(`Failed to fetch zones: ${res.status}`);
-  return res.json() as Promise<Zone[]>;
+  const data = await res.json() as Zone[] | { zones?: Zone[] };
+  return Array.isArray(data) ? data : asArray(data.zones);
 }
 
 export async function fetchTemplateOriginalDocx(jobId: string, templateId: string): Promise<ArrayBuffer> {
@@ -392,8 +405,8 @@ export interface RefinementRow {
 export async function fetchRefinements(jobId: string): Promise<RefinementRow[]> {
   const res = await fetch(`${API_BASE}/jobs/${jobId}/refinements`);
   if (!res.ok) throw new Error(`GET /jobs/${jobId}/refinements failed: ${res.status}`);
-  const data = (await res.json()) as { refinements: RefinementRow[] };
-  return data.refinements;
+  const data = (await res.json()) as { refinements?: RefinementRow[] };
+  return asArray(data.refinements);
 }
 
 /**
@@ -426,8 +439,8 @@ export interface ExtractedFieldRow {
 export async function fetchExtractedFields(jobId: string): Promise<ExtractedFieldRow[]> {
   const res = await fetch(`${API_BASE}/jobs/${jobId}/fields`);
   if (!res.ok) throw new Error(`GET /jobs/${jobId}/fields failed: ${res.status}`);
-  const data = await res.json() as { fields: ExtractedFieldRow[] };
-  return data.fields;
+  const data = await res.json() as { fields?: ExtractedFieldRow[] };
+  return asArray(data.fields);
 }
 
 export interface BlockRow {
@@ -445,8 +458,8 @@ export interface BlockRow {
 export async function fetchBlocks(jobId: string, limit = 500): Promise<BlockRow[]> {
   const res = await fetch(`${API_BASE}/jobs/${jobId}/blocks?limit=${limit}&page=1`);
   if (!res.ok) throw new Error(`GET /jobs/${jobId}/blocks failed: ${res.status}`);
-  const data = await res.json() as { blocks: BlockRow[] };
-  return data.blocks;
+  const data = await res.json() as { blocks?: BlockRow[] };
+  return asArray(data.blocks);
 }
 
 export interface ChangeRow {
@@ -461,8 +474,8 @@ export interface ChangeRow {
 export async function fetchJobChanges(id: string): Promise<ChangeRow[]> {
   const res = await fetch(`${API_BASE}/jobs/${id}/changes`);
   if (!res.ok) throw new Error(`GET /jobs/${id}/changes failed: ${res.status}`);
-  const data = await res.json() as { changes: ChangeRow[] };
-  return data.changes;
+  const data = await res.json() as { changes?: ChangeRow[] };
+  return asArray(data.changes);
 }
 
 export async function deleteJobChange(jobId: string, changeId: string): Promise<void> {
@@ -555,8 +568,8 @@ export interface OutputBodyImage {
 export async function fetchOutputImages(jobId: string): Promise<OutputBodyImage[]> {
   const res = await fetch(`${API_BASE}/jobs/${jobId}/output/images`);
   if (!res.ok) throw new Error(`GET /jobs/${jobId}/output/images failed: ${res.status}`);
-  const data = await res.json() as { images: OutputBodyImage[] };
-  return data.images;
+  const data = await res.json() as { images?: OutputBodyImage[] };
+  return asArray(data.images);
 }
 
 export async function replaceOutputImage(jobId: string, target: string, file: File): Promise<void> {
@@ -603,8 +616,8 @@ export interface TemplateSlotRow {
 export async function fetchTemplateSlots(jobId: string, templateId: string): Promise<TemplateSlotRow[]> {
   const res = await fetch(`${API_BASE}/jobs/${jobId}/templates/${templateId}/slots`);
   if (!res.ok) throw new Error(`GET /jobs/${jobId}/templates/${templateId}/slots failed: ${res.status}`);
-  const data = await res.json() as { slots: TemplateSlotRow[] };
-  return data.slots;
+  const data = await res.json() as { slots?: TemplateSlotRow[] };
+  return asArray(data.slots);
 }
 
 export async function extractFields(jobId: string): Promise<void> {
@@ -626,8 +639,8 @@ export interface FileRow {
 export async function fetchJobFiles(jobId: string): Promise<FileRow[]> {
   const res = await fetch(`${API_BASE}/jobs/${jobId}/files`);
   if (!res.ok) throw new Error(`GET /jobs/${jobId}/files failed: ${res.status}`);
-  const data = await res.json() as { files: FileRow[] };
-  return data.files;
+  const data = await res.json() as { files?: FileRow[] };
+  return asArray(data.files);
 }
 
 export interface JobLogRow {
@@ -643,8 +656,8 @@ export interface JobLogRow {
 export async function fetchJobLogs(jobId: string): Promise<JobLogRow[]> {
   const res = await fetch(`${API_BASE}/jobs/${jobId}/logs`);
   if (!res.ok) throw new Error(`GET /jobs/${jobId}/logs failed: ${res.status}`);
-  const data = await res.json() as { logs: JobLogRow[] };
-  return data.logs;
+  const data = await res.json() as { logs?: JobLogRow[] };
+  return asArray(data.logs);
 }
 
 export async function triggerGenerateJob(jobId: string): Promise<void> {
