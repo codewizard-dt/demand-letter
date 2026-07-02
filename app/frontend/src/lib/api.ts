@@ -526,7 +526,6 @@ export async function segmentTemplate(jobId: string): Promise<{ templateId: stri
 export async function classifyTemplate(jobId: string, templateId: string): Promise<void> {
   const res = await fetch(`${API_BASE}/jobs/${jobId}/templates/${templateId}/classify`, { method: 'POST' });
   if (!res.ok) throw new Error(`POST /jobs/${jobId}/templates/${templateId}/classify failed: ${res.status}`);
-  await waitForOptionalStream(() => connectTemplateClassificationStream(jobId, templateId, () => {}));
 }
 
 export async function injectTemplate(
