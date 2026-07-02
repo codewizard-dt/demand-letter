@@ -295,10 +295,6 @@ Resources:
                 - bedrock:InvokeModel
                 - bedrock:InvokeModelWithResponseStream
               Resource: '*'
-            - Effect: Allow
-              Action:
-                - lambda:InvokeFunction
-              Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${AWS::StackName}-PostJobsTemplatesClassifyFunction-*'
       Layers:
         - !Ref DbLayer
       Events:
@@ -325,6 +321,10 @@ Resources:
                 - bedrock:InvokeModel
                 - bedrock:InvokeModelWithResponseStream
               Resource: '*'
+            - Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+              Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${AWS::StackName}-PostJobsTemplatesClassifyFunction-*'
       Layers:
         - !Ref DbLayer
       Events:
