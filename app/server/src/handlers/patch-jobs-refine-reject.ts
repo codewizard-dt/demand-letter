@@ -1,6 +1,6 @@
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import { prisma } from '@demand-letter/db';
-import { getCorsHeaders } from '../lib/cors';
+import { corsHeadersFor } from '../lib/cors';
 
 export const handler: APIGatewayProxyHandler = async (event) => {
   try {
@@ -10,7 +10,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   if (!jobId || !refinementId) {
     return {
       statusCode: 400,
-      headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
+      headers: { ...corsHeadersFor(event), 'Content-Type': 'application/json' },
       body: JSON.stringify({ error: 'missing_path_parameters', message: 'Required path parameters are missing.' }),
     };
   }
@@ -20,7 +20,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   if (!refinement) {
     return {
       statusCode: 404,
-      headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
+      headers: { ...corsHeadersFor(event), 'Content-Type': 'application/json' },
       body: JSON.stringify({ error: 'refinement_not_found', message: 'The requested refinement does not exist.' }),
     };
   }
@@ -28,7 +28,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   if (refinement.jobId !== jobId) {
     return {
       statusCode: 403,
-      headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
+      headers: { ...corsHeadersFor(event), 'Content-Type': 'application/json' },
       body: JSON.stringify({ error: 'refinement_job_mismatch', message: 'This refinement does not belong to the specified job.' }),
     };
   }
@@ -37,11 +37,11 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
   return {
     statusCode: 200,
-    headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
+    headers: { ...corsHeadersFor(event), 'Content-Type': 'application/json' },
     body: JSON.stringify({ ok: true }),
   };
   } catch (err) {
     console.error('refine-reject error', err);
-    return { statusCode: 500, headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'internal_server_error', message: 'An unexpected error occurred.' }) };
+    return { statusCode: 500, headers: { ...corsHeadersFor(event), 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'internal_server_error', message: 'An unexpected error occurred.' }) };
   }
 };

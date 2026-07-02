@@ -1,13 +1,13 @@
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { prisma } from '@demand-letter/db';
-import { getCorsHeaders } from '../lib/cors';
+import { corsHeadersFor } from '../lib/cors';
 
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   const jobId = event.pathParameters?.id;
   if (!jobId) {
     return {
       statusCode: 400,
-      headers: { ...getCorsHeaders(event.headers?.['origin']) },
+      headers: { ...corsHeadersFor(event) },
       body: JSON.stringify({ error: 'missing_job_id', message: 'Job ID is required.' }),
     };
   }
@@ -27,7 +27,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
   return {
     statusCode: 200,
-    headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
+    headers: { ...corsHeadersFor(event), 'Content-Type': 'application/json' },
     body: JSON.stringify({ changes }),
   };
 };

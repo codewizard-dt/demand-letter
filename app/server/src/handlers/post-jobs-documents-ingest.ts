@@ -5,7 +5,7 @@ import { prisma } from '@demand-letter/db';
 import { detectDocumentType } from '../lib/document-type-detector';
 import { parseDocx, parsePdfNative } from '../lib/structured-parser';
 import { startTextractAnalysis } from '../lib/textract-client';
-import { getCorsHeaders } from '../lib/cors';
+import { corsHeadersFor } from '../lib/cors';
 import { logJobEvent } from '../lib/job-logger';
 
 const s3 = new S3Client({ region: process.env.AWS_REGION ?? 'us-east-1' });
@@ -15,14 +15,14 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
   const jobId = event.pathParameters?.id;
   if (!jobId) {
     return { statusCode: 400,
-      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'missing_job_id', message: 'Job ID is required.' }) };
+      headers: { ...corsHeadersFor(event) }, body: JSON.stringify({ error: 'missing_job_id', message: 'Job ID is required.' }) };
   }
 
   // Verify job exists
   const job = await prisma.job.findUnique({ where: { id: jobId } });
   if (!job) {
     return { statusCode: 404,
-      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'job_not_found', message: 'The requested job does not exist.' }) };
+      headers: { ...corsHeadersFor(event) }, body: JSON.stringify({ error: 'job_not_found', message: 'The requested job does not exist.' }) };
   }
 
   const body = event.body ? JSON.parse(event.body) as { force?: boolean; fileId?: string } : {};
@@ -43,7 +43,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     if (!specificFile) {
       return {
         statusCode: 404,
-        headers: { ...getCorsHeaders(event.headers?.['origin']) },
+        headers: { ...corsHeadersFor(event) },
         body: JSON.stringify({ error: 'file_not_found', message: 'The requested file does not exist or does not belong to this job.' }),
       };
     }
@@ -155,7 +155,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
   return {
     statusCode: 200,
-    headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
+    headers: { ...corsHeadersFor(event), 'Content-Type': 'application/json' },
     body: JSON.stringify({ processed, pending, blocks: totalBlocks }),
   };
 };

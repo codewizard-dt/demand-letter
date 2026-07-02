@@ -1,7 +1,7 @@
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import { prisma } from '@demand-letter/db';
 import { randomUUID } from 'node:crypto';
-import { getCorsHeaders } from '../lib/cors';
+import { corsHeadersFor } from '../lib/cors';
 import { runTemplateClassificationJob } from '../lib/template-classification-job';
 
 export const handler: APIGatewayProxyHandler = async (event) => {
@@ -14,20 +14,20 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
   if (!jobId || !templateId) {
     return { statusCode: 400,
-      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'missing_path_parameters', message: 'Both jobId and templateId are required.' }) };
+      headers: { ...corsHeadersFor(event) }, body: JSON.stringify({ error: 'missing_path_parameters', message: 'Both jobId and templateId are required.' }) };
   }
 
   const zoneCount = await prisma.zone.count({ where: { templateId } });
   if (zoneCount === 0) {
     return { statusCode: 404,
-      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'no_zones_found', message: 'The template has no classified zones. Run classify first.' }) };
+      headers: { ...corsHeadersFor(event) }, body: JSON.stringify({ error: 'no_zones_found', message: 'The template has no classified zones. Run classify first.' }) };
   }
 
   void runTemplateClassificationJob({ jobId, templateId, userId: 'system', trace });
 
   return {
     statusCode: 202,
-    headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
+    headers: { ...corsHeadersFor(event), 'Content-Type': 'application/json' },
     body: JSON.stringify({ jobId, templateId, status: 'processing', traceId: trace.traceId }),
   };
 };

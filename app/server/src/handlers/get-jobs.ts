@@ -1,8 +1,8 @@
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import { prisma } from '@demand-letter/db';
-import { corsHeaders } from '../lib/cors';
+import { corsHeadersFor } from '../lib/cors';
 
-export const handler: APIGatewayProxyHandler = async () => {
+export const handler: APIGatewayProxyHandler = async (event) => {
   try {
     const jobs = await prisma.job.findMany({
       orderBy: { createdAt: 'desc' },
@@ -19,11 +19,11 @@ export const handler: APIGatewayProxyHandler = async () => {
     });
     return {
       statusCode: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeadersFor(event), 'Content-Type': 'application/json' },
       body: JSON.stringify({ jobs }),
     };
   } catch (err) {
     console.error('get-jobs error', err);
-    return { statusCode: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'internal_server_error', message: 'An unexpected error occurred.' }) };
+    return { statusCode: 500, headers: { ...corsHeadersFor(event), 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'internal_server_error', message: 'An unexpected error occurred.' }) };
   }
 };

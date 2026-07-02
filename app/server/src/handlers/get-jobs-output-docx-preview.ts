@@ -2,7 +2,7 @@ import { APIGatewayProxyHandler } from 'aws-lambda';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import mammoth from 'mammoth';
 import { prisma } from '@demand-letter/db';
-import { getCorsHeaders } from '../lib/cors';
+import { corsHeadersFor } from '../lib/cors';
 import { extractDocxStationaries } from '../lib/docx-stationary';
 
 const s3 = new S3Client({ region: process.env.AWS_REGION ?? 'us-east-1' });
@@ -25,7 +25,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     if (!jobId) {
       return {
         statusCode: 400,
-        headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
+        headers: { ...corsHeadersFor(event), 'Content-Type': 'application/json' },
         body: JSON.stringify({ error: 'missing_job_id', message: 'Job ID is required.' }),
       };
     }
@@ -34,7 +34,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     if (!job) {
       return {
         statusCode: 404,
-        headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
+        headers: { ...corsHeadersFor(event), 'Content-Type': 'application/json' },
         body: JSON.stringify({ error: 'job_not_found', message: 'The requested job does not exist.' }),
       };
     }
@@ -42,7 +42,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     if (!job.outputS3Key) {
       return {
         statusCode: 404,
-        headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
+        headers: { ...corsHeadersFor(event), 'Content-Type': 'application/json' },
         body: JSON.stringify({ error: 'output_not_ready', message: 'Document generation has not completed yet.' }),
       };
     }
@@ -51,7 +51,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     if (!s3Obj.Body) {
       return {
         statusCode: 500,
-        headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
+        headers: { ...corsHeadersFor(event), 'Content-Type': 'application/json' },
         body: JSON.stringify({ error: 'output_empty', message: 'The generated DOCX has no content.' }),
       };
     }
@@ -70,7 +70,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     return {
       statusCode: 200,
       headers: {
-        ...getCorsHeaders(event.headers?.['origin']),
+        ...corsHeadersFor(event),
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ html, stationaries }),
@@ -79,7 +79,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     console.error('output docx preview error', err);
     return {
       statusCode: 500,
-      headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
+      headers: { ...corsHeadersFor(event), 'Content-Type': 'application/json' },
       body: JSON.stringify({ error: 'internal_server_error', message: 'An unexpected error occurred.' }),
     };
   }

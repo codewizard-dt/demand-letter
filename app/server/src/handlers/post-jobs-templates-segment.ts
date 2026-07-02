@@ -4,7 +4,7 @@ import { prisma } from '@demand-letter/db';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { enumerateSlots } from '../lib/docx-inspect';
 import { extractParagraphZones } from '../lib/docx-zone-extractor';
-import { getCorsHeaders } from '../lib/cors';
+import { corsHeadersFor } from '../lib/cors';
 import { logJobEvent, logJobError } from '../lib/job-logger';
 import { errorResponse } from '../lib/error-response';
 
@@ -16,7 +16,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   if (!jobId) {
     return {
       statusCode: 400,
-      headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
+      headers: { ...corsHeadersFor(event), 'Content-Type': 'application/json' },
       body: JSON.stringify({ error: 'missing_job_id', message: 'Job ID is required.' }),
     };
   }
@@ -25,7 +25,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   if (!job) {
     return {
       statusCode: 404,
-      headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
+      headers: { ...corsHeadersFor(event), 'Content-Type': 'application/json' },
       body: JSON.stringify({ error: 'job_not_found', message: 'The requested job does not exist.' }),
     };
   }
@@ -41,7 +41,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   if (!file) {
     return {
       statusCode: 422,
-      headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
+      headers: { ...corsHeadersFor(event), 'Content-Type': 'application/json' },
       body: JSON.stringify({ error: 'no_template_file', message: 'No DOCX template file found for this job.' }),
     };
   }
@@ -54,7 +54,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     if (!s3Obj.Body) {
       return {
         statusCode: 502,
-        headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
+        headers: { ...corsHeadersFor(event), 'Content-Type': 'application/json' },
         body: JSON.stringify({ error: 's3_empty_response', message: 'The S3 object returned no content.' }),
       };
     }
@@ -108,11 +108,11 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
     return {
       statusCode: 200,
-      headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
+      headers: { ...corsHeadersFor(event), 'Content-Type': 'application/json' },
       body: JSON.stringify({ templateId: template.id, slotCount: slots.length }),
     };
   } catch (err) {
     await logJobError(jobId, 'post-jobs-templates-segment', err);
-    return errorResponse(event.headers?.['origin'], 500, 'internal_server_error', err);
+    return errorResponse(event, 500, 'internal_server_error', err);
   }
 };

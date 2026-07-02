@@ -2,7 +2,7 @@ import { APIGatewayProxyHandler } from 'aws-lambda';
 import { LlmFeature, prisma } from '@demand-letter/db';
 import { randomUUID } from 'node:crypto';
 import { getBasicModelId, invokeModelStream } from '../lib/ai-provider';
-import { getCorsHeaders } from '../lib/cors';
+import { corsHeadersFor } from '../lib/cors';
 import { errorResponse } from '../lib/error-response';
 
 const MODEL_ID = getBasicModelId();
@@ -15,7 +15,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   };
   if (!jobId) {
     return { statusCode: 400,
-      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'missing_job_id', message: 'Job ID is required.' }) };
+      headers: { ...corsHeadersFor(event) }, body: JSON.stringify({ error: 'missing_job_id', message: 'Job ID is required.' }) };
   }
 
   let instruction: string;
@@ -26,22 +26,22 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     scope = body.scope;
   } catch {
     return { statusCode: 400,
-      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'invalid_json_body', message: 'Request body must be valid JSON.' }) };
+      headers: { ...corsHeadersFor(event) }, body: JSON.stringify({ error: 'invalid_json_body', message: 'Request body must be valid JSON.' }) };
   }
 
   if (!instruction) {
     return { statusCode: 400,
-      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'missing_instruction', message: 'A refinement instruction is required.' }) };
+      headers: { ...corsHeadersFor(event) }, body: JSON.stringify({ error: 'missing_instruction', message: 'A refinement instruction is required.' }) };
   }
 
   const job = await prisma.job.findUnique({ where: { id: jobId } });
   if (!job) {
     return { statusCode: 404,
-      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'job_not_found', message: 'The requested job does not exist.' }) };
+      headers: { ...corsHeadersFor(event) }, body: JSON.stringify({ error: 'job_not_found', message: 'The requested job does not exist.' }) };
   }
   if (!job.output) {
     return { statusCode: 422,
-      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'Job output not yet generated' }) };
+      headers: { ...corsHeadersFor(event) }, body: JSON.stringify({ error: 'Job output not yet generated' }) };
   }
 
   const relevantText = job.output;
@@ -96,7 +96,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
     return {
       statusCode: 200,
-      headers: { ...getCorsHeaders(event.headers?.['origin']),
+      headers: { ...corsHeadersFor(event),
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'X-Accel-Buffering': 'no',
@@ -105,6 +105,6 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     };
   } catch (err) {
     console.error('refine handler error', err);
-    return errorResponse(event.headers?.['origin'], 500, 'internal_server_error', err);
+    return errorResponse(event, 500, 'internal_server_error', err);
   }
 };

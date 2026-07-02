@@ -2,7 +2,7 @@ import { APIGatewayProxyHandler } from 'aws-lambda';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import mammoth from 'mammoth';
 import { prisma } from '@demand-letter/db';
-import { getCorsHeaders } from '../lib/cors';
+import { corsHeadersFor } from '../lib/cors';
 import { extractDocxStationaries } from '../lib/docx-stationary';
 
 const s3 = new S3Client({ region: process.env.AWS_REGION ?? 'us-east-1' });
@@ -27,7 +27,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     if (!jobId || !templateId) {
       return {
         statusCode: 400,
-        headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
+        headers: { ...corsHeadersFor(event), 'Content-Type': 'application/json' },
         body: JSON.stringify({ error: 'missing_path_parameters', message: 'Both jobId and templateId are required.' }),
       };
     }
@@ -40,7 +40,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     if (!template || template.jobId !== jobId) {
       return {
         statusCode: 404,
-        headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
+        headers: { ...corsHeadersFor(event), 'Content-Type': 'application/json' },
         body: JSON.stringify({ error: 'template_not_found', message: 'The requested template does not exist.' }),
       };
     }
@@ -50,7 +50,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     if (!bytes) {
       return {
         statusCode: 502,
-        headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
+        headers: { ...corsHeadersFor(event), 'Content-Type': 'application/json' },
         body: JSON.stringify({ error: 's3_empty_response', message: 'The S3 object returned no content.' }),
       };
     }
@@ -64,14 +64,14 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
     return {
       statusCode: 200,
-      headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
+      headers: { ...corsHeadersFor(event), 'Content-Type': 'application/json' },
       body: JSON.stringify({ html, stationaries }),
     };
   } catch (err) {
     console.error('template original preview error', err);
     return {
       statusCode: 500,
-      headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
+      headers: { ...corsHeadersFor(event), 'Content-Type': 'application/json' },
       body: JSON.stringify({ error: 'internal_server_error', message: 'An unexpected error occurred.' }),
     };
   }

@@ -3,7 +3,7 @@ import { prisma, ZoneType } from '@demand-letter/db';
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { injectDelimiters } from '../lib/docx-injector';
 import { enumerateSlotsWithContext } from '../lib/docx-inspect';
-import { getCorsHeaders } from '../lib/cors';
+import { corsHeadersFor } from '../lib/cors';
 import { logJobError, logJobEvent } from '../lib/job-logger';
 import { errorResponse } from '../lib/error-response';
 
@@ -16,7 +16,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
   if (!templateId || !jobId) {
     return { statusCode: 400,
-      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'missing_path_parameters', message: 'Required path parameters are missing.' }) };
+      headers: { ...corsHeadersFor(event) }, body: JSON.stringify({ error: 'missing_path_parameters', message: 'Required path parameters are missing.' }) };
   }
 
   try {
@@ -27,7 +27,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
     if (!template || template.jobId !== jobId) {
       return { statusCode: 404,
-      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'template_not_found', message: 'The requested template does not exist.' }) };
+      headers: { ...corsHeadersFor(event) }, body: JSON.stringify({ error: 'template_not_found', message: 'The requested template does not exist.' }) };
     }
 
     // Only inject into confirmed variable_populated zones that have a field name
@@ -46,7 +46,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
     if (!s3Obj.Body) {
       return { statusCode: 502,
-      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 's3_empty_response', message: 'The S3 object returned no content.' }) };
+      headers: { ...corsHeadersFor(event) }, body: JSON.stringify({ error: 's3_empty_response', message: 'The S3 object returned no content.' }) };
     }
 
     const chunks: Uint8Array[] = [];
@@ -105,12 +105,12 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
     return {
       statusCode: 200,
-      headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
+      headers: { ...corsHeadersFor(event), 'Content-Type': 'application/json' },
       body: JSON.stringify({ s3KeyTagged, slotCount: slots.length, slots }),
     };
   } catch (err) {
     console.error('inject error', err);
     await logJobError(jobId, 'post-jobs-templates-inject', err);
-    return errorResponse(event.headers?.['origin'], 500, 'internal_server_error', err);
+    return errorResponse(event, 500, 'internal_server_error', err);
   }
 };

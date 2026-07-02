@@ -1,6 +1,6 @@
 import { prisma } from '@demand-letter/db';
 import { APIGatewayProxyHandler } from 'aws-lambda';
-import { getCorsHeaders } from '../lib/cors';
+import { corsHeadersFor } from '../lib/cors';
 
 type ZonePatch = {
   id: string;
@@ -17,7 +17,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
   if (!jobId || !templateId) {
     return { statusCode: 400,
-      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'missing_path_parameters', message: 'Both jobId and templateId are required.' }) };
+      headers: { ...corsHeadersFor(event) }, body: JSON.stringify({ error: 'missing_path_parameters', message: 'Both jobId and templateId are required.' }) };
   }
 
 let zones: ZonePatch[];
@@ -32,7 +32,7 @@ let zones: ZonePatch[];
     }
   } catch {
     return { statusCode: 400,
-      headers: { ...getCorsHeaders(event.headers?.['origin']) }, body: JSON.stringify({ error: 'invalid_request_body', message: 'The request body is malformed or missing required fields.' }) };
+      headers: { ...corsHeadersFor(event) }, body: JSON.stringify({ error: 'invalid_request_body', message: 'The request body is malformed or missing required fields.' }) };
   }
 
   const updated = await Promise.all(
@@ -69,7 +69,7 @@ let zones: ZonePatch[];
 
   return {
     statusCode: 200,
-    headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
+    headers: { ...corsHeadersFor(event), 'Content-Type': 'application/json' },
     body: JSON.stringify(updated),
   };
 };

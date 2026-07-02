@@ -1,6 +1,6 @@
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { prisma } from '@demand-letter/db';
-import { getCorsHeaders } from '../lib/cors';
+import { corsHeadersFor } from '../lib/cors';
 
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   try {
@@ -10,7 +10,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     if (!jobId || !changeId) {
       return {
         statusCode: 400,
-        headers: { ...getCorsHeaders(event.headers?.['origin']) },
+        headers: { ...corsHeadersFor(event) },
         body: JSON.stringify({ error: 'missing_path_parameters', message: 'Both job ID and change ID are required.' }),
       };
     }
@@ -22,7 +22,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     if (!change) {
       return {
         statusCode: 404,
-        headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
+        headers: { ...corsHeadersFor(event), 'Content-Type': 'application/json' },
         body: JSON.stringify({ error: 'change_not_found', message: 'The requested change does not exist.' }),
       };
     }
@@ -30,7 +30,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     if (change.jobId !== jobId) {
       return {
         statusCode: 403,
-        headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
+        headers: { ...corsHeadersFor(event), 'Content-Type': 'application/json' },
         body: JSON.stringify({ error: 'change_job_mismatch', message: 'This change does not belong to the specified job.' }),
       };
     }
@@ -41,14 +41,14 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
     return {
       statusCode: 200,
-      headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
+      headers: { ...corsHeadersFor(event), 'Content-Type': 'application/json' },
       body: JSON.stringify({ ok: true }),
     };
   } catch (err) {
     console.error('delete-jobs-changes error', err);
     return {
       statusCode: 500,
-      headers: { ...getCorsHeaders(event.headers?.['origin']), 'Content-Type': 'application/json' },
+      headers: { ...corsHeadersFor(event), 'Content-Type': 'application/json' },
       body: JSON.stringify({ error: 'internal_server_error', message: 'An unexpected error occurred.' }),
     };
   }

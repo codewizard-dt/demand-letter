@@ -1,17 +1,19 @@
-import { APIGatewayProxyResult } from 'aws-lambda';
-import { getCorsHeaders } from './cors';
+import type { APIGatewayProxyEvent, APIGatewayProxyEventV2, APIGatewayProxyResult } from 'aws-lambda';
+import { corsHeadersFor, getCorsHeaders } from './cors';
 
 export function errorResponse(
-  origin: string | undefined,
+  origin: string | APIGatewayProxyEvent | APIGatewayProxyEventV2 | undefined,
   statusCode: number,
   code: string,
   err: unknown,
 ): APIGatewayProxyResult {
   const error = err instanceof Error ? err : new Error(String(err));
-  const isProd = process.env.NODE_ENV === 'production';
+  const env = (process.env.NODE_ENV ?? '').toLowerCase();
+  const isProd = env === 'prod' || env === 'production';
+  const corsHeaders = typeof origin === 'string' ? getCorsHeaders(origin) : corsHeadersFor(origin);
   return {
     statusCode,
-    headers: { ...getCorsHeaders(origin), 'Content-Type': 'application/json' },
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       error: code,
       message: isProd ? 'An unexpected error occurred.' : error.message,

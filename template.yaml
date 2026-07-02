@@ -27,7 +27,7 @@ Globals:
       - application/octet-stream
     Cors:
       AllowMethods: "'GET,POST,PATCH,DELETE,OPTIONS'"
-      AllowHeaders: "'Content-Type,X-Caller-Role'"
+      AllowHeaders: "'Content-Type,Authorization,X-Requested-With,X-Caller-Role'"
       AllowOrigin: "'*'"
 
 Parameters:
@@ -198,6 +198,9 @@ Resources:
             AllowedOrigins:
               - !Ref WebAppOrigin
               - !If [HasDistinctWebAppOrigin2, !Ref WebAppOrigin2, !Ref AWS::NoValue]
+            ExposedHeaders:
+              - Content-Disposition
+              - Content-Type
             MaxAge: 3600
       LifecycleConfiguration:
         Rules:
@@ -225,6 +228,26 @@ Resources:
             Condition:
               Bool:
                 'aws:SecureTransport': 'false'
+
+  ServerlessRestApiDefault4xxGatewayResponse:
+    Type: AWS::ApiGateway::GatewayResponse
+    Properties:
+      RestApiId: !Ref ServerlessRestApi
+      ResponseType: DEFAULT_4XX
+      ResponseParameters:
+        gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+        gatewayresponse.header.Access-Control-Allow-Methods: "'GET,POST,PATCH,DELETE,OPTIONS'"
+        gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,Authorization,X-Requested-With,X-Caller-Role'"
+
+  ServerlessRestApiDefault5xxGatewayResponse:
+    Type: AWS::ApiGateway::GatewayResponse
+    Properties:
+      RestApiId: !Ref ServerlessRestApi
+      ResponseType: DEFAULT_5XX
+      ResponseParameters:
+        gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+        gatewayresponse.header.Access-Control-Allow-Methods: "'GET,POST,PATCH,DELETE,OPTIONS'"
+        gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,Authorization,X-Requested-With,X-Caller-Role'"
 
   DbLayer:
     Type: AWS::Serverless::LayerVersion
