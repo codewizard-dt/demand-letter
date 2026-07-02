@@ -526,6 +526,24 @@ export async function segmentTemplate(jobId: string): Promise<{ templateId: stri
 export async function classifyTemplate(jobId: string, templateId: string): Promise<void> {
   const res = await fetch(`${API_BASE}/jobs/${jobId}/templates/${templateId}/classify`, { method: 'POST' });
   if (!res.ok) throw new Error(`POST /jobs/${jobId}/templates/${templateId}/classify failed: ${res.status}`);
+  await waitForTemplateClassification(jobId, templateId);
+}
+
+const CLASSIFICATION_POLL_INTERVAL_MS = 3_000;
+const CLASSIFICATION_MAX_POLLS = 60;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForTemplateClassification(jobId: string, templateId: string): Promise<void> {
+  for (let attempt = 0; attempt < CLASSIFICATION_MAX_POLLS; attempt += 1) {
+    if (attempt > 0) await sleep(CLASSIFICATION_POLL_INTERVAL_MS);
+    const zones = await getTemplateZones(jobId, templateId);
+    if (zones.length > 0 && zones.every((zone) => zone.type !== null)) return;
+  }
+
+  throw new Error('Template classification timed out. Please try again.');
 }
 
 export async function injectTemplate(
