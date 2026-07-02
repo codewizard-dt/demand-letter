@@ -1,4 +1,5 @@
 import { APIGatewayProxyHandler } from 'aws-lambda';
+import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda';
 import { prisma } from '@demand-letter/db';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { randomUUID } from 'node:crypto';
@@ -11,13 +12,33 @@ import { computeGapReport } from '../lib/sufficiency-gate';
 
 const MODEL_ID = getLogicModelId();
 const s3 = new S3Client({ region: process.env.AWS_REGION ?? 'us-east-1' });
+const lambda = new LambdaClient({ region: process.env.AWS_REGION ?? 'us-east-1' });
 const BUCKET = process.env.DOCUMENTS_BUCKET!;
 
+interface InternalGenerationEvent {
+  source: 'demand-letter.generation';
+  jobId: string;
+  trace: {
+    requestId?: string;
+    traceId?: string;
+  };
+}
+
+function isInternalGenerationEvent(event: unknown): event is InternalGenerationEvent {
+  return Boolean(
+    event &&
+      typeof event === 'object' &&
+      (event as { source?: unknown }).source === 'demand-letter.generation' &&
+      typeof (event as { jobId?: unknown }).jobId === 'string',
+  );
+}
+
 export const handler: APIGatewayProxyHandler = async (event) => {
-  const jobId = event.pathParameters?.id;
+  const internalEvent = isInternalGenerationEvent(event) ? event : null;
+  const jobId = internalEvent?.jobId ?? event.pathParameters?.id;
   const trace = {
-    requestId: event.requestContext?.requestId,
-    traceId: randomUUID(),
+    requestId: internalEvent?.trace.requestId ?? event.requestContext?.requestId,
+    traceId: internalEvent?.trace.traceId ?? randomUUID(),
   };
   if (!jobId) {
     return { statusCode: 400,
@@ -37,6 +58,24 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   }
 
   await prisma.job.update({ where: { id: jobId }, data: { status: 'processing' } });
+
+  if (!internalEvent) {
+    await lambda.send(new InvokeCommand({
+      FunctionName: process.env.AWS_LAMBDA_FUNCTION_NAME,
+      InvocationType: 'Event',
+      Payload: Buffer.from(JSON.stringify({
+        source: 'demand-letter.generation',
+        jobId,
+        trace,
+      } satisfies InternalGenerationEvent)),
+    }));
+
+    return {
+      statusCode: 202,
+      headers: { ...corsHeadersFor(event), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jobId, status: 'processing', traceId: trace.traceId }),
+    };
+  }
 
   try {
     const userId = 'system';

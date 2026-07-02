@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
-import { connectGenerateStream, fetchJob, fetchOutputDocx, getTemplateZones } from '../lib/api';
+import { fetchJob, fetchOutputDocx, getTemplateZones, waitForGeneratedOutput } from '../lib/api';
 import { useTriggerGenerateJob, useDownloadOutput } from '../hooks/useJobMutations';
 import { useLatestTemplate } from '../hooks/useJobQueries';
 import { queryKeys } from '../hooks/queryKeys';
@@ -22,7 +22,6 @@ export default function GeneratePage() {
   const [zoneContents, setZoneContents] = useState<Map<number, string>>(new Map());
   const [isDone, setIsDone] = useState(false);
   const [streamError, setStreamError] = useState<string | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
 
   const triggerGenerateMutation = useTriggerGenerateJob();
   const downloadMutation = useDownloadOutput();
@@ -42,52 +41,34 @@ export default function GeneratePage() {
     staleTime: Infinity,
   });
 
-  function startStream(jobId: string, ac: AbortController) {
-    setStatusMessage('Connecting…');
-    connectGenerateStream(
-      jobId,
-      (event) => {
-        if (event.type === 'progress') {
-          setStatusMessage(event.message);
-        } else if (event.type === 'zone') {
-          setZoneContents((prev) => new Map(prev).set(event.zoneIndex, event.content));
-        } else if (event.type === 'zone-chunk') {
-          setZoneContents((prev) => {
-            const m = new Map(prev);
-            m.set(event.zoneIndex, (m.get(event.zoneIndex) ?? '') + event.chunk);
-            return m;
-          });
-        } else if (event.type === 'complete') {
-          setIsDone(true);
-          setStatusMessage(null);
-          void queryClient.invalidateQueries({ queryKey: queryKeys.outputUrl(jobId) });
-          void queryClient.invalidateQueries({ queryKey: queryKeys.docxPreview(jobId) });
-        } else if (event.type === 'error') {
-          setStreamError(event.message);
-          setStatusMessage(null);
-        }
-      },
-      ac.signal,
-    ).catch((err) => {
-      if (!ac.signal.aborted) {
-        setStreamError(String(err));
-        setStatusMessage(null);
-      }
-    });
-  }
-
   useEffect(() => {
     if (!id) return;
     let cancelled = false;
-    const ac = new AbortController();
-    abortRef.current = ac;
 
     fetchJob(id)
       .then((job) => {
         if (cancelled) return;
         if (job.status === 'pending') return;
-        if (job.outputS3Key) setIsDone(true);
-        startStream(id, ac);
+        if (job.outputS3Key) {
+          setIsDone(true);
+          return;
+        }
+        if (job.status === 'processing') {
+          setStatusMessage('Generating demand letter…');
+          waitForGeneratedOutput(id)
+            .then(() => {
+              if (cancelled) return;
+              setIsDone(true);
+              setStatusMessage(null);
+              void queryClient.invalidateQueries({ queryKey: queryKeys.outputUrl(id) });
+              void queryClient.invalidateQueries({ queryKey: queryKeys.docxPreview(id) });
+            })
+            .catch((err) => {
+              if (cancelled) return;
+              setStreamError(String(err));
+              setStatusMessage(null);
+            });
+        }
       })
       .catch(() => {
         // job fetch failed — show button, let user trigger manually
@@ -95,21 +76,25 @@ export default function GeneratePage() {
 
     return () => {
       cancelled = true;
-      ac.abort();
     };
-  }, [id]);
+  }, [id, queryClient]);
 
   function handleTrigger() {
     if (!id) return;
+    setStreamError(null);
+    setStatusMessage('Generating demand letter…');
+    setIsDone(false);
     triggerGenerateMutation.mutate(id, {
       onSuccess: () => {
-        setStreamError(null);
         setZoneContents(new Map());
-        setIsDone(false);
-        abortRef.current?.abort();
-        const ac = new AbortController();
-        abortRef.current = ac;
-        startStream(id, ac);
+        setIsDone(true);
+        setStatusMessage(null);
+        void queryClient.invalidateQueries({ queryKey: queryKeys.outputUrl(id) });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.docxPreview(id) });
+      },
+      onError: (err) => {
+        setStreamError(String(err));
+        setStatusMessage(null);
       },
     });
   }

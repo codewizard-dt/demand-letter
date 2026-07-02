@@ -640,7 +640,20 @@ export async function fetchTemplateSlots(jobId: string, templateId: string): Pro
 export async function extractFields(jobId: string): Promise<void> {
   const res = await fetch(`${API_BASE}/jobs/${jobId}/extract`, { method: 'POST' });
   if (!res.ok) throw new Error(`POST /jobs/${jobId}/extract failed: ${res.status}`);
-  await waitForOptionalStream(() => connectExtractStream(jobId, () => {}));
+  await waitForExtraction(jobId);
+}
+
+const EXTRACTION_POLL_INTERVAL_MS = 3_000;
+const EXTRACTION_MAX_POLLS = 80;
+
+async function waitForExtraction(jobId: string): Promise<void> {
+  for (let attempt = 0; attempt < EXTRACTION_MAX_POLLS; attempt += 1) {
+    if (attempt > 0) await sleep(EXTRACTION_POLL_INTERVAL_MS);
+    const fields = await fetchExtractedFields(jobId);
+    if (fields.length > 0) return;
+  }
+
+  throw new Error('Case fact extraction timed out. Please try again.');
 }
 
 export interface FileRow {
@@ -684,12 +697,27 @@ export async function triggerGenerateJob(jobId: string): Promise<void> {
     throw new Error(body.message ?? `HTTP ${res.status}`);
   }
   res.body?.cancel();
+  await waitForGeneratedOutput(jobId);
 }
 
 export async function fetchJob(jobId: string): Promise<{ id: string; status: string; outputS3Key: string | null }> {
   const res = await fetch(`${API_BASE}/jobs/${jobId}`);
   if (!res.ok) throw new Error(`GET /jobs/${jobId} failed: ${res.status}`);
   return res.json() as Promise<{ id: string; status: string; outputS3Key: string | null }>;
+}
+
+const GENERATION_POLL_INTERVAL_MS = 3_000;
+const GENERATION_MAX_POLLS = 120;
+
+export async function waitForGeneratedOutput(jobId: string): Promise<void> {
+  for (let attempt = 0; attempt < GENERATION_MAX_POLLS; attempt += 1) {
+    if (attempt > 0) await sleep(GENERATION_POLL_INTERVAL_MS);
+    const job = await fetchJob(jobId);
+    if (job.outputS3Key) return;
+    if (job.status === 'failed') throw new Error('Generation failed. Please check job logs and try again.');
+  }
+
+  throw new Error('Generation timed out. Please try again.');
 }
 
 export type GenerateStreamEvent =
@@ -741,18 +769,6 @@ async function connectEventStream<T extends { type: string }>(
         // ignore malformed SSE events
       }
     }
-  }
-}
-
-async function waitForOptionalStream(connect: () => Promise<void>): Promise<void> {
-  try {
-    await connect();
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    // API Gateway REST APIs return 403 "Missing Authentication Token" when an
-    // optional stream route is not deployed.
-    if (/\bfailed:\s*(403|404|405)\b/.test(message)) return;
-    throw err;
   }
 }
 

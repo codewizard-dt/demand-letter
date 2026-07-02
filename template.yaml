@@ -371,6 +371,19 @@ Resources:
       Runtime: nodejs24.x
       Policies:
         - AWSLambdaVPCAccessExecutionRole
+        - !Ref DocumentsKmsAccessPolicy
+        - S3CrudPolicy:
+            BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+                - bedrock:InvokeModelWithResponseStream
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+              Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${AWS::StackName}-PostJobsGenerateFunction-*'
       Timeout: 300
       Layers:
         - !Ref DbLayer
@@ -825,6 +838,10 @@ Resources:
               Action:
                 - bedrock:InvokeModel
               Resource: !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/*'
+            - Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+              Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${AWS::StackName}-PostJobsExtractFunction-*'
       Events:
         PostJobsExtract:
           Type: Api
