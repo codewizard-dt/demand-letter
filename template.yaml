@@ -110,6 +110,21 @@ Resources:
       AliasName: !Sub 'alias/${Stage}-demand-letter-rds'
       TargetKeyId: !Ref DemandLetterKmsKey
 
+  DocumentsKmsAccessPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: Allow Lambda functions to use the documents bucket KMS key.
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - kms:DescribeKey
+              - kms:Decrypt
+              - kms:GenerateDataKey
+              - kms:GenerateDataKey*
+            Resource: !GetAtt DemandLetterKmsKey.Arn
+
   LambdaSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -248,6 +263,7 @@ Resources:
       Runtime: nodejs24.x
       Policies:
         - AWSLambdaVPCAccessExecutionRole
+        - !Ref DocumentsKmsAccessPolicy
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
         - Statement:
@@ -273,6 +289,7 @@ Resources:
       Runtime: nodejs24.x
       Policies:
         - AWSLambdaVPCAccessExecutionRole
+        - !Ref DocumentsKmsAccessPolicy
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
         - Statement:
@@ -301,6 +318,7 @@ Resources:
       Runtime: nodejs24.x
       Policies:
         - AWSLambdaVPCAccessExecutionRole
+        - !Ref DocumentsKmsAccessPolicy
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
         - Statement:
@@ -375,6 +393,7 @@ Resources:
       Runtime: nodejs24.x
       Policies:
         - AWSLambdaVPCAccessExecutionRole
+        - !Ref DocumentsKmsAccessPolicy
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
         - Statement:
@@ -403,6 +422,7 @@ Resources:
       Runtime: nodejs24.x
       Policies:
         - AWSLambdaVPCAccessExecutionRole
+        - !Ref DocumentsKmsAccessPolicy
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
       Layers:
@@ -425,6 +445,7 @@ Resources:
       Runtime: nodejs24.x
       Policies:
         - AWSLambdaVPCAccessExecutionRole
+        - !Ref DocumentsKmsAccessPolicy
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
       Layers:
@@ -447,6 +468,7 @@ Resources:
       Runtime: nodejs24.x
       Policies:
         - AWSLambdaVPCAccessExecutionRole
+        - !Ref DocumentsKmsAccessPolicy
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
         - Statement:
@@ -472,6 +494,7 @@ Resources:
       Runtime: nodejs24.x
       Policies:
         - AWSLambdaVPCAccessExecutionRole
+        - !Ref DocumentsKmsAccessPolicy
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
       Layers:
@@ -491,6 +514,7 @@ Resources:
       Runtime: nodejs24.x
       Policies:
         - AWSLambdaVPCAccessExecutionRole
+        - !Ref DocumentsKmsAccessPolicy
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
       Layers:
@@ -510,6 +534,7 @@ Resources:
       Runtime: nodejs24.x
       Policies:
         - AWSLambdaVPCAccessExecutionRole
+        - !Ref DocumentsKmsAccessPolicy
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
       Layers:
@@ -529,6 +554,7 @@ Resources:
       Runtime: nodejs24.x
       Policies:
         - AWSLambdaVPCAccessExecutionRole
+        - !Ref DocumentsKmsAccessPolicy
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
         - Statement:
@@ -555,6 +581,7 @@ Resources:
       Timeout: 120
       Policies:
         - AWSLambdaVPCAccessExecutionRole
+        - !Ref DocumentsKmsAccessPolicy
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
         - Statement:
@@ -584,6 +611,7 @@ Resources:
       Timeout: 60
       Policies:
         - AWSLambdaVPCAccessExecutionRole
+        - !Ref DocumentsKmsAccessPolicy
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
       Layers:
@@ -606,6 +634,7 @@ Resources:
       Runtime: nodejs24.x
       Policies:
         - AWSLambdaVPCAccessExecutionRole
+        - !Ref DocumentsKmsAccessPolicy
         - S3ReadPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
       Layers:
@@ -690,6 +719,7 @@ Resources:
       Policies:
         - AWSLambdaVPCAccessExecutionRole
         - AWSLambdaBasicExecutionRole
+        - !Ref DocumentsKmsAccessPolicy
         - Statement:
             - Effect: Allow
               Action:
@@ -857,6 +887,7 @@ Resources:
       Policies:
         - AWSLambdaVPCAccessExecutionRole
         - AWSLambdaBasicExecutionRole
+        - !Ref DocumentsKmsAccessPolicy
         - S3CrudPolicy:
             BucketName: !Sub '${Stage}-demand-letter-docs-${AWS::AccountId}'
       Environment:
@@ -1048,6 +1079,7 @@ Resources:
       Policies:
         - AWSLambdaVPCAccessExecutionRole
         - AWSLambdaBasicExecutionRole
+        - !Ref DocumentsKmsAccessPolicy
         - Statement:
             - Effect: Allow
               Action:
@@ -1094,6 +1126,7 @@ Resources:
       Policies:
         - AWSLambdaVPCAccessExecutionRole
         - AWSLambdaBasicExecutionRole
+        - !Ref DocumentsKmsAccessPolicy
         - Statement:
             - Effect: Allow
               Action:
