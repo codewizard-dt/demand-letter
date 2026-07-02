@@ -23,11 +23,19 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       headers: { ...corsHeadersFor(event) }, body: JSON.stringify({ error: 'no_zones_found', message: 'The template has no classified zones. Run classify first.' }) };
   }
 
-  void runTemplateClassificationJob({ jobId, templateId, userId: 'system', trace });
+  const result = await runTemplateClassificationJob({ jobId, templateId, userId: 'system', trace });
+
+  if (result.type !== 'complete') {
+    return {
+      statusCode: 500,
+      headers: { ...corsHeadersFor(event), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: 'template_classification_failed', message: result.message }),
+    };
+  }
 
   return {
-    statusCode: 202,
+    statusCode: 200,
     headers: { ...corsHeadersFor(event), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ jobId, templateId, status: 'processing', traceId: trace.traceId }),
+    body: JSON.stringify({ jobId, templateId, status: 'complete', traceId: trace.traceId, zoneCount: result.zoneCount }),
   };
 };

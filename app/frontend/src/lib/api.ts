@@ -732,7 +732,9 @@ async function waitForOptionalStream(connect: () => Promise<void>): Promise<void
     await connect();
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    if (/\bfailed:\s*404\b/.test(message) || /\bfailed:\s*405\b/.test(message)) return;
+    // API Gateway REST APIs return 403 "Missing Authentication Token" when an
+    // optional stream route is not deployed.
+    if (/\bfailed:\s*(403|404|405)\b/.test(message)) return;
     throw err;
   }
 }
