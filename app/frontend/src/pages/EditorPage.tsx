@@ -5,7 +5,7 @@ import StarterKit from '@tiptap/starter-kit';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
 import { Collaboration } from '@tiptap/extension-collaboration';
-import { CollaborationCursor } from '@tiptap/extension-collaboration-cursor';
+import { CollaborationCaret } from '@tiptap/extension-collaboration-caret';
 import { useOutputUrl, useDocxHtml } from '../hooks/useJobQueries';
 import { useExportDocx, useSaveEditorContent } from '../hooks/useJobMutations';
 import { BoilerplateZone } from '../lib/editor/boilerplateZoneMark';
@@ -58,7 +58,7 @@ export default function EditorPage() {
       ...(provider
         ? [
             Collaboration.configure({ document: ydoc }),
-            CollaborationCursor.configure({
+            CollaborationCaret.configure({
               provider,
               user: { name: userName, color: '#6366f1' },
             }),
